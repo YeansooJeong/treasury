@@ -107,13 +107,6 @@
 
   .chart-area { background: var(--bg3); border-radius: 8px; padding: 16px; margin-top: 8px; height: 280px; position: relative; }
   
-  /* ── 게이지 바 (정책용) ── */
-  .policy-item { margin-bottom: 16px; }
-  .policy-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
-  .gauge-bar { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
-  .gauge-fill { height: 100%; border-radius: 3px; transition: width .4s; }
-  .gauge-fill.safe { background: var(--green); } .gauge-fill.warn { background: var(--amber); } .gauge-fill.danger { background: var(--red); }
-  
   #toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg2); border: 1px solid var(--border2); padding: 12px 20px; border-radius: 10px; opacity: 0; transition: all .3s; z-index: 999; transform: translateY(80px); }
   #toast.show { opacity: 1; transform: translateY(0); }
 </style>
@@ -183,13 +176,13 @@
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M8 1l2 4 4 .5-3 3 .8 4.5L8 11l-3.8 2L5 8.5 2 5.5 6 5z"/>
         </svg>
-        자금정책
+        자금정책 (개발예정)
       </div>
       <div class="nav-item" onclick="goto('report')">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M3 1h7l3 3v11H3V1z"/><path d="M10 1v3h3"/><path d="M5 7h6M5 10h4"/>
         </svg>
-        자금일보 출력
+        자금일보 출력 (개발예정)
       </div>
     </nav>
     
@@ -215,6 +208,7 @@
     <div class="content">
 
       <div class="page active" id="page-dashboard">
+        
         <div style="display:flex; gap:10px; margin-bottom:20px; align-items:center;">
           <div class="ci-tab active" onclick="setCompany('셀바스에이아이', this)" title="셀바스에이아이"><img src="selvasai.png" alt="셀바스에이아이"></div>
           <div class="ci-tab" onclick="setCompany('셀바스헬스케어', this)" title="셀바스헬스케어"><img src="selvashealthcare.png" alt="셀바스헬스케어"></div>
@@ -415,13 +409,41 @@ window.onload = () => {
   document.getElementById('h-from').value = from.toISOString().slice(0, 10);
   document.getElementById('h-to').value = today;
 
-  refreshFX();
-  setCompany('셀바스에이아이', document.querySelector('.ci-tab')); 
+  refreshFX().then(() => {
+    setCompany('셀바스에이아이', document.querySelector('.ci-tab')); 
+  });
 };
 
 // ══════════════════════════════════════════════════════
-// 회사(탭) 전환 & 네비게이션
+// 네비게이션 및 탭 전환 (에러 수정형 안전 로직)
 // ══════════════════════════════════════════════════════
+function goto(page) {
+  // 1. 모든 페이지 숨김 처리
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  
+  // 2. 타겟 페이지 표시
+  const targetPage = document.getElementById('page-' + page);
+  if (targetPage) targetPage.classList.add('active');
+  
+  // 3. 사이드바 메뉴 활성화 효과
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => {
+    const oc = n.getAttribute('onclick') || '';
+    if (oc.includes(`goto('${page}'`)) {
+      n.classList.add('active');
+      const titleEl = document.getElementById('page-title');
+      if (titleEl) titleEl.textContent = n.textContent.trim();
+    }
+  });
+
+  // 4. 해당 페이지에 필요한 데이터 렌더링 호출
+  if(page === 'dashboard') renderDashboard();
+  else if(page === 'equity') renderEquity();
+  else if(page === 'history') filterHistory();
+  else if(page === 'invest') renderInvestments();
+  else if(page === 'loans') renderLoans();
+}
+
 function setCompany(comp, btnEl) {
   currentCompany = comp;
   document.querySelectorAll('.ci-tab').forEach(el => el.classList.remove('active'));
@@ -447,31 +469,13 @@ function getFiltered(table) {
   return currentCompany === 'TOTAL' ? all : all.filter(r => r.company === currentCompany);
 }
 
-// 메뉴 이동 충돌 방지 로직 고도화
-function goto(page) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('page-' + page).classList.add('active');
-  
-  // 사이드바 해당 항목 활성화
-  const navItems = document.querySelectorAll('.nav-item');
-  navItems.forEach(n => {
-    if(n.getAttribute('onclick').includes(`goto('${page}')`)) {
-        n.classList.add('active');
-        document.getElementById('page-title').textContent = n.textContent.trim();
-    }
-  });
-  
-  if(page === 'dashboard') renderDashboard();
-  if(page === 'equity') renderEquity();
-  if(page === 'history') filterHistory();
-  if(page === 'invest') renderInvestments();
-  if(page === 'loans') renderLoans();
-}
-
+// ══════════════════════════════════════════════════════
+// 환율 API 연동
+// ══════════════════════════════════════════════════════
 async function refreshFX() {
   try {
-    const resp = await fetch('https://open.er-api.com/v6/latest/USD'); const data = await resp.json();
+    const resp = await fetch('https://open.er-api.com/v6/latest/USD'); 
+    const data = await resp.json();
     if (data.result === 'success') {
       const k = data.rates.KRW; FX = { KRW: 1, USD: k, EUR: k/data.rates.EUR, JPY: k/data.rates.JPY };
       ['usd','eur','jpy'].forEach(c => { const el = document.getElementById('sf-'+c); if(el) el.textContent = FX[c.toUpperCase()].toFixed(2)+'원'; });
@@ -597,7 +601,9 @@ function renderDashboard() {
 }
 
 function updateMainChart(records) {
-  const ctx = document.getElementById('mainChart').getContext('2d');
+  const canvas = document.getElementById('mainChart');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
   if (mainChartObj) mainChartObj.destroy();
   if (!records.length) return;
 
@@ -621,7 +627,9 @@ function updateMainChart(records) {
 }
 
 function updateEquityChart(allEqRecords) {
-  const ctx = document.getElementById('equityChart').getContext('2d');
+  const canvas = document.getElementById('equityChart');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
   if (equityChartObj) equityChartObj.destroy();
   if (!allEqRecords.length) return;
 
@@ -686,6 +694,13 @@ function saveInvestment() {
   renderInvestments(); renderDashboard();
 }
 
+// [에러 방지] 해지/삭제 로직을 안전한 함수로 분리
+function deleteInvest(id) {
+  if(!confirm('해지하시겠습니까?')) return;
+  DB.set('investments', DB.get('investments').filter(v=>v.id !== id));
+  renderInvestments(); renderDashboard();
+}
+
 function renderInvestments() {
   const i = getFiltered('investments').filter(x=>x.active); const tbody = document.getElementById('invest-tbody');
   if(!i.length) return tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text3);">등록된 운용자금이 없습니다</td></tr>';
@@ -693,7 +708,7 @@ function renderInvestments() {
   tbody.innerHTML = i.map(x=>{
     const days = x.maturity ? Math.ceil((new Date(x.maturity)-today)/86400000) : null;
     const dday = days!==null ? (days<0 ? `<span style="color:var(--red)">만기경과</span>` : `D-${days}`) : '—';
-    return `<tr><td>${x.company}</td><td>${x.bank}</td><td>${x.product}</td><td>${x.currency}</td><td class="td-num">${x.amount.toLocaleString()}</td><td class="td-num">${x.rate}%</td><td>${x.maturity||'—'}</td><td>${dday}</td><td class="td-num" style="color:var(--green)">${fmtKRW(calcKRW(x.amount, x.currency))}</td><td><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="DB.set('investments', DB.get('investments').filter(v=>v.id!==${x.id})); renderInvestments(); renderDashboard();">해지</button></td></tr>`;
+    return `<tr><td>${x.company}</td><td>${x.bank}</td><td>${x.product}</td><td>${x.currency}</td><td class="td-num">${x.amount.toLocaleString()}</td><td class="td-num">${x.rate}%</td><td>${x.maturity||'—'}</td><td>${dday}</td><td class="td-num" style="color:var(--green)">${fmtKRW(calcKRW(x.amount, x.currency))}</td><td><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="deleteInvest(${x.id})">해지</button></td></tr>`;
   }).join('');
 }
 
@@ -706,6 +721,13 @@ function saveLoan() {
   renderLoans(); renderDashboard();
 }
 
+// [에러 방지] 상환/삭제 로직을 안전한 함수로 분리
+function deleteLoan(id) {
+  if(!confirm('상환/삭제 하시겠습니까?')) return;
+  DB.set('loans', DB.get('loans').filter(v=>v.id !== id));
+  renderLoans(); renderDashboard();
+}
+
 function renderLoans() {
   const l = getFiltered('loans').filter(x=>x.active); const tbody = document.getElementById('loans-tbody');
   if(!l.length) return tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text3);">등록된 차입금이 없습니다</td></tr>';
@@ -713,7 +735,7 @@ function renderLoans() {
   tbody.innerHTML = l.map(x=>{
     const days = x.maturity ? Math.ceil((new Date(x.maturity)-today)/86400000) : null;
     const dday = days!==null ? (days<0 ? `<span style="color:var(--red)">만기경과</span>` : `D-${days}`) : '—';
-    return `<tr><td>${x.company}</td><td>${x.lender}</td><td>${x.type}</td><td>${x.currency}</td><td class="td-num">${x.amount.toLocaleString()}</td><td class="td-num">${x.rate}%</td><td>${x.maturity||'—'}</td><td>${dday}</td><td class="td-num" style="color:var(--amber)">${fmtKRW(calcKRW(x.amount, x.currency))}</td><td><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="DB.set('loans', DB.get('loans').filter(v=>v.id!==${x.id})); renderLoans(); renderDashboard();">상환</button></td></tr>`;
+    return `<tr><td>${x.company}</td><td>${x.lender}</td><td>${x.type}</td><td>${x.currency}</td><td class="td-num">${x.amount.toLocaleString()}</td><td class="td-num">${x.rate}%</td><td>${x.maturity||'—'}</td><td>${dday}</td><td class="td-num" style="color:var(--amber)">${fmtKRW(calcKRW(x.amount, x.currency))}</td><td><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="deleteLoan(${x.id})">상환</button></td></tr>`;
   }).join('');
 }
 
