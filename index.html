@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Selvas Treasury — 통합자금관리</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap');
 
@@ -26,7 +25,6 @@
   .sidebar-logo .co { font-size: 22px; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; transition: opacity 0.2s; }
   .sidebar-logo .co:hover { opacity: 0.8; }
   .sidebar-logo .name { font-size: 13px; color: var(--text3); margin-top: 2px; margin-bottom: 16px; letter-spacing: 0.05em; }
-  
   #sidebar-badge-area { background: #fff; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; justify-content: center; height: 48px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); }
   #sidebar-badge-area img { max-width: 100%; max-height: 100%; object-fit: contain; }
 
@@ -108,6 +106,13 @@
 
   .chart-area { background: var(--bg3); border-radius: 8px; padding: 16px; margin-top: 8px; height: 280px; position: relative; }
   
+  /* ── 게이지 바 (정책용) ── */
+  .policy-item { margin-bottom: 16px; }
+  .policy-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .gauge-bar { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+  .gauge-fill { height: 100%; border-radius: 3px; transition: width .4s; }
+  .gauge-fill.safe { background: var(--green); } .gauge-fill.warn { background: var(--amber); } .gauge-fill.danger { background: var(--red); }
+  
   #toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg2); border: 1px solid var(--border2); padding: 12px 20px; border-radius: 10px; opacity: 0; transition: all .3s; z-index: 999; transform: translateY(80px); }
   #toast.show { opacity: 1; transform: translateY(0); }
 </style>
@@ -119,7 +124,7 @@
     <div class="sidebar-logo">
       <div class="co" onclick="goto('dashboard')">SELVAS</div>
       <div class="name">Treasury</div>
-      <div id="sidebar-badge-area"><img src="selvasai.png" alt="Selvas AI"></div>
+      <div id="sidebar-badge-area"><img src="selvasai.png" alt="Selvas AI" onerror="this.style.display='none'"></div>
     </div>
 
     <nav class="nav">
@@ -177,13 +182,13 @@
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M8 1l2 4 4 .5-3 3 .8 4.5L8 11l-3.8 2L5 8.5 2 5.5 6 5z"/>
         </svg>
-        자금정책 (개발중)
+        자금정책
       </div>
       <div class="nav-item" onclick="goto('report')">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M3 1h7l3 3v11H3V1z"/><path d="M10 1v3h3"/><path d="M5 7h6M5 10h4"/>
         </svg>
-        자금일보 출력 (개발중)
+        자금일보 출력
       </div>
     </nav>
     
@@ -209,11 +214,10 @@
     <div class="content">
 
       <div class="page active" id="page-dashboard">
-        
         <div style="display:flex; gap:10px; margin-bottom:20px; align-items:center;">
-          <div class="ci-tab active" onclick="setCompany('셀바스에이아이', this)" title="셀바스에이아이"><img src="selvasai.png" alt="셀바스에이아이"></div>
-          <div class="ci-tab" onclick="setCompany('셀바스헬스케어', this)" title="셀바스헬스케어"><img src="selvashealthcare.png" alt="셀바스헬스케어"></div>
-          <div class="ci-tab" onclick="setCompany('메디아나', this)" title="메디아나"><img src="메디아나 CI.png" alt="메디아나"></div>
+          <div class="ci-tab active" onclick="setCompany('셀바스에이아이', this)" title="셀바스에이아이"><img src="selvasai.png" alt="셀바스에이아이" onerror="this.parentElement.textContent='Selvas AI'"></div>
+          <div class="ci-tab" onclick="setCompany('셀바스헬스케어', this)" title="셀바스헬스케어"><img src="selvashealthcare.png" alt="셀바스헬스케어" onerror="this.parentElement.textContent='Selvas HC'"></div>
+          <div class="ci-tab" onclick="setCompany('메디아나', this)" title="메디아나"><img src="mediana.png" alt="메디아나" onerror="this.parentElement.textContent='Mediana'"></div>
           <button class="btn btn-ghost" id="tab-total" onclick="setCompany('TOTAL', this)" style="height:46px; font-size:14px; font-weight:600; border-radius:8px;">통합 현황 (3사)</button>
         </div>
 
@@ -360,11 +364,11 @@
       </div>
       
       <div class="page" id="page-policy">
-        <div class="card"><div class="card-title">자금정책 (개발중)</div><div style="color:var(--text3);">운영 정책이 적용되는 공간입니다.</div></div>
+        <div class="card"><div class="card-title">자금정책 <span style="font-size:10px;color:var(--text3);">(개발예정)</span></div><div style="color:var(--text3);">운영 정책이 적용되는 공간입니다.</div></div>
       </div>
       
       <div class="page" id="page-report">
-        <div class="card"><div class="card-title">자금일보 출력 (개발중)</div><div style="color:var(--text3);">리포트 출력 모듈은 다음 고도화 단계에서 진행 예정입니다.</div></div>
+        <div class="card"><div class="card-title">자금일보 출력 <span style="font-size:10px;color:var(--text3);">(개발예정)</span></div><div style="color:var(--text3);">리포트 출력 모듈은 다음 고도화 단계에서 진행 예정입니다.</div></div>
       </div>
 
     </div>
@@ -400,91 +404,41 @@ let mainChartObj = null;
 let equityChartObj = null;
 let selectedChartMetrics = ['op', 'inv', 'loan']; 
 
-window.onload = () => {
+document.addEventListener('DOMContentLoaded', () => {
   const today = new Date().toISOString().slice(0, 10);
   document.getElementById('today-badge').textContent = today.replace(/-/g, '.');
   document.getElementById('i-date').value = today;
   document.getElementById('e-date').value = today;
-  
+
   const from = new Date(); from.setDate(from.getDate() - 30);
   document.getElementById('h-from').value = from.toISOString().slice(0, 10);
   document.getElementById('h-to').value = today;
 
-  refreshFX().then(() => {
-    setCompany('셀바스에이아이', document.querySelector('.ci-tab')); 
-  });
-};
+  refreshFX();
+  setCompany('셀바스에이아이', document.querySelector('.ci-tab'));
+});
 
 // ══════════════════════════════════════════════════════
-// 네비게이션 및 탭 전환 (안정성 강화 모델)
+// 회사(탭) 전환 & 네비게이션
 // ══════════════════════════════════════════════════════
-const PAGE_TITLES = {
-  dashboard: '통합 상황판',
-  input: '운전자금 입력',
-  invest: '운용자금 (단기투자)',
-  loans: '차입금 (대출)',
-  equity: '지분투자 관리',
-  history: '자금 변동 이력',
-  fx: '환율 현황',
-  policy: '자금정책',
-  report: '자금일보 출력'
-};
-
-function goto(page) {
-  try {
-    // 1. 모든 페이지 및 활성 메뉴 초기화
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    
-    // 2. 타겟 페이지 렌더링
-    const targetPage = document.getElementById('page-' + page);
-    if (targetPage) targetPage.classList.add('active');
-
-    // 3. 타이틀 변경
-    const titleEl = document.getElementById('page-title');
-    if (titleEl) titleEl.textContent = PAGE_TITLES[page] || 'Dashboard';
-
-    // 4. 사이드바 아이콘 활성화
-    document.querySelectorAll('.nav-item').forEach(n => {
-      const oc = n.getAttribute('onclick') || '';
-      if (oc.includes(`goto('${page}')`)) n.classList.add('active');
-    });
-
-    // 5. 각 페이지별 데이터 로드
-    if(page === 'dashboard') renderDashboard();
-    if(page === 'equity') renderEquity();
-    if(page === 'history') filterHistory();
-    if(page === 'invest') renderInvestments();
-    if(page === 'loans') renderLoans();
-  } catch(e) {
-    console.error("Navigation error:", e);
-  }
-}
-
 function setCompany(comp, btnEl) {
-  try {
-    currentCompany = comp;
-    document.querySelectorAll('.ci-tab').forEach(el => el.classList.remove('active'));
-    const btnTotal = document.getElementById('tab-total');
-    if (btnTotal) { btnTotal.classList.remove('btn-primary'); btnTotal.classList.add('btn-ghost'); }
-    const badgeArea = document.getElementById('sidebar-badge-area');
+  currentCompany = comp;
+  document.querySelectorAll('.ci-tab').forEach(el => el.classList.remove('active'));
+  const btnTotal = document.getElementById('tab-total');
+  if (btnTotal) { btnTotal.classList.remove('btn-primary'); btnTotal.classList.add('btn-ghost'); }
+  const badgeArea = document.getElementById('sidebar-badge-area');
 
-    if(comp === 'TOTAL') {
-      if(btnEl) { btnEl.classList.remove('btn-ghost'); btnEl.classList.add('btn-primary'); }
-      badgeArea.innerHTML = '<span style="color:#1e2535; font-weight:700; font-size:13px;">통합 현황</span>';
-      document.querySelectorAll('.input-company-badge').forEach(el => el.textContent = '통합(입력불가)');
-    } else {
-      if(btnEl) btnEl.classList.add('active');
-      let imgSrc = comp==='셀바스에이아이'?'selvasai.png':comp==='셀바스헬스케어'?'selvashealthcare.png':'메디아나 CI.png';
-      badgeArea.innerHTML = `<img src="${imgSrc}" alt="${comp}">`;
-      document.querySelectorAll('.input-company-badge').forEach(el => el.textContent = comp);
-    }
-    
-    // 화면 재렌더링
-    renderDashboard(); renderInvestments(); renderLoans(); renderEquity(); filterHistory();
-  } catch (e) {
-    console.error("Company switch error:", e);
+  if(comp === 'TOTAL') {
+    if(btnEl) { btnEl.classList.remove('btn-ghost'); btnEl.classList.add('btn-primary'); }
+    badgeArea.innerHTML = '<span style="color:#1e2535; font-weight:700; font-size:13px;">통합 현황</span>';
+    document.querySelectorAll('.input-company-badge').forEach(el => el.textContent = '통합(입력불가)');
+  } else {
+    if(btnEl) btnEl.classList.add('active');
+      const imgMap={'셀바스에이아이':'selvasai.png','셀바스헬스케어':'selvashealthcare.png','메디아나':'mediana.png'};
+      badgeArea.innerHTML = `<img src="${imgMap[comp]}" alt="${comp}" onerror="this.style.display='none'" style="max-width:100%;max-height:100%;object-fit:contain;">`;
+    document.querySelectorAll('.input-company-badge').forEach(el => el.textContent = comp);
   }
+  renderDashboard(); renderInvestments(); renderLoans(); renderEquity(); filterHistory();
 }
 
 function getFiltered(table) {
@@ -492,18 +446,108 @@ function getFiltered(table) {
   return currentCompany === 'TOTAL' ? all : all.filter(r => r.company === currentCompany);
 }
 
-// ══════════════════════════════════════════════════════
-// 환율 API
-// ══════════════════════════════════════════════════════
-async function refreshFX() {
-  try {
-    const resp = await fetch('https://open.er-api.com/v6/latest/USD'); const data = await resp.json();
-    if (data.result === 'success') {
-      const k = data.rates.KRW; FX = { KRW: 1, USD: k, EUR: k/data.rates.EUR, JPY: k/data.rates.JPY };
-      ['usd','eur','jpy'].forEach(c => { const el = document.getElementById('sf-'+c); if(el) el.textContent = FX[c.toUpperCase()].toFixed(2)+'원'; });
-      ['usd','eur','jpy'].forEach(c => { const el = document.getElementById('p-fx-'+c); if(el) el.textContent = FX[c.toUpperCase()].toFixed(2)+'원'; });
+// 메뉴 이동 충돌 방지 로직 고도화
+function goto(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  
+  // 사이드바 해당 항목 활성화
+  const navItems = document.querySelectorAll('.nav-item');
+  navItems.forEach(n => {
+    if(n.getAttribute('onclick').includes(`goto('${page}')`)) {
+        n.classList.add('active');
+        document.getElementById('page-title').textContent = n.textContent.trim();
     }
-  } catch (e) {} 
+  });
+  
+  if(page === 'dashboard') renderDashboard();
+  if(page === 'equity') renderEquity();
+  if(page === 'history') filterHistory();
+  if(page === 'invest') renderInvestments();
+  if(page === 'loans') renderLoans();
+}
+
+async function refreshFX() {
+  // 로딩 표시
+  ['usd','eur','jpy'].forEach(c => {
+    const el = document.getElementById('sf-'+c);
+    if(el) el.textContent = '조회중...';
+  });
+
+  let success = false;
+
+  // 1순위: exchangerate-api.com (CORS 허용, 무료)
+  if (!success) {
+    try {
+      const resp = await fetch('https://v6.exchangerate-api.com/v6/latest/KRW', { mode: 'cors' });
+      if (resp.ok) {
+        const data = await resp.json();
+        // KRW 기준으로 각 통화 역산
+        if (data.conversion_rates) {
+          const r = data.conversion_rates;
+          FX = {
+            KRW: 1,
+            USD: 1 / r.USD,
+            EUR: 1 / r.EUR,
+            JPY: 1 / r.JPY,
+            GBP: 1 / r.GBP
+          };
+          success = true;
+          console.log('환율 조회 성공 (v6.exchangerate-api)', FX);
+        }
+      }
+    } catch(e) { console.log('1순위 실패:', e.message); }
+  }
+
+  // 2순위: open.er-api.com (USD 기준 → KRW 역산)
+  if (!success) {
+    try {
+      const resp = await fetch('https://open.er-api.com/v6/latest/USD');
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.result === 'success' && data.rates && data.rates.KRW) {
+          const k = data.rates.KRW;
+          FX = {
+            KRW: 1,
+            USD: k,
+            EUR: k / data.rates.EUR,
+            JPY: k / data.rates.JPY,
+            GBP: k / data.rates.GBP
+          };
+          success = true;
+          console.log('환율 조회 성공 (open.er-api)', FX);
+        }
+      }
+    } catch(e) { console.log('2순위 실패:', e.message); }
+  }
+
+  // 3순위: currencyapi.com (무료 플랜)
+  if (!success) {
+    try {
+      const resp = await fetch('https://api.currencyapi.com/v3/latest?apikey=fca_live_xxxxxxxx&currencies=USD,EUR,JPY,GBP&base_currency=KRW');
+      // ※ 실제 사용 시 apikey를 발급받아 교체 필요 (https://currencyapi.com - 무료)
+    } catch(e) {}
+  }
+
+  // 최종 폴백: 기본값 (어느 API도 실패한 경우)
+  if (!success) {
+    console.warn('모든 환율 API 실패 — 기본값 적용 (실제 환율과 다를 수 있음)');
+    FX = { KRW: 1, USD: 1378, EUR: 1492, JPY: 9.21, GBP: 1748 };
+  }
+
+  updateFXDisplay();
+  return FX;
+}
+
+function updateFXDisplay() {
+  ['usd','eur','jpy'].forEach(c => {
+    const val = FX[c.toUpperCase()];
+    const sf = document.getElementById('sf-'+c);
+    if(sf) sf.textContent = val ? val.toFixed(2)+'원' : '—';
+    const pf = document.getElementById('p-fx-'+c);
+    if(pf) pf.textContent = val ? val.toFixed(2)+'원' : '—';
+  });
 }
 function calcKRW(amount, currency) { return amount * (FX[currency] || 1); }
 
@@ -623,9 +667,7 @@ function renderDashboard() {
 }
 
 function updateMainChart(records) {
-  const canvas = document.getElementById('mainChart');
-  if(!canvas) return;
-  const ctx = canvas.getContext('2d');
+  const ctx = document.getElementById('mainChart').getContext('2d');
   if (mainChartObj) mainChartObj.destroy();
   if (!records.length) return;
 
@@ -645,13 +687,23 @@ function updateMainChart(records) {
   if(selectedChartMetrics.includes('loan')) datasets.push({ label: '차입금', data: agg.map(r=>r.loan_k+r.loan_f), backgroundColor: '#f59e0b', stack: 'loan' });
   if(selectedChartMetrics.includes('net')) datasets.push({ label: '순현금 트렌드', type: 'line', data: agg.map(r=>(r.op_k+r.op_f+r.inv_k+r.inv_f) - (r.loan_k+r.loan_f)), borderColor: '#8b5cf6', backgroundColor: '#8b5cf6', tension: 0.3, fill: false });
 
-  mainChartObj = new Chart(ctx, { type: 'bar', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: { y: { stacked: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', callback: v => (v/100000000).toFixed(0) + '억' } }, x: { stacked: true, grid: { display: false }, ticks: { color: '#64748b' } } } });
+  mainChartObj = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#94a3b8' } } },
+      scales: {
+        y: { stacked: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', callback: v => (v/100000000).toFixed(0) + '억' } },
+        x: { stacked: true, grid: { display: false }, ticks: { color: '#64748b' } }
+      }
+    }
+  });
 }
 
 function updateEquityChart(allEqRecords) {
-  const canvas = document.getElementById('equityChart');
-  if(!canvas) return;
-  const ctx = canvas.getContext('2d');
+  const ctx = document.getElementById('equityChart').getContext('2d');
   if (equityChartObj) equityChartObj.destroy();
   if (!allEqRecords.length) return;
 
@@ -716,12 +768,6 @@ function saveInvestment() {
   renderInvestments(); renderDashboard();
 }
 
-function deleteInvest(id) {
-  if(!confirm('해지하시겠습니까?')) return;
-  DB.set('investments', DB.get('investments').filter(v=>v.id !== id));
-  renderInvestments(); renderDashboard();
-}
-
 function renderInvestments() {
   const i = getFiltered('investments').filter(x=>x.active); const tbody = document.getElementById('invest-tbody');
   if(!i.length) return tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text3);">등록된 운용자금이 없습니다</td></tr>';
@@ -729,7 +775,7 @@ function renderInvestments() {
   tbody.innerHTML = i.map(x=>{
     const days = x.maturity ? Math.ceil((new Date(x.maturity)-today)/86400000) : null;
     const dday = days!==null ? (days<0 ? `<span style="color:var(--red)">만기경과</span>` : `D-${days}`) : '—';
-    return `<tr><td>${x.company}</td><td>${x.bank}</td><td>${x.product}</td><td>${x.currency}</td><td class="td-num">${x.amount.toLocaleString()}</td><td class="td-num">${x.rate}%</td><td>${x.maturity||'—'}</td><td>${dday}</td><td class="td-num" style="color:var(--green)">${fmtKRW(calcKRW(x.amount, x.currency))}</td><td><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="deleteInvest(${x.id})">해지</button></td></tr>`;
+    return `<tr><td>${x.company}</td><td>${x.bank}</td><td>${x.product}</td><td>${x.currency}</td><td class="td-num">${x.amount.toLocaleString()}</td><td class="td-num">${x.rate}%</td><td>${x.maturity||'—'}</td><td>${dday}</td><td class="td-num" style="color:var(--green)">${fmtKRW(calcKRW(x.amount, x.currency))}</td><td><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="DB.set('investments', DB.get('investments').filter(v=>v.id!==${x.id})); renderInvestments(); renderDashboard();">해지</button></td></tr>`;
   }).join('');
 }
 
@@ -742,12 +788,6 @@ function saveLoan() {
   renderLoans(); renderDashboard();
 }
 
-function deleteLoan(id) {
-  if(!confirm('상환/삭제 하시겠습니까?')) return;
-  DB.set('loans', DB.get('loans').filter(v=>v.id !== id));
-  renderLoans(); renderDashboard();
-}
-
 function renderLoans() {
   const l = getFiltered('loans').filter(x=>x.active); const tbody = document.getElementById('loans-tbody');
   if(!l.length) return tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text3);">등록된 차입금이 없습니다</td></tr>';
@@ -755,7 +795,7 @@ function renderLoans() {
   tbody.innerHTML = l.map(x=>{
     const days = x.maturity ? Math.ceil((new Date(x.maturity)-today)/86400000) : null;
     const dday = days!==null ? (days<0 ? `<span style="color:var(--red)">만기경과</span>` : `D-${days}`) : '—';
-    return `<tr><td>${x.company}</td><td>${x.lender}</td><td>${x.type}</td><td>${x.currency}</td><td class="td-num">${x.amount.toLocaleString()}</td><td class="td-num">${x.rate}%</td><td>${x.maturity||'—'}</td><td>${dday}</td><td class="td-num" style="color:var(--amber)">${fmtKRW(calcKRW(x.amount, x.currency))}</td><td><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="deleteLoan(${x.id})">상환</button></td></tr>`;
+    return `<tr><td>${x.company}</td><td>${x.lender}</td><td>${x.type}</td><td>${x.currency}</td><td class="td-num">${x.amount.toLocaleString()}</td><td class="td-num">${x.rate}%</td><td>${x.maturity||'—'}</td><td>${dday}</td><td class="td-num" style="color:var(--amber)">${fmtKRW(calcKRW(x.amount, x.currency))}</td><td><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="DB.set('loans', DB.get('loans').filter(v=>v.id!==${x.id})); renderLoans(); renderDashboard();">상환</button></td></tr>`;
   }).join('');
 }
 
@@ -767,5 +807,6 @@ function filterHistory() {
   tbody.innerHTML = records.map(r => `<tr><td>${r.date}</td><td>${r.company}</td><td class="td-num">${fmtKRW(r.krw_demand+r.krw_govt+r.krw_mmda)}</td><td class="td-num">${r.fx_usd?r.fx_usd.toLocaleString()+'$':'—'}</td><td class="td-num">${r.fx_eur?r.fx_eur.toLocaleString()+'€':'—'}</td><td class="td-num">${r.fx_jpy?r.fx_jpy.toLocaleString()+'¥':'—'}</td><td class="td-num" style="color:var(--accent2);">${fmtKRW(r.fx_krw||0)}</td><td style="font-size:12px;color:var(--text3);">${r.memo||''}</td></tr>`).join('');
 }
 </script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
 </html>
