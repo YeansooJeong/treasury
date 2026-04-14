@@ -1308,10 +1308,9 @@ function updateMainChart(records) {
     map[r.date].inv_f += (r.inv_fx  || 0);
   });
 
-  // ── 차입금: loans 테이블에서 직접 읽기 ─────────────────────
-  // daily 스냅샷의 loan_krw/loan_fx는 저장 시점 기준이라 부정확
-  // → 현재 활성 차입금 합계를 모든 날짜에 동일하게 적용
-  const activeLoan = DB.get('loans').filter(l => l.active);
+  // ── 차입금: loans 테이블에서 직접 읽기 (현재 선택 회사 기준) ─
+  // getFiltered()가 currentCompany 필터를 자동 적용
+  const activeLoan = getFiltered('loans').filter(l => l.active);
   const loanKrwTotal = activeLoan
     .filter(l => l.currency === 'KRW')
     .reduce((s, l) => s + (l.amount || 0), 0);
