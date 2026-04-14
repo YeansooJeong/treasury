@@ -218,10 +218,32 @@
           <div class="ci-tab active" onclick="setCompany('셀바스에이아이', this)" title="셀바스에이아이"><img src="selvasai.png" alt="셀바스에이아이" onerror="this.parentElement.textContent='Selvas AI'"></div>
           <div class="ci-tab" onclick="setCompany('셀바스헬스케어', this)" title="셀바스헬스케어"><img src="selvashealthcare.png" alt="셀바스헬스케어" onerror="this.parentElement.textContent='Selvas HC'"></div>
           <div class="ci-tab" onclick="setCompany('메디아나', this)" title="메디아나"><img src="mediana.png" alt="메디아나" onerror="this.parentElement.textContent='Mediana'"></div>
-          <button class="btn btn-ghost" id="tab-total" onclick="setCompany('TOTAL', this)" style="height:46px; font-size:14px; font-weight:600; border-radius:8px;">통합 현황 (3사)</button>
+          <button class="btn btn-ghost" id="tab-total" onclick="setCompany('TOTAL', this)" style="display:none;">통합 현황 (3사)</button>
         </div>
 
         <div style="font-size:12px; color:var(--text3); margin-bottom:8px;">※ 현금흐름 (순현금에 반영됨) - 카드를 클릭하면 하단 그래프가 변경됩니다.</div>
+
+        <!-- 원화/외화 구분 요약 카드 -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;">
+          <div class="card" style="margin-bottom:0;padding:16px 20px;">
+            <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">원화 자금 합계</div>
+            <div style="font-size:22px;font-weight:700;color:var(--accent2);" id="s-krw-total">—</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px;">보통예금 + 국책 + MMDA</div>
+          </div>
+          <div class="card" style="margin-bottom:0;padding:16px 20px;">
+            <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">외화 원화환산 합계</div>
+            <div style="font-size:22px;font-weight:700;color:var(--green);" id="s-fx-total">—</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px;" id="s-fx-detail">USD · EUR · JPY</div>
+          </div>
+          <div class="card" style="margin-bottom:0;padding:16px 20px;">
+            <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">원화 / 외화 비율</div>
+            <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;margin:10px 0;gap:2px;">
+              <div style="height:8px;border-radius:2px;background:var(--accent);transition:flex .4s;flex:70;" id="s-ratio-krw-bar"></div>
+              <div style="height:8px;border-radius:2px;background:var(--green);transition:flex .4s;flex:30;" id="s-ratio-fx-bar"></div>
+            </div>
+            <div style="font-size:12px;color:var(--text2);" id="s-ratio-text">—</div>
+          </div>
+        </div>
         <div class="metrics">
           <div class="metric selected" data-key="op" onclick="toggleMetric('op', event)">
             <div class="metric-label">운전자금 <span class="color-op">●</span></div>
@@ -257,18 +279,27 @@
         </div>
 
         <div class="card">
-          <div class="card-title">현금흐름 자금 추이 <span>(선택된 카드 데이터 반영)</span></div>
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>현금흐름 자금 추이 <span style="font-weight:400;color:var(--text3);">(선택된 카드 반영)</span></span>
+            <div style="display:flex;gap:4px;">
+              <button class="btn btn-ghost chart-period-btn active" onclick="setChartPeriod(7, this)" style="padding:4px 10px;font-size:11px;">7일</button>
+              <button class="btn btn-ghost chart-period-btn" onclick="setChartPeriod(30, this)" style="padding:4px 10px;font-size:11px;">30일</button>
+              <button class="btn btn-ghost chart-period-btn" onclick="setChartPeriod(90, this)" style="padding:4px 10px;font-size:11px;">90일</button>
+              <button class="btn btn-ghost chart-period-btn" onclick="setChartPeriod(365, this)" style="padding:4px 10px;font-size:11px;">1년</button>
+            </div>
+          </div>
           <div class="chart-area" id="chart-area"><canvas id="mainChart"></canvas></div>
         </div>
 
         <div class="equity-metric">
-          <div style="font-size:12px; color:var(--pink); font-weight:600; margin-bottom:8px;">지분투자 자산 (순현금에서 제외됨)</div>
-          <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-            <div>
-              <div style="font-size:20px; font-weight:700; color:var(--text);" id="d-eq-total">0원</div>
-              <div style="font-size:12px; color:var(--text3); margin-top:4px;">지분증권 평가금액 총합</div>
-            </div>
-            <button class="btn btn-ghost" onclick="goto('equity')" style="font-size:12px; padding:6px 12px; border-color:rgba(236,72,153,0.3); color:var(--pink);">지분투자 상세 보기 →</button>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div style="font-size:12px;color:var(--pink);font-weight:600;">지분투자 자산 (순현금 제외)</div>
+            <button class="btn btn-ghost" onclick="goto('equity')" style="font-size:11px;padding:4px 10px;border-color:rgba(236,72,153,0.3);color:var(--pink);">상세 보기 →</button>
+          </div>
+          <div id="d-eq-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid rgba(236,72,153,0.2);">
+            <span style="font-size:12px;color:var(--text2);">합계</span>
+            <span style="font-size:18px;font-weight:700;color:var(--pink);" id="d-eq-total">0원</span>
           </div>
         </div>
         
@@ -280,8 +311,16 @@
 
       <div class="page" id="page-input">
         <div class="card">
-          <div class="card-title">일일 운전자금 입력 <span>— <span class="input-company-badge">셀바스에이아이</span></span></div>
+          <div class="card-title">일일 운전자금 입력</div>
           <div class="form-grid">
+            <div class="form-group">
+              <label>법인 *</label>
+              <select id="i-company" onchange="syncCompanySelect('i-company')">
+                <option value="셀바스에이아이">셀바스에이아이</option>
+                <option value="셀바스헬스케어">셀바스헬스케어</option>
+                <option value="메디아나">메디아나</option>
+              </select>
+            </div>
             <div class="form-group"><label>기준일자 *</label><input type="date" id="i-date"></div>
             <div class="form-group"><label>작성자</label><input type="text" id="i-writer" placeholder="홍길동"></div>
           </div>
@@ -300,12 +339,41 @@
           <div class="form-group" style="margin-top:16px;"><label>특이사항</label><textarea id="i-memo" placeholder="비고 입력"></textarea></div>
           <div class="form-actions"><button class="btn btn-success" onclick="saveDaily()">운전자금 저장</button></div>
         </div>
+
+        <div class="card">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>운전자금 입력 이력</span>
+            <span id="daily-page-info" style="font-size:11px;color:var(--text3);font-weight:400;"></span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>일자</th><th>법인</th>
+                  <th class="td-num">보통예금</th><th class="td-num">국책</th><th class="td-num">MMDA</th>
+                  <th class="td-num">USD</th><th class="td-num">EUR</th><th class="td-num">JPY</th>
+                  <th class="td-num">외화환산</th><th>비고</th><th></th>
+                </tr>
+              </thead>
+              <tbody id="daily-history-tbody"></tbody>
+            </table>
+          </div>
+          <div id="daily-pagination" style="display:flex;gap:6px;justify-content:center;margin-top:14px;"></div>
+        </div>
       </div>
 
       <div class="page" id="page-invest">
         <div class="card">
-          <div class="card-title">운용상품(단기투자) 등록 <span>— <span class="input-company-badge">셀바스에이아이</span></span></div>
+          <div class="card-title">운용상품(단기투자) 등록</div>
           <div class="form-grid">
+            <div class="form-group">
+              <label>법인 *</label>
+              <select id="v-company" onchange="syncCompanySelect('v-company')">
+                <option value="셀바스에이아이">셀바스에이아이</option>
+                <option value="셀바스헬스케어">셀바스헬스케어</option>
+                <option value="메디아나">메디아나</option>
+              </select>
+            </div>
             <div class="form-group"><label>금융기관</label><input type="text" id="v-bank" placeholder="예: 산업은행"></div>
             <div class="form-group"><label>운용상품</label><select id="v-product"><option value="정기예금">정기예금</option><option value="중금채">중금채</option><option value="국공채">국공채</option><option value="전단채">전단채</option><option value="기타(전환사채 등)">기타(전환사채 등)</option></select></div>
             <div class="form-group"><label>통화 / 금액</label><div style="display:flex;gap:10px;"><select id="v-currency" style="width:80px;"><option value="KRW">KRW</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="JPY">JPY</option></select><input type="text" id="v-amount" style="flex:1;" placeholder="0" oninput="formatNumericInput(this, true)"></div></div>
@@ -320,8 +388,16 @@
 
       <div class="page" id="page-loans">
         <div class="card">
-          <div class="card-title">차입금 등록 <span>— <span class="input-company-badge">셀바스에이아이</span></span></div>
+          <div class="card-title">차입금 등록</div>
           <div class="form-grid">
+            <div class="form-group">
+              <label>법인 *</label>
+              <select id="l-company" onchange="syncCompanySelect('l-company')">
+                <option value="셀바스에이아이">셀바스에이아이</option>
+                <option value="셀바스헬스케어">셀바스헬스케어</option>
+                <option value="메디아나">메디아나</option>
+              </select>
+            </div>
             <div class="form-group"><label>차입처</label><input type="text" id="l-lender" placeholder="예: 하나은행"></div>
             <div class="form-group"><label>구분</label><select id="l-type"><option value="담보대출">담보대출</option><option value="신용대출">신용대출</option><option value="외화대출">외화대출</option><option value="정책자금">정책자금</option></select></div>
             <div class="form-group"><label>통화 / 금액</label><div style="display:flex;gap:10px;"><select id="l-currency" style="width:80px;"><option value="KRW">KRW</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="JPY">JPY</option></select><input type="text" id="l-amount" style="flex:1;" placeholder="0" oninput="formatNumericInput(this, true)"></div></div>
@@ -350,19 +426,24 @@
                 <option value="메디아나">메디아나</option>
               </select>
             </div>
-            <div class="form-group">
-              <label>종목명</label>
-              <input type="text" id="e-name" placeholder="예: 셀바스헬스케어" oninput="onStockNameInput()">
+            <div class="form-group" style="position:relative;">
+              <label>종목명 검색</label>
+              <input type="text" id="e-name" placeholder="종목명 입력 후 목록에서 선택" oninput="searchStock(this.value)" autocomplete="off">
+              <div id="e-stock-dropdown" style="
+                display:none; position:absolute; top:100%; left:0; right:0; z-index:100;
+                background:var(--bg2); border:1px solid var(--border2); border-radius:8px;
+                max-height:200px; overflow-y:auto; box-shadow:0 8px 24px rgba(0,0,0,0.4);
+              "></div>
             </div>
             <div class="form-group">
-              <label>KRX 종목코드 (6자리)</label>
+              <label>KRX 종목코드</label>
               <div style="display:flex; gap:8px;">
-                <input type="text" id="e-ticker" placeholder="예: 096530" style="flex:1;" maxlength="6" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                <input type="text" id="e-ticker" placeholder="종목 검색 시 자동입력" style="flex:1;" maxlength="6" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
                 <button class="btn btn-ghost" onclick="fetchStockPrice()" id="e-fetch-btn" style="white-space:nowrap; font-size:12px; padding:6px 12px; border-color:rgba(236,72,153,0.4); color:var(--pink);">
                   주가 조회
                 </button>
               </div>
-              <div id="e-price-status" style="font-size:11px; margin-top:4px; color:var(--text3);">종목코드 입력 후 주가 조회 버튼을 누르세요</div>
+              <div id="e-price-status" style="font-size:11px; margin-top:4px; color:var(--text3);">종목명을 검색하거나 코드를 직접 입력 후 주가 조회</div>
             </div>
             <div class="form-group">
               <label>투자목적</label>
@@ -525,6 +606,7 @@ function goto(page) {
   });
   
   if(page === 'dashboard') renderDashboard();
+  if(page === 'input') renderDailyHistory(1);
   if(page === 'equity') renderEquity();
   if(page === 'history') filterHistory();
   if(page === 'invest') renderInvestments();
@@ -631,29 +713,139 @@ function onMarketChange() {
     if(statusEl) statusEl.textContent = '비상장 종목은 단가를 직접 입력하세요';
   } else {
     tickerInput.disabled = false;
-    tickerInput.placeholder = '예: 096530';
+    tickerInput.placeholder = '예: 108860';
     if(fetchBtn) fetchBtn.disabled = false;
     if(statusEl) statusEl.textContent = '종목코드 입력 후 주가 조회 버튼을 누르세요';
   }
 }
 
-function onStockNameInput() {
-  // 종목명 입력 시 종목코드 힌트 제공 (주요 종목)
-  const knownTickers = {
-    '셀바스에이아이': '096530', '셀바스AI': '096530',
-    '셀바스헬스케어': '187220',
-    '메디아나': '041920',
-    '삼성전자': '005930', '에스케이하이닉스': '000660', 'SK하이닉스': '000660',
-    'LG에너지솔루션': '373220', '현대차': '005380', '기아': '000270',
-    'NAVER': '035420', '카카오': '035720', '삼성바이오로직스': '207940',
-  };
-  const name = document.getElementById('e-name').value.trim();
-  const tickerEl = document.getElementById('e-ticker');
-  if (knownTickers[name] && !tickerEl.value) {
-    tickerEl.value = knownTickers[name];
-    document.getElementById('e-price-status').textContent = `종목코드 자동입력: ${knownTickers[name]} — 주가 조회 버튼을 누르세요`;
+// ── KRX 전체 종목 실시간 검색 ─────────────────────────────
+let krxStockList = null; // 캐시
+
+async function loadKRXStocks() {
+  if (krxStockList) return krxStockList;
+  // KRX 전체 종목 JSON (GitHub에서 제공하는 공개 데이터)
+  // 대안: 직접 관리하는 주요 종목 사전
+  try {
+    // KIS 개발자센터 / 공공데이터 없이 사용 가능한 방법:
+    // Yahoo Finance 검색 API (CORS 프록시 경유)
+    return null; // 실시간 로딩은 fetchStockSearch로 처리
+  } catch(e) {
+    return null;
   }
 }
+
+async function searchStock(query) {
+  const dropdown = document.getElementById('e-stock-dropdown');
+  if (!query || query.length < 1) {
+    dropdown.style.display = 'none';
+    return;
+  }
+
+  // 로컬 주요 종목 사전 (한국 주요 상장사)
+  const localStocks = [
+    {name:'셀바스에이아이', code:'108860', market:'KOSDAQ'},
+    {name:'셀바스헬스케어', code:'208370', market:'KOSDAQ'},
+    {name:'메디아나', code:'041920', market:'KOSDAQ'},
+    {name:'삼성전자', code:'005930', market:'KOSPI'},
+    {name:'SK하이닉스', code:'000660', market:'KOSPI'},
+    {name:'LG에너지솔루션', code:'373220', market:'KOSPI'},
+    {name:'삼성바이오로직스', code:'207940', market:'KOSPI'},
+    {name:'현대차', code:'005380', market:'KOSPI'},
+    {name:'기아', code:'000270', market:'KOSPI'},
+    {name:'NAVER', code:'035420', market:'KOSPI'},
+    {name:'카카오', code:'035720', market:'KOSPI'},
+    {name:'삼성SDI', code:'006400', market:'KOSPI'},
+    {name:'LG화학', code:'051910', market:'KOSPI'},
+    {name:'현대모비스', code:'012330', market:'KOSPI'},
+    {name:'포스코홀딩스', code:'005490', market:'KOSPI'},
+    {name:'KB금융', code:'105560', market:'KOSPI'},
+    {name:'신한지주', code:'055550', market:'KOSPI'},
+    {name:'하나금융지주', code:'086790', market:'KOSPI'},
+    {name:'우리금융지주', code:'316140', market:'KOSPI'},
+    {name:'삼성생명', code:'032830', market:'KOSPI'},
+    {name:'카카오뱅크', code:'323410', market:'KOSPI'},
+    {name:'크래프톤', code:'259960', market:'KOSPI'},
+    {name:'엔씨소프트', code:'036570', market:'KOSPI'},
+    {name:'넷마블', code:'251270', market:'KOSPI'},
+    {name:'셀트리온', code:'068270', market:'KOSPI'},
+    {name:'한미약품', code:'128940', market:'KOSPI'},
+    {name:'고려아연', code:'010130', market:'KOSPI'},
+    {name:'두산에너빌리티', code:'034020', market:'KOSPI'},
+    {name:'LS일렉트릭', code:'010120', market:'KOSPI'},
+    {name:'LG전자', code:'066570', market:'KOSPI'},
+  ];
+
+  const q = query.trim().toLowerCase();
+  // 로컬 사전에서 먼저 검색
+  let results = localStocks.filter(s =>
+    s.name.toLowerCase().includes(q) || s.code.includes(q)
+  );
+
+  // 로컬 결과가 없거나 2개 미만이면 Yahoo Finance 검색 API 시도
+  if (results.length < 2) {
+    try {
+      const url = `https://corsproxy.io/?https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}.KS&lang=ko&region=KR&quotesCount=8&newsCount=0`;
+      const resp = await fetch(url);
+      if (resp.ok) {
+        const data = await resp.json();
+        const quotes = data?.quotes || [];
+        quotes.forEach(q => {
+          if (q.symbol && q.symbol.match(/^\d{6}\.(KS|KQ)$/)) {
+            const code = q.symbol.split('.')[0];
+            const market = q.symbol.endsWith('.KQ') ? 'KOSDAQ' : 'KOSPI';
+            const name = q.shortname || q.longname || q.symbol;
+            if (!results.find(r => r.code === code)) {
+              results.push({ name, code, market });
+            }
+          }
+        });
+      }
+    } catch(e) {}
+  }
+
+  if (results.length === 0) {
+    dropdown.innerHTML = `<div style="padding:12px 16px;color:var(--text3);font-size:13px;">검색 결과 없음 — 종목코드를 직접 입력하세요</div>`;
+    dropdown.style.display = 'block';
+    return;
+  }
+
+  dropdown.innerHTML = results.slice(0, 10).map(s => `
+    <div onclick="selectStock('${s.name}','${s.code}','${s.market}')"
+      style="padding:10px 16px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-bottom:0.5px solid var(--border);"
+      onmouseover="this.style.background='rgba(255,255,255,0.05)'"
+      onmouseout="this.style.background=''"
+    >
+      <span style="font-size:13px;font-weight:500;color:var(--text);">${s.name}</span>
+      <span style="font-size:11px;color:var(--text3);">${s.code} · ${s.market}</span>
+    </div>
+  `).join('');
+  dropdown.style.display = 'block';
+}
+
+function selectStock(name, code, market) {
+  document.getElementById('e-name').value = name;
+  document.getElementById('e-ticker').value = code;
+  // 상장여부 자동 설정
+  const marketEl = document.getElementById('e-market');
+  if (marketEl) {
+    const opt = market === 'KOSDAQ' ? 'KOSDAQ' : 'KOSPI';
+    marketEl.value = opt;
+  }
+  document.getElementById('e-stock-dropdown').style.display = 'none';
+  document.getElementById('e-price-status').textContent = `${name}(${code}) 선택됨 — 주가 조회 버튼을 눌러 최신 종가를 가져오세요`;
+  document.getElementById('e-price-status').style.color = 'var(--accent2)';
+  // 선택 즉시 주가 자동조회
+  fetchStockPrice();
+}
+
+// 드롭다운 외부 클릭 시 닫기
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#e-name') && !e.target.closest('#e-stock-dropdown')) {
+    const dd = document.getElementById('e-stock-dropdown');
+    if (dd) dd.style.display = 'none';
+  }
+});
 
 // ── 주가 자동 조회 (Yahoo Finance API — 무료, 키 불필요) ──────
 async function fetchStockPrice() {
@@ -664,7 +856,7 @@ async function fetchStockPrice() {
   const fetchBtn = document.getElementById('e-fetch-btn');
 
   if (!ticker || ticker.length !== 6) {
-    statusEl.textContent = '❌ 6자리 종목코드를 입력하세요 (예: 096530)';
+    statusEl.textContent = '❌ 6자리 종목코드를 입력하세요 (예: 108860)';
     statusEl.style.color = 'var(--red)';
     return;
   }
@@ -955,6 +1147,27 @@ function renderDashboard() {
   document.getElementById('d-net-total').textContent = fmtKRW(netTotal);
   document.getElementById('d-net-total').style.color = netTotal >= 0 ? 'var(--green)' : 'var(--red)';
 
+  // ── 원화/외화 요약 카드 업데이트 ──────────────────────────
+  const skrw = document.getElementById('s-krw-total');
+  const sfx  = document.getElementById('s-fx-total');
+  const srat = document.getElementById('s-ratio-text');
+  const srkb = document.getElementById('s-ratio-krw-bar');
+  const sfxb = document.getElementById('s-ratio-fx-bar');
+  if (skrw) skrw.textContent = fmtKRW(opKrw);
+  if (sfx)  sfx.textContent  = fmtKRW(opFx);
+  const grandTotal = opKrw + opFx;
+  if (grandTotal > 0 && srkb && sfxb) {
+    const krwPct = Math.round(opKrw / grandTotal * 100);
+    const fxPct  = 100 - krwPct;
+    srkb.style.width = krwPct + '%';
+    sfxb.style.width = fxPct  + '%';
+    srkb.style.flex  = krwPct.toString();
+    sfxb.style.flex  = fxPct.toString();
+    if (srat) srat.textContent = `원화 ${krwPct}% · 외화 ${fxPct}%`;
+  } else if (srat) {
+    srat.textContent = '데이터 없음';
+  }
+
   document.querySelectorAll('.metric').forEach(el => {
     if(selectedChartMetrics.includes(el.dataset.key)) el.classList.add('selected'); else el.classList.remove('selected');
   });
@@ -962,8 +1175,30 @@ function renderDashboard() {
   const allEq = getFiltered('equities').sort((a,b)=>b.date.localeCompare(a.date));
   const latestMap = {};
   allEq.forEach(e => { const key = e.company+'_'+e.name; if(!latestMap[key]) latestMap[key] = e; });
-  const eqTotal = Object.values(latestMap).reduce((s,e)=>s+e.total_value, 0);
+  const latestEqArr = Object.values(latestMap);
+  const eqTotal = latestEqArr.reduce((s,e)=>s+e.total_value, 0);
   document.getElementById('d-eq-total').textContent = fmtKRW(eqTotal);
+
+  // 지분투자 종목별 상세 카드
+  const eqListEl = document.getElementById('d-eq-list');
+  if (eqListEl) {
+    if (!latestEqArr.length) {
+      eqListEl.innerHTML = '<div style="font-size:12px;color:var(--text3);">등록된 지분증권이 없습니다</div>';
+    } else {
+      eqListEl.innerHTML = latestEqArr.map(e => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid rgba(236,72,153,0.15);">
+          <div>
+            <span style="font-size:13px;font-weight:500;color:var(--text);">${e.name}</span>
+            <span style="font-size:10px;color:var(--text3);margin-left:6px;">${e.company} · ${e.market}</span>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:13px;font-weight:600;color:var(--pink);">${fmtKRW(e.total_value)}</div>
+            <div style="font-size:10px;color:var(--text3);">${e.date} · ${e.shares.toLocaleString()}주 × ${e.price.toLocaleString()}원</div>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
 
   updateMainChart(dailyRecords);
   updateEquityChart(allEq);
@@ -1030,41 +1265,50 @@ function updateEquityChart(allEqRecords) {
 // 일반 자금 입력 로직 (운전, 운용, 차입)
 // ══════════════════════════════════════════════════════
 function saveDaily() {
-  if (currentCompany === 'TOTAL') return showToast('법인을 선택해주세요.', 'error');
+  // 드롭박스에서 법인 읽기
+  const compEl = document.getElementById('i-company');
+  const company = compEl ? compEl.value : currentCompany;
+  if (!company) return showToast('법인을 선택해주세요.', 'error');
+
   const d = document.getElementById('i-date').value;
   if (!d) return showToast('일자를 입력하세요.', 'error');
 
-  const l = DB.get('loans').filter(x=>x.active&&x.company===currentCompany);
-  const i = DB.get('investments').filter(x=>x.active&&x.company===currentCompany);
-  
-  const r = { 
-    date: d, company: currentCompany, 
-    krw_demand: parseNum(document.getElementById('i-krw-demand').value), 
-    krw_govt: parseNum(document.getElementById('i-krw-govt').value), 
-    krw_mmda: parseNum(document.getElementById('i-krw-mmda').value), 
-    fx_usd: parseNum(document.getElementById('i-fx-usd').value), 
-    fx_eur: parseNum(document.getElementById('i-fx-eur').value), 
-    fx_jpy: parseNum(document.getElementById('i-fx-jpy').value), 
-    loan_krw: l.filter(x=>x.currency==='KRW').reduce((s,x)=>s+x.amount,0), 
-    loan_fx: l.filter(x=>x.currency!=='KRW').reduce((s,x)=>s+calcKRW(x.amount,x.currency),0), 
-    inv_krw: i.filter(x=>x.currency==='KRW').reduce((s,x)=>s+x.amount,0), 
-    inv_fx: i.filter(x=>x.currency!=='KRW').reduce((s,x)=>s+calcKRW(x.amount,x.currency),0),
+  const l = DB.get('loans').filter(x=>x.active&&x.company===company);
+  const i = DB.get('investments').filter(x=>x.active&&x.company===company);
+
+  const r = {
+    date: d, company,
+    writer: document.getElementById('i-writer')?.value || '',
+    krw_demand: parseNum(document.getElementById('i-krw-demand').value),
+    krw_govt:   parseNum(document.getElementById('i-krw-govt').value),
+    krw_mmda:   parseNum(document.getElementById('i-krw-mmda').value),
+    fx_usd: parseNum(document.getElementById('i-fx-usd').value),
+    fx_eur: parseNum(document.getElementById('i-fx-eur').value),
+    fx_jpy: parseNum(document.getElementById('i-fx-jpy').value),
+    loan_krw: l.filter(x=>x.currency==='KRW').reduce((s,x)=>s+x.amount,0),
+    loan_fx:  l.filter(x=>x.currency!=='KRW').reduce((s,x)=>s+calcKRW(x.amount,x.currency),0),
+    inv_krw:  i.filter(x=>x.currency==='KRW').reduce((s,x)=>s+x.amount,0),
+    inv_fx:   i.filter(x=>x.currency!=='KRW').reduce((s,x)=>s+calcKRW(x.amount,x.currency),0),
     memo: document.getElementById('i-memo').value
   };
   r.fx_krw = r.fx_usd*FX.USD + r.fx_eur*FX.EUR + r.fx_jpy*FX.JPY;
-  
-  let rs = DB.get('daily'); 
-  const idx = rs.findIndex(x=>x.date===d&&x.company===currentCompany);
-  if(idx>=0) { if(!confirm('덮어쓰시겠습니까?')) return; rs[idx]=r; DB.set('daily',rs); } else DB.append('daily',r);
-  
-  showToast('운전자금 저장 완료','success'); 
+
+  let rs = DB.get('daily');
+  const idx = rs.findIndex(x=>x.date===d&&x.company===company);
+  if(idx>=0) { if(!confirm('덮어쓰시겠습니까?')) return; rs[idx]=r; DB.set('daily',rs); }
+  else DB.append('daily', r);
+
+  showToast(`[${company}] ${d} 운전자금 저장 완료`, 'success');
   ['i-krw-demand','i-krw-govt','i-krw-mmda','i-fx-usd','i-fx-eur','i-fx-jpy','i-memo'].forEach(id=>document.getElementById(id).value='');
   renderDashboard();
+  renderDailyHistory(1);
 }
 
 function saveInvestment() {
-  if(currentCompany === 'TOTAL') return showToast('법인 선택 불가', 'error');
-  const i = { id: Date.now(), active: true, company: currentCompany, bank: document.getElementById('v-bank').value, product: document.getElementById('v-product').value, currency: document.getElementById('v-currency').value, amount: parseNum(document.getElementById('v-amount').value), rate: parseNum(document.getElementById('v-rate').value), start: document.getElementById('v-start').value, maturity: document.getElementById('v-maturity').value };
+  const compEl = document.getElementById('v-company');
+  const iCompany = compEl ? compEl.value : currentCompany;
+  if (!iCompany) return showToast('법인을 선택해주세요.', 'error');
+  const i = { id: Date.now(), active: true, company: iCompany, bank: document.getElementById('v-bank').value, product: document.getElementById('v-product').value, currency: document.getElementById('v-currency').value, amount: parseNum(document.getElementById('v-amount').value), rate: parseNum(document.getElementById('v-rate').value), start: document.getElementById('v-start').value, maturity: document.getElementById('v-maturity').value };
   if(!i.bank || !i.amount) return showToast('필수항목 입력', 'error');
   DB.append('investments', i); showToast('등록 완료', 'success'); 
   ['v-bank','v-amount','v-rate','v-start','v-maturity'].forEach(id=>document.getElementById(id).value='');
@@ -1083,8 +1327,10 @@ function renderInvestments() {
 }
 
 function saveLoan() {
-  if(currentCompany === 'TOTAL') return showToast('법인 선택 불가', 'error');
-  const l = { id: Date.now(), active: true, company: currentCompany, lender: document.getElementById('l-lender').value, type: document.getElementById('l-type').value, currency: document.getElementById('l-currency').value, amount: parseNum(document.getElementById('l-amount').value), rate: parseNum(document.getElementById('l-rate').value), start: document.getElementById('l-start').value, maturity: document.getElementById('l-maturity').value };
+  const compEl = document.getElementById('l-company');
+  const lCompany = compEl ? compEl.value : currentCompany;
+  if (!lCompany) return showToast('법인을 선택해주세요.', 'error');
+  const l = { id: Date.now(), active: true, company: lCompany, lender: document.getElementById('l-lender').value, type: document.getElementById('l-type').value, currency: document.getElementById('l-currency').value, amount: parseNum(document.getElementById('l-amount').value), rate: parseNum(document.getElementById('l-rate').value), start: document.getElementById('l-start').value, maturity: document.getElementById('l-maturity').value };
   if(!l.lender || !l.amount) return showToast('필수항목 입력', 'error');
   DB.append('loans', l); showToast('등록 완료', 'success'); 
   ['l-lender','l-amount','l-rate','l-start','l-maturity'].forEach(id=>document.getElementById(id).value='');
@@ -1100,6 +1346,82 @@ function renderLoans() {
     const dday = days!==null ? (days<0 ? `<span style="color:var(--red)">만기경과</span>` : `D-${days}`) : '—';
     return `<tr><td>${x.company}</td><td>${x.lender}</td><td>${x.type}</td><td>${x.currency}</td><td class="td-num">${x.amount.toLocaleString()}</td><td class="td-num">${x.rate}%</td><td>${x.maturity||'—'}</td><td>${dday}</td><td class="td-num" style="color:var(--amber)">${fmtKRW(calcKRW(x.amount, x.currency))}</td><td><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="DB.set('loans', DB.get('loans').filter(v=>v.id!==${x.id})); renderLoans(); renderDashboard();">상환</button></td></tr>`;
   }).join('');
+}
+
+// ── 운전자금 입력 이력 (페이지네이션) ─────────────────────
+let currentDailyPage = 1;
+const DAILY_PAGE_SIZE = 10;
+
+function renderDailyHistory(page) {
+  currentDailyPage = page || 1;
+  const all = DB.get('daily').sort((a,b) => b.date.localeCompare(a.date));
+  const total = all.length;
+  const totalPages = Math.max(1, Math.ceil(total / DAILY_PAGE_SIZE));
+  currentDailyPage = Math.min(currentDailyPage, totalPages);
+
+  const start = (currentDailyPage - 1) * DAILY_PAGE_SIZE;
+  const pageData = all.slice(start, start + DAILY_PAGE_SIZE);
+
+  const tbody = document.getElementById('daily-history-tbody');
+  const info  = document.getElementById('daily-page-info');
+  const pager = document.getElementById('daily-pagination');
+  if (!tbody) return;
+
+  if (info) info.textContent = total > 0 ? `전체 ${total}건 · ${currentDailyPage}/${totalPages} 페이지` : '';
+
+  if (!pageData.length) {
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--text3);">입력된 데이터가 없습니다</td></tr>';
+    if (pager) pager.innerHTML = '';
+    return;
+  }
+
+  tbody.innerHTML = pageData.map(r => `
+    <tr>
+      <td>${r.date}</td>
+      <td style="font-size:11px;color:var(--text3);">${r.company}</td>
+      <td class="td-num">${fmtKRW(r.krw_demand)}</td>
+      <td class="td-num">${fmtKRW(r.krw_govt)}</td>
+      <td class="td-num">${fmtKRW(r.krw_mmda)}</td>
+      <td class="td-num">${r.fx_usd > 0 ? r.fx_usd.toLocaleString()+'$' : '—'}</td>
+      <td class="td-num">${r.fx_eur > 0 ? r.fx_eur.toLocaleString()+'€' : '—'}</td>
+      <td class="td-num">${r.fx_jpy > 0 ? r.fx_jpy.toLocaleString()+'¥' : '—'}</td>
+      <td class="td-num" style="color:var(--accent2);font-weight:600;">${fmtKRW(r.fx_krw||0)}</td>
+      <td style="font-size:11px;color:var(--text3);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.memo||''}</td>
+      <td>
+        <button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;color:var(--red);border-color:rgba(239,68,68,0.3);"
+          onclick="deleteDaily('${r.date}','${r.company}')">삭제</button>
+      </td>
+    </tr>
+  `).join('');
+
+  // 페이지네이션 버튼
+  if (pager) {
+    let btns = '';
+    // 이전
+    btns += `<button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;" ${currentDailyPage===1?'disabled':''} onclick="renderDailyHistory(${currentDailyPage-1})">‹</button>`;
+    // 페이지 번호
+    const range = 5;
+    let s = Math.max(1, currentDailyPage - Math.floor(range/2));
+    let e = Math.min(totalPages, s + range - 1);
+    if (e - s < range - 1) s = Math.max(1, e - range + 1);
+    if (s > 1) btns += `<button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;" onclick="renderDailyHistory(1)">1</button>${s>2?'<span style="color:var(--text3);padding:0 4px;">…</span>':''}`;
+    for (let i = s; i <= e; i++) {
+      btns += `<button class="btn ${i===currentDailyPage?'btn-primary':'btn-ghost'}" style="padding:4px 10px;font-size:12px;" onclick="renderDailyHistory(${i})">${i}</button>`;
+    }
+    if (e < totalPages) btns += `${e<totalPages-1?'<span style="color:var(--text3);padding:0 4px;">…</span>':''}<button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;" onclick="renderDailyHistory(${totalPages})">${totalPages}</button>`;
+    // 다음
+    btns += `<button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;" ${currentDailyPage===totalPages?'disabled':''} onclick="renderDailyHistory(${currentDailyPage+1})">›</button>`;
+    pager.innerHTML = btns;
+  }
+}
+
+function deleteDaily(date, company) {
+  if (!confirm(`${date} [${company}] 데이터를 삭제하시겠습니까?`)) return;
+  const rs = DB.get('daily').filter(r => !(r.date===date && r.company===company));
+  DB.set('daily', rs);
+  renderDailyHistory(currentDailyPage);
+  renderDashboard();
+  showToast('삭제 완료', 'success');
 }
 
 function filterHistory() {
