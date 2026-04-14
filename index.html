@@ -26,6 +26,7 @@
   .sidebar-logo .co { font-size: 22px; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; transition: opacity 0.2s; }
   .sidebar-logo .co:hover { opacity: 0.8; }
   .sidebar-logo .name { font-size: 13px; color: var(--text3); margin-top: 2px; margin-bottom: 16px; letter-spacing: 0.05em; }
+  
   #sidebar-badge-area { background: #fff; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; justify-content: center; height: 48px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); }
   #sidebar-badge-area img { max-width: 100%; max-height: 100%; object-fit: contain; }
 
@@ -176,13 +177,13 @@
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M8 1l2 4 4 .5-3 3 .8 4.5L8 11l-3.8 2L5 8.5 2 5.5 6 5z"/>
         </svg>
-        자금정책 (개발예정)
+        자금정책 (개발중)
       </div>
       <div class="nav-item" onclick="goto('report')">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M3 1h7l3 3v11H3V1z"/><path d="M10 1v3h3"/><path d="M5 7h6M5 10h4"/>
         </svg>
-        자금일보 출력 (개발예정)
+        자금일보 출력 (개발중)
       </div>
     </nav>
     
@@ -415,53 +416,75 @@ window.onload = () => {
 };
 
 // ══════════════════════════════════════════════════════
-// 네비게이션 및 탭 전환 (에러 수정형 안전 로직)
+// 네비게이션 및 탭 전환 (안정성 강화 모델)
 // ══════════════════════════════════════════════════════
-function goto(page) {
-  // 1. 모든 페이지 숨김 처리
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  
-  // 2. 타겟 페이지 표시
-  const targetPage = document.getElementById('page-' + page);
-  if (targetPage) targetPage.classList.add('active');
-  
-  // 3. 사이드바 메뉴 활성화 효과
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => {
-    const oc = n.getAttribute('onclick') || '';
-    if (oc.includes(`goto('${page}'`)) {
-      n.classList.add('active');
-      const titleEl = document.getElementById('page-title');
-      if (titleEl) titleEl.textContent = n.textContent.trim();
-    }
-  });
+const PAGE_TITLES = {
+  dashboard: '통합 상황판',
+  input: '운전자금 입력',
+  invest: '운용자금 (단기투자)',
+  loans: '차입금 (대출)',
+  equity: '지분투자 관리',
+  history: '자금 변동 이력',
+  fx: '환율 현황',
+  policy: '자금정책',
+  report: '자금일보 출력'
+};
 
-  // 4. 해당 페이지에 필요한 데이터 렌더링 호출
-  if(page === 'dashboard') renderDashboard();
-  else if(page === 'equity') renderEquity();
-  else if(page === 'history') filterHistory();
-  else if(page === 'invest') renderInvestments();
-  else if(page === 'loans') renderLoans();
+function goto(page) {
+  try {
+    // 1. 모든 페이지 및 활성 메뉴 초기화
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    
+    // 2. 타겟 페이지 렌더링
+    const targetPage = document.getElementById('page-' + page);
+    if (targetPage) targetPage.classList.add('active');
+
+    // 3. 타이틀 변경
+    const titleEl = document.getElementById('page-title');
+    if (titleEl) titleEl.textContent = PAGE_TITLES[page] || 'Dashboard';
+
+    // 4. 사이드바 아이콘 활성화
+    document.querySelectorAll('.nav-item').forEach(n => {
+      const oc = n.getAttribute('onclick') || '';
+      if (oc.includes(`goto('${page}')`)) n.classList.add('active');
+    });
+
+    // 5. 각 페이지별 데이터 로드
+    if(page === 'dashboard') renderDashboard();
+    if(page === 'equity') renderEquity();
+    if(page === 'history') filterHistory();
+    if(page === 'invest') renderInvestments();
+    if(page === 'loans') renderLoans();
+  } catch(e) {
+    console.error("Navigation error:", e);
+  }
 }
 
 function setCompany(comp, btnEl) {
-  currentCompany = comp;
-  document.querySelectorAll('.ci-tab').forEach(el => el.classList.remove('active'));
-  const btnTotal = document.getElementById('tab-total');
-  if (btnTotal) { btnTotal.classList.remove('btn-primary'); btnTotal.classList.add('btn-ghost'); }
-  const badgeArea = document.getElementById('sidebar-badge-area');
+  try {
+    currentCompany = comp;
+    document.querySelectorAll('.ci-tab').forEach(el => el.classList.remove('active'));
+    const btnTotal = document.getElementById('tab-total');
+    if (btnTotal) { btnTotal.classList.remove('btn-primary'); btnTotal.classList.add('btn-ghost'); }
+    const badgeArea = document.getElementById('sidebar-badge-area');
 
-  if(comp === 'TOTAL') {
-    if(btnEl) { btnEl.classList.remove('btn-ghost'); btnEl.classList.add('btn-primary'); }
-    badgeArea.innerHTML = '<span style="color:#1e2535; font-weight:700; font-size:13px;">통합 현황</span>';
-    document.querySelectorAll('.input-company-badge').forEach(el => el.textContent = '통합(입력불가)');
-  } else {
-    if(btnEl) btnEl.classList.add('active');
-    let imgSrc = comp==='셀바스에이아이'?'selvasai.png':comp==='셀바스헬스케어'?'selvashealthcare.png':'메디아나 CI.png';
-    badgeArea.innerHTML = `<img src="${imgSrc}" alt="${comp}">`;
-    document.querySelectorAll('.input-company-badge').forEach(el => el.textContent = comp);
+    if(comp === 'TOTAL') {
+      if(btnEl) { btnEl.classList.remove('btn-ghost'); btnEl.classList.add('btn-primary'); }
+      badgeArea.innerHTML = '<span style="color:#1e2535; font-weight:700; font-size:13px;">통합 현황</span>';
+      document.querySelectorAll('.input-company-badge').forEach(el => el.textContent = '통합(입력불가)');
+    } else {
+      if(btnEl) btnEl.classList.add('active');
+      let imgSrc = comp==='셀바스에이아이'?'selvasai.png':comp==='셀바스헬스케어'?'selvashealthcare.png':'메디아나 CI.png';
+      badgeArea.innerHTML = `<img src="${imgSrc}" alt="${comp}">`;
+      document.querySelectorAll('.input-company-badge').forEach(el => el.textContent = comp);
+    }
+    
+    // 화면 재렌더링
+    renderDashboard(); renderInvestments(); renderLoans(); renderEquity(); filterHistory();
+  } catch (e) {
+    console.error("Company switch error:", e);
   }
-  renderDashboard(); renderInvestments(); renderLoans(); renderEquity(); filterHistory();
 }
 
 function getFiltered(table) {
@@ -470,12 +493,11 @@ function getFiltered(table) {
 }
 
 // ══════════════════════════════════════════════════════
-// 환율 API 연동
+// 환율 API
 // ══════════════════════════════════════════════════════
 async function refreshFX() {
   try {
-    const resp = await fetch('https://open.er-api.com/v6/latest/USD'); 
-    const data = await resp.json();
+    const resp = await fetch('https://open.er-api.com/v6/latest/USD'); const data = await resp.json();
     if (data.result === 'success') {
       const k = data.rates.KRW; FX = { KRW: 1, USD: k, EUR: k/data.rates.EUR, JPY: k/data.rates.JPY };
       ['usd','eur','jpy'].forEach(c => { const el = document.getElementById('sf-'+c); if(el) el.textContent = FX[c.toUpperCase()].toFixed(2)+'원'; });
@@ -694,7 +716,6 @@ function saveInvestment() {
   renderInvestments(); renderDashboard();
 }
 
-// [에러 방지] 해지/삭제 로직을 안전한 함수로 분리
 function deleteInvest(id) {
   if(!confirm('해지하시겠습니까?')) return;
   DB.set('investments', DB.get('investments').filter(v=>v.id !== id));
@@ -721,7 +742,6 @@ function saveLoan() {
   renderLoans(); renderDashboard();
 }
 
-// [에러 방지] 상환/삭제 로직을 안전한 함수로 분리
 function deleteLoan(id) {
   if(!confirm('상환/삭제 하시겠습니까?')) return;
   DB.set('loans', DB.get('loans').filter(v=>v.id !== id));
