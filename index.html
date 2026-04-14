@@ -78,7 +78,6 @@
   
   .color-op { color: #3b82f6; } .color-inv { color: #10b981; } .color-loan { color: #f59e0b; } .color-net { color: #8b5cf6; } .color-eq { color: #ec4899; }
 
-  /* 지분증권 전용 별도 메트릭 */
   .equity-metric { background: rgba(236, 72, 153, 0.05); border: 1px solid rgba(236, 72, 153, 0.3); border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
 
   /* ── 폼 & 테이블 ── */
@@ -116,27 +115,27 @@
 <div class="layout">
   <aside class="sidebar">
     <div class="sidebar-logo">
-      <div class="co" onclick="goto('dashboard')">SELVAS</div>
+      <div class="co" onclick="goto('dashboard', this)">SELVAS</div>
       <div class="name">Treasury</div>
       <div id="sidebar-badge-area"><img src="selvasai.png" alt="Selvas AI"></div>
     </div>
 
     <nav class="nav">
       <div class="nav-section">대시보드</div>
-      <div class="nav-item active" onclick="goto('dashboard')">통합 상황판</div>
+      <div class="nav-item active" onclick="goto('dashboard', this)">통합 상황판</div>
       
       <div class="nav-section">현금성 자금 관리</div>
-      <div class="nav-item" onclick="goto('input')">운전자금 입력</div>
-      <div class="nav-item" onclick="goto('invest')">운용자금 (단기투자)</div>
-      <div class="nav-item" onclick="goto('loans')">차입금 (대출)</div>
+      <div class="nav-item" onclick="goto('input', this)">운전자금 입력</div>
+      <div class="nav-item" onclick="goto('invest', this)">운용자금 (단기투자)</div>
+      <div class="nav-item" onclick="goto('loans', this)">차입금 (대출)</div>
 
-      <div class="nav-section">전략적 투자</div>
-      <div class="nav-item" onclick="goto('equity')" style="color:var(--pink);">지분증권 (투자)</div>
+      <div class="nav-section">지분투자 관리</div>
+      <div class="nav-item" onclick="goto('equity', this)" style="color:var(--pink);">지분투자 관리</div>
       
       <div class="nav-section">분석 & 리포트</div>
-      <div class="nav-item" onclick="goto('history')">자금 변동 이력</div>
-      <div class="nav-item" onclick="goto('fx')">환율 현황</div>
-      <div class="nav-item" onclick="goto('report')">자금일보 출력</div>
+      <div class="nav-item" onclick="goto('history', this)">자금 변동 이력</div>
+      <div class="nav-item" onclick="goto('fx', this)">환율 현황</div>
+      <div class="nav-item" onclick="goto('report', this)">자금일보 출력</div>
     </nav>
     
     <div class="sidebar-bottom">
@@ -169,7 +168,7 @@
           <button class="btn btn-ghost" id="tab-total" onclick="setCompany('TOTAL', this)" style="height:46px; font-size:14px; font-weight:600; border-radius:8px;">통합 현황 (3사)</button>
         </div>
 
-        <div style="font-size:12px; color:var(--text3); margin-bottom:8px;">※ 현금흐름 (순현금에 반영됨)</div>
+        <div style="font-size:12px; color:var(--text3); margin-bottom:8px;">※ 현금흐름 (순현금에 반영됨) - 카드를 클릭하면 하단 그래프가 변경됩니다.</div>
         <div class="metrics">
           <div class="metric selected" data-key="op" onclick="toggleMetric('op', event)">
             <div class="metric-label">운전자금 <span class="color-op">●</span></div>
@@ -180,7 +179,7 @@
             </div>
           </div>
           <div class="metric" data-key="inv" onclick="toggleMetric('inv', event)">
-            <div class="metric-label">운용자금 (투자) <span class="color-inv">●</span></div>
+            <div class="metric-label">운용자금 (단기투자) <span class="color-inv">●</span></div>
             <div class="metric-total" id="d-inv-total">0원</div>
             <div class="metric-details">
               <div class="m-row"><span class="lbl">원화 자금</span><span class="val" id="d-inv-krw">0</span></div>
@@ -199,8 +198,7 @@
             <div class="metric-label">순현금 (Net Cash) <span class="color-net">●</span></div>
             <div class="metric-total" id="d-net-total">0원</div>
             <div class="metric-details">
-              <div class="m-row"><span class="lbl" style="color:var(--text3);">운전자금 + 운용자금 - 차입금</span></div>
-              <div class="m-row"><span class="lbl">현금흐름 변동</span><span class="val" id="d-net-diff">-</span></div>
+              <div class="m-row"><span class="lbl" style="color:var(--text3);">운전 + 운용 - 차입금</span></div>
             </div>
           </div>
         </div>
@@ -211,86 +209,19 @@
         </div>
 
         <div class="equity-metric">
-          <div style="font-size:12px; color:var(--pink); font-weight:600; margin-bottom:8px;">전략적 투자 자산 (순현금 제외)</div>
+          <div style="font-size:12px; color:var(--pink); font-weight:600; margin-bottom:8px;">지분투자 자산 (순현금에서 제외됨)</div>
           <div style="display:flex; justify-content:space-between; align-items:flex-end;">
             <div>
               <div style="font-size:20px; font-weight:700; color:var(--text);" id="d-eq-total">0원</div>
               <div style="font-size:12px; color:var(--text3); margin-top:4px;">지분증권 평가금액 총합</div>
             </div>
-            <button class="btn btn-ghost" onclick="goto('equity')" style="font-size:12px; padding:6px 12px; border-color:rgba(236,72,153,0.3); color:var(--pink);">지분증권 상세 보기 →</button>
+            <button class="btn btn-ghost" onclick="document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active')); goto('equity', this)" style="font-size:12px; padding:6px 12px; border-color:rgba(236,72,153,0.3); color:var(--pink);">지분투자 상세 보기 →</button>
           </div>
         </div>
         
         <div class="card">
-          <div class="card-title">지분증권(투자) 평가 추이 <span style="color:var(--pink);">최근 14일 기록</span></div>
+          <div class="card-title">지분투자 평가 추이 <span style="color:var(--pink);">최근 14일 기록</span></div>
           <div class="chart-area" style="height:220px;"><canvas id="equityChart"></canvas></div>
-        </div>
-
-      </div>
-
-      <div class="page" id="page-equity">
-        <div class="card" style="border-color:rgba(236,72,153,0.3);">
-          <div class="card-title">지분증권 신규/업데이트 등록 <span>— <span class="input-company-badge">셀바스에이아이</span></span></div>
-          <div class="form-grid">
-            <div class="form-group"><label>기준일자</label><input type="date" id="e-date"></div>
-            <div class="form-group"><label>종목명 (또는 종목코드)</label><input type="text" id="e-name" placeholder="예: 삼성전자"></div>
-            
-            <div class="form-group">
-              <label>투자목적</label>
-              <select id="e-purpose">
-                <option value="경영참여">경영참여</option>
-                <option value="자기주식">자기주식</option>
-                <option value="투자차익">투자차익</option>
-                <option value="기타">기타</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>상장여부</label>
-              <select id="e-market">
-                <option value="KOSPI">KOSPI</option>
-                <option value="KOSDAQ">KOSDAQ</option>
-                <option value="비상장">비상장</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label>보유 주식수</label>
-              <div class="input-with-unit">
-                <input type="text" id="e-shares" placeholder="0" oninput="formatNumericInput(this); calcEquityValue();">
-                <span class="unit">주</span>
-              </div>
-            </div>
-            
-            <div class="form-group">
-              <label style="display:flex; justify-content:space-between;">
-                <span>1주당 단가 (현재가)</span>
-                <span style="font-size:10px; color:var(--text3); cursor:help;" title="추후 구글시트 API 등을 통해 자동 불러오기 구현 예정">API 자동화 예정 ⓘ</span>
-              </label>
-              <div class="input-with-unit">
-                <input type="text" id="e-price" placeholder="단가 직접 입력" oninput="formatNumericInput(this); calcEquityValue();">
-                <span class="unit">원</span>
-              </div>
-            </div>
-
-            <div class="form-group full">
-              <label>총 평가금액 (보유주식수 × 단가)</label>
-              <div class="input-with-unit">
-                <input type="text" id="e-value" readonly placeholder="0" style="color:var(--pink); font-size:16px;">
-                <span class="unit">원</span>
-              </div>
-            </div>
-          </div>
-          <div class="form-actions"><button class="btn btn-primary" style="background:var(--pink);" onclick="saveEquity()">주가 기록 및 저장</button></div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">보유 지분증권 현황</div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>기준일</th><th>보유법인</th><th>종목명</th><th>투자목적</th><th>상장여부</th><th class="td-num">보유주식수</th><th class="td-num">1주당 단가</th><th class="td-num">총 평가금액</th><th></th></tr></thead>
-              <tbody id="equity-tbody"><tr><td colspan="9" style="text-align:center;padding:24px;">등록된 지분증권이 없습니다</td></tr></tbody>
-            </table>
-          </div>
         </div>
       </div>
 
@@ -305,15 +236,16 @@
           <div class="form-grid-3">
             <div class="form-group"><label>보통예금</label><div class="input-with-unit"><input type="text" id="i-krw-demand" placeholder="0" oninput="formatNumericInput(this)"><span class="unit">원</span></div></div>
             <div class="form-group"><label>국책자금</label><div class="input-with-unit"><input type="text" id="i-krw-govt" placeholder="0" oninput="formatNumericInput(this)"><span class="unit">원</span></div></div>
-            <div class="form-group"><label>MMDA</label><div class="input-with-unit"><input type="text" id="i-krw-mmda" placeholder="0" oninput="formatNumericInput(this)"><span class="unit">원</span></div></div>
+            <div class="form-group"><label>MMDA 등 수시입출식</label><div class="input-with-unit"><input type="text" id="i-krw-mmda" placeholder="0" oninput="formatNumericInput(this)"><span class="unit">원</span></div></div>
           </div>
           <div class="section-divider">외화 운전자금</div>
           <div class="form-grid-3">
-            <div class="form-group"><label>USD 잔액</label><div class="input-with-unit"><input type="text" id="i-fx-usd" placeholder="0" oninput="formatNumericInput(this, true);"><span class="unit">$</span></div></div>
-            <div class="form-group"><label>EUR 잔액</label><div class="input-with-unit"><input type="text" id="i-fx-eur" placeholder="0" oninput="formatNumericInput(this, true);"><span class="unit">€</span></div></div>
-            <div class="form-group"><label>JPY 잔액</label><div class="input-with-unit"><input type="text" id="i-fx-jpy" placeholder="0" oninput="formatNumericInput(this, true);"><span class="unit">¥</span></div></div>
+            <div class="form-group"><label>USD 잔액</label><div class="input-with-unit"><input type="text" id="i-fx-usd" placeholder="0" oninput="formatNumericInput(this, true)"><span class="unit">$</span></div></div>
+            <div class="form-group"><label>EUR 잔액</label><div class="input-with-unit"><input type="text" id="i-fx-eur" placeholder="0" oninput="formatNumericInput(this, true)"><span class="unit">€</span></div></div>
+            <div class="form-group"><label>JPY 잔액</label><div class="input-with-unit"><input type="text" id="i-fx-jpy" placeholder="0" oninput="formatNumericInput(this, true)"><span class="unit">¥</span></div></div>
           </div>
-          <div class="form-actions" style="margin-top:16px;"><button class="btn btn-success" onclick="saveDaily()">저장</button></div>
+          <div class="form-group" style="margin-top:16px;"><label>특이사항</label><textarea id="i-memo" placeholder="비고 입력"></textarea></div>
+          <div class="form-actions"><button class="btn btn-success" onclick="saveDaily()">운전자금 저장</button></div>
         </div>
       </div>
 
@@ -323,34 +255,58 @@
           <div class="form-grid">
             <div class="form-group"><label>금융기관</label><input type="text" id="v-bank" placeholder="예: 산업은행"></div>
             <div class="form-group"><label>운용상품</label><select id="v-product"><option value="정기예금">정기예금</option><option value="중금채">중금채</option><option value="국공채">국공채</option><option value="전단채">전단채</option><option value="기타(전환사채 등)">기타(전환사채 등)</option></select></div>
-            <div class="form-group"><label>통화/금액</label><div style="display:flex;gap:10px;"><select id="v-currency" style="width:80px;"><option value="KRW">KRW</option><option value="USD">USD</option></select><input type="text" id="v-amount" style="flex:1;" placeholder="0" oninput="formatNumericInput(this, true)"></div></div>
+            <div class="form-group"><label>통화 / 금액</label><div style="display:flex;gap:10px;"><select id="v-currency" style="width:80px;"><option value="KRW">KRW</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="JPY">JPY</option></select><input type="text" id="v-amount" style="flex:1;" placeholder="0" oninput="formatNumericInput(this, true)"></div></div>
             <div class="form-group"><label>수익률 (%)</label><div class="input-with-unit"><input type="text" id="v-rate" placeholder="3.5" oninput="formatNumericInput(this, true)"><span class="unit">%</span></div></div>
             <div class="form-group"><label>가입일</label><input type="date" id="v-start"></div>
             <div class="form-group"><label>만기일</label><input type="date" id="v-maturity"></div>
           </div>
-          <div class="form-actions"><button class="btn btn-primary" onclick="saveInvestment()">추가 등록</button></div>
+          <div class="form-actions"><button class="btn btn-primary" onclick="saveInvestment()">운용상품 추가</button></div>
         </div>
-        <div class="card"><div class="card-title">운용자금 목록</div><div class="table-wrap"><table><tbody id="invest-tbody"></tbody></table></div></div>
+        <div class="card"><div class="card-title">운용자금 목록</div><div class="table-wrap"><table><thead><tr><th>법인</th><th>금융기관</th><th>상품</th><th>통화</th><th class="td-num">운용금액</th><th class="td-num">수익률</th><th>만기일</th><th>D-Day</th><th class="td-num">원화환산액</th><th></th></tr></thead><tbody id="invest-tbody"></tbody></table></div></div>
       </div>
 
       <div class="page" id="page-loans">
         <div class="card">
           <div class="card-title">차입금 등록 <span>— <span class="input-company-badge">셀바스에이아이</span></span></div>
           <div class="form-grid">
-            <div class="form-group"><label>차입처</label><input type="text" id="l-lender"></div>
-            <div class="form-group"><label>구분</label><select id="l-type"><option value="담보대출">담보대출</option><option value="신용대출">신용대출</option></select></div>
-            <div class="form-group"><label>통화/금액</label><div style="display:flex;gap:10px;"><select id="l-currency" style="width:80px;"><option value="KRW">KRW</option><option value="USD">USD</option></select><input type="text" id="l-amount" style="flex:1;" placeholder="0" oninput="formatNumericInput(this, true)"></div></div>
+            <div class="form-group"><label>차입처</label><input type="text" id="l-lender" placeholder="예: 하나은행"></div>
+            <div class="form-group"><label>구분</label><select id="l-type"><option value="담보대출">담보대출</option><option value="신용대출">신용대출</option><option value="외화대출">외화대출</option><option value="정책자금">정책자금</option></select></div>
+            <div class="form-group"><label>통화 / 금액</label><div style="display:flex;gap:10px;"><select id="l-currency" style="width:80px;"><option value="KRW">KRW</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="JPY">JPY</option></select><input type="text" id="l-amount" style="flex:1;" placeholder="0" oninput="formatNumericInput(this, true)"></div></div>
             <div class="form-group"><label>이자율 (%)</label><div class="input-with-unit"><input type="text" id="l-rate" placeholder="4.2" oninput="formatNumericInput(this, true)"><span class="unit">%</span></div></div>
+            <div class="form-group"><label>실행일</label><input type="date" id="l-start"></div>
             <div class="form-group"><label>만기일</label><input type="date" id="l-maturity"></div>
           </div>
-          <div class="form-actions"><button class="btn btn-primary" onclick="saveLoan()">추가 등록</button></div>
+          <div class="form-actions"><button class="btn btn-primary" onclick="saveLoan()">차입금 추가</button></div>
         </div>
-        <div class="card"><div class="card-title">차입금 현황</div><div class="table-wrap"><table><tbody id="loans-tbody"></tbody></table></div></div>
+        <div class="card"><div class="card-title">차입금 현황</div><div class="table-wrap"><table><thead><tr><th>법인</th><th>차입처</th><th>구분</th><th>통화</th><th class="td-num">차입금액</th><th class="td-num">이자율</th><th>만기일</th><th>D-Day</th><th class="td-num">원화환산액</th><th></th></tr></thead><tbody id="loans-tbody"></tbody></table></div></div>
       </div>
-      
-      <div class="page" id="page-history"><div class="card"><div class="card-title">자금 변동 이력</div><div class="table-wrap"><table><tbody id="history-tbody"></tbody></table></div></div></div>
-      <div class="page" id="page-fx"><div class="card"><div class="card-title">실시간 환율</div><div class="fx-panel"><div class="fx-card"><div class="fx-currency">USD/KRW</div><div class="fx-rate" id="p-fx-usd">—</div></div></div></div></div>
-      <div class="page" id="page-report"><div class="card"><div class="card-title">자금일보 출력</div></div></div>
+
+      <div class="page" id="page-equity">
+        <div class="card" style="border-color:rgba(236,72,153,0.3);">
+          <div class="card-title">지분투자 신규/업데이트 등록 <span>— <span class="input-company-badge">셀바스에이아이</span></span></div>
+          <div class="form-grid">
+            <div class="form-group"><label>기준일자</label><input type="date" id="e-date"></div>
+            <div class="form-group"><label>종목명 (또는 종목코드)</label><input type="text" id="e-name" placeholder="예: 삼성전자"></div>
+            <div class="form-group"><label>투자목적</label><select id="e-purpose"><option value="경영참여">경영참여</option><option value="자기주식">자기주식</option><option value="투자차익">투자차익</option><option value="기타">기타</option></select></div>
+            <div class="form-group"><label>상장여부</label><select id="e-market"><option value="KOSPI">KOSPI</option><option value="KOSDAQ">KOSDAQ</option><option value="비상장">비상장</option></select></div>
+            <div class="form-group"><label>보유 주식수</label><div class="input-with-unit"><input type="text" id="e-shares" placeholder="0" oninput="formatNumericInput(this); calcEquityValue();"><span class="unit">주</span></div></div>
+            <div class="form-group"><label style="display:flex; justify-content:space-between;"><span>1주당 단가 (현재가)</span><span style="font-size:10px; color:var(--text3); cursor:help;" title="추후 자동 불러오기 구현 예정">API 연동 대기중 ⓘ</span></label><div class="input-with-unit"><input type="text" id="e-price" placeholder="단가 직접 입력" oninput="formatNumericInput(this); calcEquityValue();"><span class="unit">원</span></div></div>
+            <div class="form-group full"><label>총 평가금액 (보유주식수 × 단가)</label><div class="input-with-unit"><input type="text" id="e-value" readonly placeholder="0" style="color:var(--pink); font-size:16px;"><span class="unit">원</span></div></div>
+          </div>
+          <div class="form-actions"><button class="btn btn-primary" style="background:var(--pink);" onclick="saveEquity()">지분 기록 및 저장</button></div>
+        </div>
+        <div class="card"><div class="card-title">보유 지분증권 현황</div><div class="table-wrap"><table><thead><tr><th>기준일</th><th>보유법인</th><th>종목명</th><th>투자목적</th><th>상장여부</th><th class="td-num">보유주식수</th><th class="td-num">1주당 단가</th><th class="td-num">총 평가금액</th><th></th></tr></thead><tbody id="equity-tbody"></tbody></table></div></div>
+      </div>
+
+      <div class="page" id="page-history">
+        <div class="card">
+          <div class="card-title">자금 변동 이력</div>
+          <div style="display:flex;gap:10px;margin-bottom:16px;"><input type="date" id="h-from" style="width:140px;"><span style="line-height:36px;">~</span><input type="date" id="h-to" style="width:140px;"><button class="btn btn-ghost" onclick="filterHistory()">조회</button></div>
+          <div class="table-wrap"><table><thead><tr><th>일자</th><th>법인</th><th class="td-num">원화운전</th><th class="td-num">USD</th><th class="td-num">EUR</th><th class="td-num">JPY</th><th class="td-num">외화환산</th><th>비고</th></tr></thead><tbody id="history-tbody"></tbody></table></div>
+        </div>
+      </div>
+      <div class="page" id="page-fx"><div class="card"><div class="card-title">실시간 환율</div><div class="fx-panel"><div class="fx-card"><div class="fx-currency">USD / KRW</div><div class="fx-rate" id="p-fx-usd">—</div></div><div class="fx-card"><div class="fx-currency">EUR / KRW</div><div class="fx-rate" id="p-fx-eur">—</div></div><div class="fx-card"><div class="fx-currency">JPY / KRW</div><div class="fx-rate" id="p-fx-jpy">—</div></div></div></div></div>
+      <div class="page" id="page-report"><div class="card"><div class="card-title">자금일보 출력</div><div style="color:var(--text3);">리포트 출력 모듈은 다음 고도화 단계에서 진행 예정입니다.</div></div></div>
 
     </div>
   </div>
@@ -390,6 +346,11 @@ window.onload = () => {
   document.getElementById('today-badge').textContent = today.replace(/-/g, '.');
   document.getElementById('i-date').value = today;
   document.getElementById('e-date').value = today;
+  
+  const from = new Date(); from.setDate(from.getDate() - 30);
+  document.getElementById('h-from').value = from.toISOString().slice(0, 10);
+  document.getElementById('h-to').value = today;
+
   refreshFX();
   setCompany('셀바스에이아이', document.querySelector('.ci-tab')); 
 };
@@ -407,14 +368,14 @@ function setCompany(comp, btnEl) {
   if(comp === 'TOTAL') {
     if(btnEl) { btnEl.classList.remove('btn-ghost'); btnEl.classList.add('btn-primary'); }
     badgeArea.innerHTML = '<span style="color:#1e2535; font-weight:700; font-size:13px;">통합 현황</span>';
-    document.querySelectorAll('.input-company-badge').forEach(el => el.textContent = '통합(선택불가)');
+    document.querySelectorAll('.input-company-badge').forEach(el => el.textContent = '통합(입력불가)');
   } else {
     if(btnEl) btnEl.classList.add('active');
     let imgSrc = comp==='셀바스에이아이'?'selvasai.png':comp==='셀바스헬스케어'?'selvashealthcare.png':'메디아나 CI.png';
     badgeArea.innerHTML = `<img src="${imgSrc}" alt="${comp}">`;
     document.querySelectorAll('.input-company-badge').forEach(el => el.textContent = comp);
   }
-  renderDashboard(); renderInvestments(); renderLoans(); renderEquity();
+  renderDashboard(); renderInvestments(); renderLoans(); renderEquity(); filterHistory();
 }
 
 function getFiltered(table) {
@@ -422,14 +383,20 @@ function getFiltered(table) {
   return currentCompany === 'TOTAL' ? all : all.filter(r => r.company === currentCompany);
 }
 
-function goto(page) {
+// 클릭 및 메뉴 이동 오류 수정 완료
+function goto(page, btnEl) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
-  document.getElementById('page-title').textContent = event.currentTarget.textContent.trim();
-  event.currentTarget.classList.add('active');
+  
+  if(btnEl) {
+    document.getElementById('page-title').textContent = btnEl.textContent.trim();
+    btnEl.classList.add('active');
+  }
+  
   if(page === 'dashboard') renderDashboard();
   if(page === 'equity') renderEquity();
+  if(page === 'history') filterHistory();
 }
 
 async function refreshFX() {
@@ -438,13 +405,14 @@ async function refreshFX() {
     if (data.result === 'success') {
       const k = data.rates.KRW; FX = { KRW: 1, USD: k, EUR: k/data.rates.EUR, JPY: k/data.rates.JPY };
       ['usd','eur','jpy'].forEach(c => { const el = document.getElementById('sf-'+c); if(el) el.textContent = FX[c.toUpperCase()].toFixed(2)+'원'; });
+      ['usd','eur','jpy'].forEach(c => { const el = document.getElementById('p-fx-'+c); if(el) el.textContent = FX[c.toUpperCase()].toFixed(2)+'원'; });
     }
   } catch (e) {} 
 }
 function calcKRW(amount, currency) { return amount * (FX[currency] || 1); }
 
 // ══════════════════════════════════════════════════════
-// [신규] 지분증권(투자) 관리 로직
+// 지분투자 (Equity) 로직
 // ══════════════════════════════════════════════════════
 function calcEquityValue() {
   const shares = parseNum(document.getElementById('e-shares').value);
@@ -463,20 +431,9 @@ function saveEquity() {
   
   if(!date || !name || !shares || !price) return showToast('필수 정보를 모두 입력하세요', 'error');
 
-  const eq = {
-    id: Date.now(),
-    date: date,
-    company: currentCompany,
-    name: name,
-    purpose: document.getElementById('e-purpose').value,
-    market: document.getElementById('e-market').value,
-    shares: shares,
-    price: price,
-    total_value: total_value
-  };
-
+  const eq = { id: Date.now(), date, company: currentCompany, name, purpose: document.getElementById('e-purpose').value, market: document.getElementById('e-market').value, shares, price, total_value };
   DB.append('equities', eq);
-  showToast('지분증권 및 평가금액 저장 완료', 'success');
+  showToast('지분 평가내역 저장 완료', 'success');
   ['e-name','e-shares','e-price','e-value'].forEach(id=>document.getElementById(id).value='');
   renderEquity(); renderDashboard();
 }
@@ -488,13 +445,9 @@ function deleteEquity(id) {
 }
 
 function renderEquity() {
-  // 이력성격으로 쌓이므로, 종목별 가장 최근 데이터만 테이블에 표시
   const allEq = getFiltered('equities').sort((a,b)=>b.date.localeCompare(a.date));
   const latestMap = {};
-  allEq.forEach(e => {
-    const key = e.company + '_' + e.name;
-    if(!latestMap[key]) latestMap[key] = e;
-  });
+  allEq.forEach(e => { const key = e.company + '_' + e.name; if(!latestMap[key]) latestMap[key] = e; });
   const latestEq = Object.values(latestMap);
 
   const tbody = document.getElementById('equity-tbody');
@@ -513,7 +466,7 @@ function renderEquity() {
 }
 
 // ══════════════════════════════════════════════════════
-// 대시보드 & 차트 (지분증권 차트 분리 적용)
+// 대시보드 & 차트
 // ══════════════════════════════════════════════════════
 function toggleMetric(key, event) {
   if(event && (event.ctrlKey || event.metaKey)) {
@@ -529,8 +482,10 @@ function renderDashboard() {
   let opKrw=0, opFx=0;
   if(currentCompany === 'TOTAL') {
     const latestDate = dailyRecords[0]?.date;
-    const latests = dailyRecords.filter(r=>r.date===latestDate);
-    latests.forEach(r=>{ opKrw += (r.krw_demand+r.krw_govt+r.krw_mmda); opFx += (r.fx_krw||0); });
+    if(latestDate) {
+       const latests = dailyRecords.filter(r=>r.date===latestDate);
+       latests.forEach(r=>{ opKrw += (r.krw_demand+r.krw_govt+r.krw_mmda); opFx += (r.fx_krw||0); });
+    }
   } else if(dailyRecords[0]) {
     const r = dailyRecords[0]; opKrw = r.krw_demand+r.krw_govt+r.krw_mmda; opFx = r.fx_krw||0;
   }
@@ -561,7 +516,6 @@ function renderDashboard() {
     if(selectedChartMetrics.includes(el.dataset.key)) el.classList.add('selected'); else el.classList.remove('selected');
   });
 
-  // --- 지분증권 합계 도출 (순현금과 독립) ---
   const allEq = getFiltered('equities').sort((a,b)=>b.date.localeCompare(a.date));
   const latestMap = {};
   allEq.forEach(e => { const key = e.company+'_'+e.name; if(!latestMap[key]) latestMap[key] = e; });
@@ -596,76 +550,109 @@ function updateMainChart(records) {
   mainChartObj = new Chart(ctx, { type: 'bar', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: { y: { stacked: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', callback: v => (v/100000000).toFixed(0) + '억' } }, x: { stacked: true, grid: { display: false }, ticks: { color: '#64748b' } } } });
 }
 
-// [신규] 지분증권 전용 추이 그래프 (입력 시점부터 누적)
 function updateEquityChart(allEqRecords) {
   const ctx = document.getElementById('equityChart').getContext('2d');
   if (equityChartObj) equityChartObj.destroy();
   if (!allEqRecords.length) return;
 
-  // 일자별 총 평가금액 계산 (과거 데이터 누락 시 이전 데이터 유지 로직 적용)
   const dateMap = {};
   const allDates = [...new Set(allEqRecords.map(e=>e.date))].sort();
-  
-  let runningState = {}; // 종목별 최신 상태 유지
+  let runningState = {}; 
   allDates.forEach(date => {
     const recordsOnDate = allEqRecords.filter(e=>e.date === date);
     recordsOnDate.forEach(r => { runningState[r.company+'_'+r.name] = r.total_value; });
-    const dailyTotal = Object.values(runningState).reduce((a,b)=>a+b, 0);
-    dateMap[date] = dailyTotal;
+    dateMap[date] = Object.values(runningState).reduce((a,b)=>a+b, 0);
   });
 
-  // 최근 14일치 데이터 추출
   const recentDates = allDates.slice(-14);
   const labels = recentDates.map(d => d.slice(5));
   const data = recentDates.map(d => dateMap[d]);
 
-  equityChartObj = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: labels,
-      datasets: [{ label: '지분증권 총 평가금액', data: data, borderColor: '#ec4899', backgroundColor: 'rgba(236,72,153,0.1)', tension: 0.4, fill: true }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: '#94a3b8' } } },
-      scales: {
-        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', callback: v => (v/100000000).toFixed(0) + '억' } },
-        x: { grid: { display: false }, ticks: { color: '#64748b' } }
-      }
-    }
-  });
+  equityChartObj = new Chart(ctx, { type: 'line', data: { labels, datasets: [{ label: '지분투자 평가금액', data, borderColor: '#ec4899', backgroundColor: 'rgba(236,72,153,0.1)', tension: 0.4, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', callback: v => (v/100000000).toFixed(0) + '억' } }, x: { grid: { display: false }, ticks: { color: '#64748b' } } } } });
 }
 
-// 기존 CRUD 생략 부분 복구
+// ══════════════════════════════════════════════════════
+// 일반 자금 입력 로직 (운전, 운용, 차입)
+// ══════════════════════════════════════════════════════
 function saveDaily() {
   if (currentCompany === 'TOTAL') return showToast('법인을 선택해주세요.', 'error');
   const d = document.getElementById('i-date').value;
-  const l = DB.get('loans').filter(x=>x.active&&x.company===currentCompany), i = DB.get('investments').filter(x=>x.active&&x.company===currentCompany);
-  const r = { date: d, company: currentCompany, krw_demand: parseNum(document.getElementById('i-krw-demand').value), krw_govt: parseNum(document.getElementById('i-krw-govt').value), krw_mmda: parseNum(document.getElementById('i-krw-mmda').value), fx_usd: parseNum(document.getElementById('i-fx-usd').value), fx_eur: parseNum(document.getElementById('i-fx-eur').value), fx_jpy: parseNum(document.getElementById('i-fx-jpy').value), loan_krw: l.filter(x=>x.currency==='KRW').reduce((s,x)=>s+x.amount,0), loan_fx: l.filter(x=>x.currency!=='KRW').reduce((s,x)=>s+calcKRW(x.amount,x.currency),0), inv_krw: i.filter(x=>x.currency==='KRW').reduce((s,x)=>s+x.amount,0), inv_fx: i.filter(x=>x.currency!=='KRW').reduce((s,x)=>s+calcKRW(x.amount,x.currency),0) };
+  if (!d) return showToast('일자를 입력하세요.', 'error');
+
+  const l = DB.get('loans').filter(x=>x.active&&x.company===currentCompany);
+  const i = DB.get('investments').filter(x=>x.active&&x.company===currentCompany);
+  
+  const r = { 
+    date: d, company: currentCompany, 
+    krw_demand: parseNum(document.getElementById('i-krw-demand').value), 
+    krw_govt: parseNum(document.getElementById('i-krw-govt').value), 
+    krw_mmda: parseNum(document.getElementById('i-krw-mmda').value), 
+    fx_usd: parseNum(document.getElementById('i-fx-usd').value), 
+    fx_eur: parseNum(document.getElementById('i-fx-eur').value), 
+    fx_jpy: parseNum(document.getElementById('i-fx-jpy').value), 
+    loan_krw: l.filter(x=>x.currency==='KRW').reduce((s,x)=>s+x.amount,0), 
+    loan_fx: l.filter(x=>x.currency!=='KRW').reduce((s,x)=>s+calcKRW(x.amount,x.currency),0), 
+    inv_krw: i.filter(x=>x.currency==='KRW').reduce((s,x)=>s+x.amount,0), 
+    inv_fx: i.filter(x=>x.currency!=='KRW').reduce((s,x)=>s+calcKRW(x.amount,x.currency),0),
+    memo: document.getElementById('i-memo').value
+  };
   r.fx_krw = r.fx_usd*FX.USD + r.fx_eur*FX.EUR + r.fx_jpy*FX.JPY;
-  let rs = DB.get('daily'); const idx = rs.findIndex(x=>x.date===d&&x.company===currentCompany);
-  if(idx>=0) { rs[idx]=r; DB.set('daily',rs); } else DB.append('daily',r);
-  showToast('저장 완료','success'); renderDashboard();
+  
+  let rs = DB.get('daily'); 
+  const idx = rs.findIndex(x=>x.date===d&&x.company===currentCompany);
+  if(idx>=0) { if(!confirm('덮어쓰시겠습니까?')) return; rs[idx]=r; DB.set('daily',rs); } else DB.append('daily',r);
+  
+  showToast('운전자금 저장 완료','success'); 
+  ['i-krw-demand','i-krw-govt','i-krw-mmda','i-fx-usd','i-fx-eur','i-fx-jpy','i-memo'].forEach(id=>document.getElementById(id).value='');
+  renderDashboard();
 }
+
 function saveInvestment() {
-  if(currentCompany === 'TOTAL') return showToast('법인 선택', 'error');
+  if(currentCompany === 'TOTAL') return showToast('법인 선택 불가', 'error');
   const i = { id: Date.now(), active: true, company: currentCompany, bank: document.getElementById('v-bank').value, product: document.getElementById('v-product').value, currency: document.getElementById('v-currency').value, amount: parseNum(document.getElementById('v-amount').value), rate: parseNum(document.getElementById('v-rate').value), start: document.getElementById('v-start').value, maturity: document.getElementById('v-maturity').value };
-  DB.append('investments', i); showToast('등록 완료', 'success'); renderInvestments(); renderDashboard();
+  if(!i.bank || !i.amount) return showToast('필수항목 입력', 'error');
+  DB.append('investments', i); showToast('등록 완료', 'success'); 
+  ['v-bank','v-amount','v-rate','v-start','v-maturity'].forEach(id=>document.getElementById(id).value='');
+  renderInvestments(); renderDashboard();
 }
+
 function renderInvestments() {
   const i = getFiltered('investments').filter(x=>x.active); const tbody = document.getElementById('invest-tbody');
-  if(!i.length) return tbody.innerHTML='<tr><td colspan="10" style="text-align:center;">데이터 없음</td></tr>';
-  tbody.innerHTML = i.map(x=>`<tr><td>${x.company}</td><td>${x.bank}</td><td>${x.product}</td><td>${x.currency}</td><td class="td-num">${x.amount.toLocaleString()}</td><td>${x.maturity||'—'}</td></tr>`).join('');
+  if(!i.length) return tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text3);">등록된 운용자금이 없습니다</td></tr>';
+  const today = new Date();
+  tbody.innerHTML = i.map(x=>{
+    const days = x.maturity ? Math.ceil((new Date(x.maturity)-today)/86400000) : null;
+    const dday = days!==null ? (days<0 ? `<span style="color:var(--red)">만기경과</span>` : `D-${days}`) : '—';
+    return `<tr><td>${x.company}</td><td>${x.bank}</td><td>${x.product}</td><td>${x.currency}</td><td class="td-num">${x.amount.toLocaleString()}</td><td class="td-num">${x.rate}%</td><td>${x.maturity||'—'}</td><td>${dday}</td><td class="td-num" style="color:var(--green)">${fmtKRW(calcKRW(x.amount, x.currency))}</td><td><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="DB.set('investments', DB.get('investments').filter(v=>v.id!==${x.id})); renderInvestments(); renderDashboard();">해지</button></td></tr>`;
+  }).join('');
 }
+
 function saveLoan() {
-  if(currentCompany === 'TOTAL') return showToast('법인 선택', 'error');
-  const l = { id: Date.now(), active: true, company: currentCompany, lender: document.getElementById('l-lender').value, type: document.getElementById('l-type').value, currency: document.getElementById('l-currency').value, amount: parseNum(document.getElementById('l-amount').value), rate: parseNum(document.getElementById('l-rate').value), maturity: document.getElementById('l-maturity').value };
-  DB.append('loans', l); showToast('등록 완료', 'success'); renderLoans(); renderDashboard();
+  if(currentCompany === 'TOTAL') return showToast('법인 선택 불가', 'error');
+  const l = { id: Date.now(), active: true, company: currentCompany, lender: document.getElementById('l-lender').value, type: document.getElementById('l-type').value, currency: document.getElementById('l-currency').value, amount: parseNum(document.getElementById('l-amount').value), rate: parseNum(document.getElementById('l-rate').value), start: document.getElementById('l-start').value, maturity: document.getElementById('l-maturity').value };
+  if(!l.lender || !l.amount) return showToast('필수항목 입력', 'error');
+  DB.append('loans', l); showToast('등록 완료', 'success'); 
+  ['l-lender','l-amount','l-rate','l-start','l-maturity'].forEach(id=>document.getElementById(id).value='');
+  renderLoans(); renderDashboard();
 }
+
 function renderLoans() {
   const l = getFiltered('loans').filter(x=>x.active); const tbody = document.getElementById('loans-tbody');
-  if(!l.length) return tbody.innerHTML='<tr><td colspan="10" style="text-align:center;">데이터 없음</td></tr>';
-  tbody.innerHTML = l.map(x=>`<tr><td>${x.company}</td><td>${x.lender}</td><td>${x.type}</td><td>${x.currency}</td><td class="td-num">${x.amount.toLocaleString()}</td><td>${x.maturity||'—'}</td></tr>`).join('');
+  if(!l.length) return tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text3);">등록된 차입금이 없습니다</td></tr>';
+  const today = new Date();
+  tbody.innerHTML = l.map(x=>{
+    const days = x.maturity ? Math.ceil((new Date(x.maturity)-today)/86400000) : null;
+    const dday = days!==null ? (days<0 ? `<span style="color:var(--red)">만기경과</span>` : `D-${days}`) : '—';
+    return `<tr><td>${x.company}</td><td>${x.lender}</td><td>${x.type}</td><td>${x.currency}</td><td class="td-num">${x.amount.toLocaleString()}</td><td class="td-num">${x.rate}%</td><td>${x.maturity||'—'}</td><td>${dday}</td><td class="td-num" style="color:var(--amber)">${fmtKRW(calcKRW(x.amount, x.currency))}</td><td><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="DB.set('loans', DB.get('loans').filter(v=>v.id!==${x.id})); renderLoans(); renderDashboard();">상환</button></td></tr>`;
+  }).join('');
+}
+
+function filterHistory() {
+  const from = document.getElementById('h-from').value, to = document.getElementById('h-to').value;
+  const records = getFiltered('daily').filter(r => (!from||r.date>=from)&&(!to||r.date<=to)).sort((a,b)=>b.date.localeCompare(a.date));
+  const tbody = document.getElementById('history-tbody');
+  if(!records.length) return tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3);">데이터가 없습니다</td></tr>';
+  tbody.innerHTML = records.map(r => `<tr><td>${r.date}</td><td>${r.company}</td><td class="td-num">${fmtKRW(r.krw_demand+r.krw_govt+r.krw_mmda)}</td><td class="td-num">${r.fx_usd?r.fx_usd.toLocaleString()+'$':'—'}</td><td class="td-num">${r.fx_eur?r.fx_eur.toLocaleString()+'€':'—'}</td><td class="td-num">${r.fx_jpy?r.fx_jpy.toLocaleString()+'¥':'—'}</td><td class="td-num" style="color:var(--accent2);">${fmtKRW(r.fx_krw||0)}</td><td style="font-size:12px;color:var(--text3);">${r.memo||''}</td></tr>`).join('');
 }
 </script>
 </body>
