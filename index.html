@@ -34,6 +34,7 @@
   .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 20px; cursor: pointer; color: var(--text2); font-size: 13px; border-left: 2px solid transparent; transition: all .15s; }
   .nav-item:hover { background: rgba(255,255,255,.04); color: var(--text); }
   .nav-item.active { background: rgba(59,130,246,.12); color: var(--accent2); border-left-color: var(--accent); }
+  .nav-icon { width: 16px; opacity: .7; flex-shrink: 0; }
   
   .sidebar-bottom { padding: 16px 20px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text3); }
   .fx-mini { display: flex; flex-direction: column; gap: 4px; }
@@ -106,6 +107,13 @@
 
   .chart-area { background: var(--bg3); border-radius: 8px; padding: 16px; margin-top: 8px; height: 280px; position: relative; }
   
+  /* ── 게이지 바 (정책용) ── */
+  .policy-item { margin-bottom: 16px; }
+  .policy-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .gauge-bar { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+  .gauge-fill { height: 100%; border-radius: 3px; transition: width .4s; }
+  .gauge-fill.safe { background: var(--green); } .gauge-fill.warn { background: var(--amber); } .gauge-fill.danger { background: var(--red); }
+  
   #toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg2); border: 1px solid var(--border2); padding: 12px 20px; border-radius: 10px; opacity: 0; transition: all .3s; z-index: 999; transform: translateY(80px); }
   #toast.show { opacity: 1; transform: translateY(0); }
 </style>
@@ -115,27 +123,74 @@
 <div class="layout">
   <aside class="sidebar">
     <div class="sidebar-logo">
-      <div class="co" onclick="goto('dashboard', this)">SELVAS</div>
+      <div class="co" onclick="goto('dashboard')">SELVAS</div>
       <div class="name">Treasury</div>
       <div id="sidebar-badge-area"><img src="selvasai.png" alt="Selvas AI"></div>
     </div>
 
     <nav class="nav">
       <div class="nav-section">대시보드</div>
-      <div class="nav-item active" onclick="goto('dashboard', this)">통합 상황판</div>
+      <div class="nav-item active" onclick="goto('dashboard')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/>
+          <rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/>
+        </svg>
+        통합 상황판
+      </div>
       
       <div class="nav-section">현금성 자금 관리</div>
-      <div class="nav-item" onclick="goto('input', this)">운전자금 입력</div>
-      <div class="nav-item" onclick="goto('invest', this)">운용자금 (단기투자)</div>
-      <div class="nav-item" onclick="goto('loans', this)">차입금 (대출)</div>
+      <div class="nav-item" onclick="goto('input')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M8 1v14M1 8h14"/>
+        </svg>
+        운전자금 입력
+      </div>
+      <div class="nav-item" onclick="goto('invest')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M1 14h14M1 10l5-5 4 4 5-5"/>
+        </svg>
+        운용자금 (단기투자)
+      </div>
+      <div class="nav-item" onclick="goto('loans')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2 4h12v8a1 1 0 01-1 1H3a1 1 0 01-1-1V4zM5 4V2h6v2"/>
+        </svg>
+        차입금 (대출)
+      </div>
 
       <div class="nav-section">지분투자 관리</div>
-      <div class="nav-item" onclick="goto('equity', this)" style="color:var(--pink);">지분투자 관리</div>
+      <div class="nav-item" onclick="goto('equity')" style="color:var(--pink);">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M8 1l2 4 4 .5-3 3 .8 4.5L8 11l-3.8 2L5 8.5 2 5.5 6 5z"/>
+        </svg>
+        지분투자 관리
+      </div>
       
       <div class="nav-section">분석 & 리포트</div>
-      <div class="nav-item" onclick="goto('history', this)">자금 변동 이력</div>
-      <div class="nav-item" onclick="goto('fx', this)">환율 현황</div>
-      <div class="nav-item" onclick="goto('report', this)">자금일보 출력</div>
+      <div class="nav-item" onclick="goto('history')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/>
+        </svg>
+        자금 변동 이력
+      </div>
+      <div class="nav-item" onclick="goto('fx')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="6"/><path d="M5 8h6M8 5v6"/>
+        </svg>
+        환율 현황
+      </div>
+      <div class="nav-item" onclick="goto('policy')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M8 1l2 4 4 .5-3 3 .8 4.5L8 11l-3.8 2L5 8.5 2 5.5 6 5z"/>
+        </svg>
+        자금정책
+      </div>
+      <div class="nav-item" onclick="goto('report')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M3 1h7l3 3v11H3V1z"/><path d="M10 1v3h3"/><path d="M5 7h6M5 10h4"/>
+        </svg>
+        자금일보 출력
+      </div>
     </nav>
     
     <div class="sidebar-bottom">
@@ -160,7 +215,6 @@
     <div class="content">
 
       <div class="page active" id="page-dashboard">
-        
         <div style="display:flex; gap:10px; margin-bottom:20px; align-items:center;">
           <div class="ci-tab active" onclick="setCompany('셀바스에이아이', this)" title="셀바스에이아이"><img src="selvasai.png" alt="셀바스에이아이"></div>
           <div class="ci-tab" onclick="setCompany('셀바스헬스케어', this)" title="셀바스헬스케어"><img src="selvashealthcare.png" alt="셀바스헬스케어"></div>
@@ -215,7 +269,7 @@
               <div style="font-size:20px; font-weight:700; color:var(--text);" id="d-eq-total">0원</div>
               <div style="font-size:12px; color:var(--text3); margin-top:4px;">지분증권 평가금액 총합</div>
             </div>
-            <button class="btn btn-ghost" onclick="document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active')); goto('equity', this)" style="font-size:12px; padding:6px 12px; border-color:rgba(236,72,153,0.3); color:var(--pink);">지분투자 상세 보기 →</button>
+            <button class="btn btn-ghost" onclick="goto('equity')" style="font-size:12px; padding:6px 12px; border-color:rgba(236,72,153,0.3); color:var(--pink);">지분투자 상세 보기 →</button>
           </div>
         </div>
         
@@ -295,7 +349,7 @@
           </div>
           <div class="form-actions"><button class="btn btn-primary" style="background:var(--pink);" onclick="saveEquity()">지분 기록 및 저장</button></div>
         </div>
-        <div class="card"><div class="card-title">보유 지분증권 현황</div><div class="table-wrap"><table><thead><tr><th>기준일</th><th>보유법인</th><th>종목명</th><th>투자목적</th><th>상장여부</th><th class="td-num">보유주식수</th><th class="td-num">1주당 단가</th><th class="td-num">총 평가금액</th><th></th></tr></thead><tbody id="equity-tbody"></tbody></table></div></div>
+        <div class="card"><div class="card-title">보유 지분투자 현황</div><div class="table-wrap"><table><thead><tr><th>기준일</th><th>보유법인</th><th>종목명</th><th>투자목적</th><th>상장여부</th><th class="td-num">보유주식수</th><th class="td-num">1주당 단가</th><th class="td-num">총 평가금액</th><th></th></tr></thead><tbody id="equity-tbody"></tbody></table></div></div>
       </div>
 
       <div class="page" id="page-history">
@@ -305,8 +359,18 @@
           <div class="table-wrap"><table><thead><tr><th>일자</th><th>법인</th><th class="td-num">원화운전</th><th class="td-num">USD</th><th class="td-num">EUR</th><th class="td-num">JPY</th><th class="td-num">외화환산</th><th>비고</th></tr></thead><tbody id="history-tbody"></tbody></table></div>
         </div>
       </div>
-      <div class="page" id="page-fx"><div class="card"><div class="card-title">실시간 환율</div><div class="fx-panel"><div class="fx-card"><div class="fx-currency">USD / KRW</div><div class="fx-rate" id="p-fx-usd">—</div></div><div class="fx-card"><div class="fx-currency">EUR / KRW</div><div class="fx-rate" id="p-fx-eur">—</div></div><div class="fx-card"><div class="fx-currency">JPY / KRW</div><div class="fx-rate" id="p-fx-jpy">—</div></div></div></div></div>
-      <div class="page" id="page-report"><div class="card"><div class="card-title">자금일보 출력</div><div style="color:var(--text3);">리포트 출력 모듈은 다음 고도화 단계에서 진행 예정입니다.</div></div></div>
+      
+      <div class="page" id="page-fx">
+        <div class="card"><div class="card-title">실시간 환율</div><div class="fx-panel"><div class="fx-card"><div class="fx-currency">USD / KRW</div><div class="fx-rate" id="p-fx-usd">—</div></div><div class="fx-card"><div class="fx-currency">EUR / KRW</div><div class="fx-rate" id="p-fx-eur">—</div></div><div class="fx-card"><div class="fx-currency">JPY / KRW</div><div class="fx-rate" id="p-fx-jpy">—</div></div></div></div>
+      </div>
+      
+      <div class="page" id="page-policy">
+        <div class="card"><div class="card-title">자금정책 (개발중)</div><div style="color:var(--text3);">운영 정책이 적용되는 공간입니다.</div></div>
+      </div>
+      
+      <div class="page" id="page-report">
+        <div class="card"><div class="card-title">자금일보 출력 (개발중)</div><div style="color:var(--text3);">리포트 출력 모듈은 다음 고도화 단계에서 진행 예정입니다.</div></div>
+      </div>
 
     </div>
   </div>
@@ -383,20 +447,26 @@ function getFiltered(table) {
   return currentCompany === 'TOTAL' ? all : all.filter(r => r.company === currentCompany);
 }
 
-// 클릭 및 메뉴 이동 오류 수정 완료
-function goto(page, btnEl) {
+// 메뉴 이동 충돌 방지 로직 고도화
+function goto(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
   
-  if(btnEl) {
-    document.getElementById('page-title').textContent = btnEl.textContent.trim();
-    btnEl.classList.add('active');
-  }
+  // 사이드바 해당 항목 활성화
+  const navItems = document.querySelectorAll('.nav-item');
+  navItems.forEach(n => {
+    if(n.getAttribute('onclick').includes(`goto('${page}')`)) {
+        n.classList.add('active');
+        document.getElementById('page-title').textContent = n.textContent.trim();
+    }
+  });
   
   if(page === 'dashboard') renderDashboard();
   if(page === 'equity') renderEquity();
   if(page === 'history') filterHistory();
+  if(page === 'invest') renderInvestments();
+  if(page === 'loans') renderLoans();
 }
 
 async function refreshFX() {
