@@ -1204,26 +1204,111 @@ function renderDashboard() {
   updateEquityChart(allEq);
 }
 
+// ── 차트 기간 설정 ─────────────────────────────────────────
+let currentChartDays = 7;
+
+function setChartPeriod(days, btn) {
+  currentChartDays = days;
+  // 버튼 활성화 스타일
+  document.querySelectorAll('.chart-period-btn').forEach(b => {
+    b.classList.remove('btn-primary');
+    b.classList.add('btn-ghost');
+  });
+  if (btn) {
+    btn.classList.remove('btn-ghost');
+    btn.classList.add('btn-primary');
+  }
+  renderDashboard();
+}
+
 function updateMainChart(records) {
-  const ctx = document.getElementById('mainChart').getContext('2d');
+  const canvas = document.getElementById('mainChart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
   if (mainChartObj) mainChartObj.destroy();
   if (!records.length) return;
 
+  // ── 기간 필터 ──────────────────────────────────────────────
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - currentChartDays);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const filtered = records.filter(r => r.date >= cutoffStr);
+  if (!filtered.length) return;
+
+  // ── 날짜별 운전자금·운용자금 집계 ──────────────────────────
   const map = {};
-  records.forEach(r => {
-    if(!map[r.date]) map[r.date] = { date: r.date, op_k:0, op_f:0, inv_k:0, inv_f:0, loan_k:0, loan_f:0 };
-    map[r.date].op_k += (r.krw_demand+r.krw_govt+r.krw_mmda); map[r.date].op_f += (r.fx_krw||0);
-    map[r.date].inv_k += (r.inv_krw||0); map[r.date].inv_f += (r.inv_fx||0);
-    map[r.date].loan_k += (r.loan_krw||0); map[r.date].loan_f += (r.loan_fx||0);
+  filtered.forEach(r => {
+    if (!map[r.date]) map[r.date] = { date: r.date, op_k:0, op_f:0, inv_k:0, inv_f:0 };
+    map[r.date].op_k += (r.krw_demand + r.krw_govt + r.krw_mmda);
+    map[r.date].op_f += (r.fx_krw || 0);
+    map[r.date].inv_k += (r.inv_krw || 0);
+    map[r.date].inv_f += (r.inv_fx  || 0);
   });
-  const agg = Object.values(map).sort((a,b)=>a.date.localeCompare(b.date)).slice(-14);
-  const labels = agg.map(r => r.date.slice(5));
+
+  // ── 차입금: loans 테이블에서 직접 읽기 ─────────────────────
+  // daily 스냅샷의 loan_krw/loan_fx는 저장 시점 기준이라 부정확
+  // → 현재 활성 차입금 합계를 모든 날짜에 동일하게 적용
+  const activeLoan = DB.get('loans').filter(l => l.active);
+  const loanKrwTotal = activeLoan
+    .filter(l => l.currency === 'KRW')
+    .reduce((s, l) => s + (l.amount || 0), 0);
+  const loanFxTotal  = activeLoan
+    .filter(l => l.currency !== 'KRW')
+    .reduce((s, l) => s + calcKRW(l.amount, l.currency), 0);
+  const loanTotal = loanKrwTotal + loanFxTotal;
+
+  const agg = Object.values(map).sort((a, b) => a.date.localeCompare(b.date));
+
+  // 기간이 길면 레이블 간소화
+  const labels = agg.map(r => {
+    if (currentChartDays <= 30) return r.date.slice(5);          // MM-DD
+    if (currentChartDays <= 90) return r.date.slice(5);          // MM-DD
+    return r.date.slice(2, 7);                                    // YY-MM
+  });
 
   const datasets = [];
-  if(selectedChartMetrics.includes('op')) datasets.push({ label: '운전자금', data: agg.map(r=>r.op_k+r.op_f), backgroundColor: '#3b82f6', stack: 'op' });
-  if(selectedChartMetrics.includes('inv')) datasets.push({ label: '운용자금', data: agg.map(r=>r.inv_k+r.inv_f), backgroundColor: '#10b981', stack: 'inv' });
-  if(selectedChartMetrics.includes('loan')) datasets.push({ label: '차입금', data: agg.map(r=>r.loan_k+r.loan_f), backgroundColor: '#f59e0b', stack: 'loan' });
-  if(selectedChartMetrics.includes('net')) datasets.push({ label: '순현금 트렌드', type: 'line', data: agg.map(r=>(r.op_k+r.op_f+r.inv_k+r.inv_f) - (r.loan_k+r.loan_f)), borderColor: '#8b5cf6', backgroundColor: '#8b5cf6', tension: 0.3, fill: false });
+
+  if (selectedChartMetrics.includes('op'))
+    datasets.push({
+      label: '운전자금',
+      data: agg.map(r => r.op_k + r.op_f),
+      backgroundColor: '#3b82f6',
+      borderRadius: 3,
+      stack: 'main',
+    });
+
+  if (selectedChartMetrics.includes('inv'))
+    datasets.push({
+      label: '운용자금',
+      data: agg.map(r => r.inv_k + r.inv_f),
+      backgroundColor: '#10b981',
+      borderRadius: 3,
+      stack: 'main',
+    });
+
+  if (selectedChartMetrics.includes('loan'))
+    datasets.push({
+      label: '차입금',
+      // 차입금은 loans 테이블 현재값을 모든 날짜에 동일하게 표시
+      data: agg.map(() => loanTotal),
+      backgroundColor: '#f59e0b',
+      borderRadius: 3,
+      stack: 'loan',  // 별도 스택 — 운전/운용과 구분
+    });
+
+  if (selectedChartMetrics.includes('net'))
+    datasets.push({
+      label: '순현금',
+      type: 'line',
+      data: agg.map(r => (r.op_k + r.op_f + r.inv_k + r.inv_f) - loanTotal),
+      borderColor: '#8b5cf6',
+      backgroundColor: 'rgba(139,92,246,0.08)',
+      borderWidth: 2,
+      tension: 0.4,
+      fill: false,
+      pointRadius: agg.length > 30 ? 0 : 3,
+      stack: undefined,
+    });
 
   mainChartObj = new Chart(ctx, {
     type: 'bar',
@@ -1231,10 +1316,33 @@ function updateMainChart(records) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: '#94a3b8' } } },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => ` ${ctx.dataset.label}: ${(ctx.raw/100000000).toFixed(1)}억원`
+          }
+        }
+      },
       scales: {
-        y: { stacked: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', callback: v => (v/100000000).toFixed(0) + '억' } },
-        x: { stacked: true, grid: { display: false }, ticks: { color: '#64748b' } }
+        y: {
+          stacked: true,
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: {
+            color: '#64748b',
+            callback: v => (v / 100000000).toFixed(0) + '억'
+          }
+        },
+        x: {
+          stacked: true,
+          grid: { display: false },
+          ticks: {
+            color: '#64748b',
+            maxTicksLimit: currentChartDays <= 30 ? 14 : 12,
+            maxRotation: 0,
+          }
+        }
       }
     }
   });
