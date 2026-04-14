@@ -336,17 +336,80 @@
 
       <div class="page" id="page-equity">
         <div class="card" style="border-color:rgba(236,72,153,0.3);">
-          <div class="card-title">지분투자 신규/업데이트 등록 <span>— <span class="input-company-badge">셀바스에이아이</span></span></div>
+          <div class="card-title">지분투자 신규/업데이트 등록</div>
           <div class="form-grid">
-            <div class="form-group"><label>기준일자</label><input type="date" id="e-date"></div>
-            <div class="form-group"><label>종목명 (또는 종목코드)</label><input type="text" id="e-name" placeholder="예: 삼성전자"></div>
-            <div class="form-group"><label>투자목적</label><select id="e-purpose"><option value="경영참여">경영참여</option><option value="자기주식">자기주식</option><option value="투자차익">투자차익</option><option value="기타">기타</option></select></div>
-            <div class="form-group"><label>상장여부</label><select id="e-market"><option value="KOSPI">KOSPI</option><option value="KOSDAQ">KOSDAQ</option><option value="비상장">비상장</option></select></div>
-            <div class="form-group"><label>보유 주식수</label><div class="input-with-unit"><input type="text" id="e-shares" placeholder="0" oninput="formatNumericInput(this); calcEquityValue();"><span class="unit">주</span></div></div>
-            <div class="form-group"><label style="display:flex; justify-content:space-between;"><span>1주당 단가 (현재가)</span><span style="font-size:10px; color:var(--text3); cursor:help;" title="추후 자동 불러오기 구현 예정">API 연동 대기중 ⓘ</span></label><div class="input-with-unit"><input type="text" id="e-price" placeholder="단가 직접 입력" oninput="formatNumericInput(this); calcEquityValue();"><span class="unit">원</span></div></div>
-            <div class="form-group full"><label>총 평가금액 (보유주식수 × 단가)</label><div class="input-with-unit"><input type="text" id="e-value" readonly placeholder="0" style="color:var(--pink); font-size:16px;"><span class="unit">원</span></div></div>
+            <div class="form-group">
+              <label>기준일자</label>
+              <input type="date" id="e-date">
+            </div>
+            <div class="form-group">
+              <label>보유 법인 *</label>
+              <select id="e-company" style="border-color:rgba(236,72,153,0.5);">
+                <option value="셀바스에이아이">셀바스에이아이</option>
+                <option value="셀바스헬스케어">셀바스헬스케어</option>
+                <option value="메디아나">메디아나</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>종목명</label>
+              <input type="text" id="e-name" placeholder="예: 셀바스헬스케어" oninput="onStockNameInput()">
+            </div>
+            <div class="form-group">
+              <label>KRX 종목코드 (6자리)</label>
+              <div style="display:flex; gap:8px;">
+                <input type="text" id="e-ticker" placeholder="예: 096530" style="flex:1;" maxlength="6" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                <button class="btn btn-ghost" onclick="fetchStockPrice()" id="e-fetch-btn" style="white-space:nowrap; font-size:12px; padding:6px 12px; border-color:rgba(236,72,153,0.4); color:var(--pink);">
+                  주가 조회
+                </button>
+              </div>
+              <div id="e-price-status" style="font-size:11px; margin-top:4px; color:var(--text3);">종목코드 입력 후 주가 조회 버튼을 누르세요</div>
+            </div>
+            <div class="form-group">
+              <label>투자목적</label>
+              <select id="e-purpose">
+                <option value="경영참여">경영참여</option>
+                <option value="자기주식">자기주식</option>
+                <option value="투자차익">투자차익</option>
+                <option value="기타">기타</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>상장여부</label>
+              <select id="e-market" onchange="onMarketChange()">
+                <option value="KOSPI">KOSPI</option>
+                <option value="KOSDAQ">KOSDAQ</option>
+                <option value="비상장">비상장</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>보유 주식수</label>
+              <div class="input-with-unit">
+                <input type="text" id="e-shares" placeholder="0" oninput="formatNumericInput(this); calcEquityValue();">
+                <span class="unit">주</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label style="display:flex; justify-content:space-between;">
+                <span>1주당 단가</span>
+                <span id="e-price-source" style="font-size:10px; color:var(--text3);"></span>
+              </label>
+              <div class="input-with-unit">
+                <input type="text" id="e-price" placeholder="직접 입력 또는 주가 조회" oninput="formatNumericInput(this); calcEquityValue();">
+                <span class="unit">원</span>
+              </div>
+            </div>
+            <div class="form-group full">
+              <label>총 평가금액 (보유주식수 × 단가)</label>
+              <div class="input-with-unit">
+                <input type="text" id="e-value" readonly placeholder="0" style="color:var(--pink); font-size:16px;">
+                <span class="unit">원</span>
+              </div>
+            </div>
           </div>
-          <div class="form-actions"><button class="btn btn-primary" style="background:var(--pink);" onclick="saveEquity()">지분 기록 및 저장</button></div>
+          <div class="form-actions">
+            <button class="btn btn-ghost" onclick="clearEquityForm()">초기화</button>
+            <button class="btn btn-primary" style="background:var(--pink);" onclick="saveEquity()">지분 기록 및 저장</button>
+          </div>
         </div>
         <div class="card"><div class="card-title">보유 지분투자 현황</div><div class="table-wrap"><table><thead><tr><th>기준일</th><th>보유법인</th><th>종목명</th><th>투자목적</th><th>상장여부</th><th class="td-num">보유주식수</th><th class="td-num">1주당 단가</th><th class="td-num">총 평가금액</th><th></th></tr></thead><tbody id="equity-tbody"></tbody></table></div></div>
       </div>
@@ -554,6 +617,144 @@ function calcKRW(amount, currency) { return amount * (FX[currency] || 1); }
 // ══════════════════════════════════════════════════════
 // 지분투자 (Equity) 로직
 // ══════════════════════════════════════════════════════
+
+// 상장여부 변경 시 종목코드 입력 활성/비활성
+function onMarketChange() {
+  const market = document.getElementById('e-market').value;
+  const tickerInput = document.getElementById('e-ticker');
+  const fetchBtn = document.getElementById('e-fetch-btn');
+  const statusEl = document.getElementById('e-price-status');
+  if (market === '비상장') {
+    tickerInput.disabled = true;
+    tickerInput.placeholder = '비상장 종목';
+    if(fetchBtn) fetchBtn.disabled = true;
+    if(statusEl) statusEl.textContent = '비상장 종목은 단가를 직접 입력하세요';
+  } else {
+    tickerInput.disabled = false;
+    tickerInput.placeholder = '예: 096530';
+    if(fetchBtn) fetchBtn.disabled = false;
+    if(statusEl) statusEl.textContent = '종목코드 입력 후 주가 조회 버튼을 누르세요';
+  }
+}
+
+function onStockNameInput() {
+  // 종목명 입력 시 종목코드 힌트 제공 (주요 종목)
+  const knownTickers = {
+    '셀바스에이아이': '096530', '셀바스AI': '096530',
+    '셀바스헬스케어': '187220',
+    '메디아나': '041920',
+    '삼성전자': '005930', '에스케이하이닉스': '000660', 'SK하이닉스': '000660',
+    'LG에너지솔루션': '373220', '현대차': '005380', '기아': '000270',
+    'NAVER': '035420', '카카오': '035720', '삼성바이오로직스': '207940',
+  };
+  const name = document.getElementById('e-name').value.trim();
+  const tickerEl = document.getElementById('e-ticker');
+  if (knownTickers[name] && !tickerEl.value) {
+    tickerEl.value = knownTickers[name];
+    document.getElementById('e-price-status').textContent = `종목코드 자동입력: ${knownTickers[name]} — 주가 조회 버튼을 누르세요`;
+  }
+}
+
+// ── 주가 자동 조회 (Yahoo Finance API — 무료, 키 불필요) ──────
+async function fetchStockPrice() {
+  const ticker = document.getElementById('e-ticker').value.trim();
+  const market = document.getElementById('e-market').value;
+  const statusEl = document.getElementById('e-price-status');
+  const sourceEl = document.getElementById('e-price-source');
+  const fetchBtn = document.getElementById('e-fetch-btn');
+
+  if (!ticker || ticker.length !== 6) {
+    statusEl.textContent = '❌ 6자리 종목코드를 입력하세요 (예: 096530)';
+    statusEl.style.color = 'var(--red)';
+    return;
+  }
+
+  // 한국 주식 Yahoo Finance 심볼: 6자리코드.KS (KOSPI) 또는 .KQ (KOSDAQ)
+  const suffix = market === 'KOSDAQ' ? '.KQ' : '.KS';
+  const symbol = ticker + suffix;
+
+  fetchBtn.textContent = '조회중...';
+  fetchBtn.disabled = true;
+  statusEl.textContent = `${symbol} 주가 조회 중...`;
+  statusEl.style.color = 'var(--text3)';
+
+  let price = null;
+  let priceDate = null;
+  let source = '';
+
+  // 1순위: Yahoo Finance (CORS 프록시 경유)
+  try {
+    const proxyUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`;
+    const resp = await fetch(proxyUrl, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      const result = data?.chart?.result?.[0];
+      if (result) {
+        const closes = result.indicators?.quote?.[0]?.close;
+        const timestamps = result.timestamp;
+        if (closes && closes.length > 0) {
+          // 가장 최근 유효한 종가
+          for (let i = closes.length - 1; i >= 0; i--) {
+            if (closes[i] !== null && closes[i] > 0) {
+              price = Math.round(closes[i]);
+              const d = new Date(timestamps[i] * 1000);
+              priceDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+              break;
+            }
+          }
+          source = 'Yahoo Finance';
+        }
+      }
+    }
+  } catch(e) { console.log('Yahoo Finance 직접 실패:', e.message); }
+
+  // 2순위: CORS 프록시 경유 Yahoo Finance
+  if (!price) {
+    try {
+      const proxyUrl = `https://corsproxy.io/?https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`;
+      const resp = await fetch(proxyUrl);
+      if (resp.ok) {
+        const data = await resp.json();
+        const result = data?.chart?.result?.[0];
+        if (result) {
+          const closes = result.indicators?.quote?.[0]?.close;
+          const timestamps = result.timestamp;
+          if (closes && closes.length > 0) {
+            for (let i = closes.length - 1; i >= 0; i--) {
+              if (closes[i] !== null && closes[i] > 0) {
+                price = Math.round(closes[i]);
+                const d = new Date(timestamps[i] * 1000);
+                priceDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                break;
+              }
+            }
+            source = 'Yahoo Finance (프록시)';
+          }
+        }
+      }
+    } catch(e) { console.log('Yahoo Finance 프록시 실패:', e.message); }
+  }
+
+  // 결과 처리
+  fetchBtn.textContent = '주가 조회';
+  fetchBtn.disabled = false;
+
+  if (price) {
+    document.getElementById('e-price').value = price.toLocaleString();
+    calcEquityValue();
+    statusEl.textContent = `✅ ${priceDate} 종가: ${price.toLocaleString()}원 (${source})`;
+    statusEl.style.color = 'var(--green)';
+    if(sourceEl) sourceEl.textContent = `${priceDate} 종가 자동조회`;
+    showToast(`${symbol} 주가 조회 완료: ${price.toLocaleString()}원`, 'success');
+  } else {
+    statusEl.textContent = `❌ 주가 조회 실패 — 종목코드 확인 또는 직접 입력하세요`;
+    statusEl.style.color = 'var(--red)';
+    showToast('주가 조회 실패 — 직접 입력하세요', 'error');
+  }
+}
+
 function calcEquityValue() {
   const shares = parseNum(document.getElementById('e-shares').value);
   const price = parseNum(document.getElementById('e-price').value);
@@ -561,48 +762,150 @@ function calcEquityValue() {
   document.getElementById('e-value').value = total ? total.toLocaleString() : '0';
 }
 
+function clearEquityForm() {
+  ['e-name','e-ticker','e-shares','e-price','e-value'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  const statusEl = document.getElementById('e-price-status');
+  if(statusEl) statusEl.textContent = '종목코드 입력 후 주가 조회 버튼을 누르세요';
+  const sourceEl = document.getElementById('e-price-source');
+  if(sourceEl) sourceEl.textContent = '';
+}
+
 function saveEquity() {
-  if(currentCompany === 'TOTAL') return showToast('법인을 선택한 후 등록하세요', 'error');
+  // 보유법인: 드롭박스 선택값 우선, 없으면 현재 탭
+  const companyEl = document.getElementById('e-company');
+  const company = companyEl ? companyEl.value : currentCompany;
+
+  if (!company || company === 'TOTAL') {
+    showToast('보유 법인을 선택하세요', 'error');
+    return;
+  }
+
   const date = document.getElementById('e-date').value;
-  const name = document.getElementById('e-name').value;
+  const name = document.getElementById('e-name').value.trim();
   const shares = parseNum(document.getElementById('e-shares').value);
   const price = parseNum(document.getElementById('e-price').value);
   const total_value = shares * price;
-  
-  if(!date || !name || !shares || !price) return showToast('필수 정보를 모두 입력하세요', 'error');
 
-  const eq = { id: Date.now(), date, company: currentCompany, name, purpose: document.getElementById('e-purpose').value, market: document.getElementById('e-market').value, shares, price, total_value };
+  if(!date || !name || !shares || !price) {
+    showToast('기준일자, 종목명, 주식수, 단가는 필수입니다', 'error');
+    return;
+  }
+
+  const eq = {
+    id: Date.now(),
+    date,
+    company,
+    name,
+    ticker: document.getElementById('e-ticker').value.trim(),
+    purpose: document.getElementById('e-purpose').value,
+    market: document.getElementById('e-market').value,
+    shares,
+    price,
+    total_value
+  };
+
   DB.append('equities', eq);
-  showToast('지분 평가내역 저장 완료', 'success');
-  ['e-name','e-shares','e-price','e-value'].forEach(id=>document.getElementById(id).value='');
-  renderEquity(); renderDashboard();
+  showToast(`[${company}] ${name} 지분 저장 완료`, 'success');
+  clearEquityForm();
+  renderEquity();
+  renderDashboard();
 }
 
-function deleteEquity(id) { 
-  if(!confirm('삭제하시겠습니까?')) return; 
-  DB.set('equities', DB.get('equities').filter(e=>e.id!==id)); 
-  renderEquity(); renderDashboard(); 
+function deleteEquity(id) {
+  if(!confirm('삭제하시겠습니까?')) return;
+  DB.set('equities', DB.get('equities').filter(e => e.id !== id));
+  renderEquity();
+  renderDashboard();
 }
 
 function renderEquity() {
-  const allEq = getFiltered('equities').sort((a,b)=>b.date.localeCompare(a.date));
+  const allEq = getFiltered('equities').sort((a,b) => b.date.localeCompare(a.date));
   const latestMap = {};
-  allEq.forEach(e => { const key = e.company + '_' + e.name; if(!latestMap[key]) latestMap[key] = e; });
+  allEq.forEach(e => {
+    const key = e.company + '_' + e.name;
+    if(!latestMap[key]) latestMap[key] = e;
+  });
   const latestEq = Object.values(latestMap);
 
   const tbody = document.getElementById('equity-tbody');
-  if(!latestEq.length) return tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text3);">등록된 지분증권이 없습니다</td></tr>';
-  
+  if(!latestEq.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text3);">등록된 지분증권이 없습니다</td></tr>';
+    return;
+  }
+
   tbody.innerHTML = latestEq.map(e => `
     <tr>
-      <td>${e.date}</td><td>${e.company}</td><td style="font-weight:600; color:var(--text);">${e.name}</td>
-      <td>${e.purpose}</td><td>${e.market}</td>
+      <td>${e.date}</td>
+      <td>${e.company}</td>
+      <td style="font-weight:600; color:var(--text);">${e.name}${e.ticker ? ` <span style="font-size:11px;color:var(--text3);">(${e.ticker})</span>` : ''}</td>
+      <td>${e.purpose}</td>
+      <td>${e.market}</td>
       <td class="td-num">${e.shares.toLocaleString()} 주</td>
       <td class="td-num">${e.price.toLocaleString()} 원</td>
       <td class="td-num" style="color:var(--pink); font-weight:700;">${fmtKRW(e.total_value)}</td>
-      <td><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="deleteEquity(${e.id})">삭제</button></td>
+      <td>
+        ${e.ticker && e.market !== '비상장' ? `<button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;margin-bottom:3px;border-color:rgba(236,72,153,0.3);color:var(--pink);" onclick="refreshEquityPrice('${e.id}','${e.ticker}','${e.market}')">시세↑</button><br>` : ''}
+        <button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;" onclick="deleteEquity(${e.id})">삭제</button>
+      </td>
     </tr>
   `).join('');
+}
+
+// 목록에서 특정 종목 시세 업데이트
+async function refreshEquityPrice(id, ticker, market) {
+  const suffix = market === 'KOSDAQ' ? '.KQ' : '.KS';
+  const symbol = ticker + suffix;
+  showToast(`${symbol} 시세 업데이트 중...`);
+
+  let price = null;
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`;
+    const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if (resp.ok) {
+      const data = await resp.json();
+      const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
+      if (closes) {
+        for (let i = closes.length-1; i >= 0; i--) {
+          if (closes[i] > 0) { price = Math.round(closes[i]); break; }
+        }
+      }
+    }
+  } catch(e) {}
+
+  if (!price) {
+    try {
+      const url = `https://corsproxy.io/?https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`;
+      const resp = await fetch(url);
+      if (resp.ok) {
+        const data = await resp.json();
+        const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
+        if (closes) {
+          for (let i = closes.length-1; i >= 0; i--) {
+            if (closes[i] > 0) { price = Math.round(closes[i]); break; }
+          }
+        }
+      }
+    } catch(e) {}
+  }
+
+  if (price) {
+    const equities = DB.get('equities');
+    const eq = equities.find(e => String(e.id) === String(id));
+    if (eq) {
+      eq.price = price;
+      eq.total_value = eq.shares * price;
+      eq.date = new Date().toISOString().slice(0, 10);
+      DB.set('equities', equities);
+      renderEquity();
+      renderDashboard();
+      showToast(`${eq.name} 시세 업데이트: ${price.toLocaleString()}원`, 'success');
+    }
+  } else {
+    showToast('시세 조회 실패 — 직접 수정하세요', 'error');
+  }
 }
 
 // ══════════════════════════════════════════════════════
