@@ -375,15 +375,78 @@
               </select>
             </div>
             <div class="form-group"><label>금융기관</label><input type="text" id="v-bank" placeholder="예: 산업은행"></div>
-            <div class="form-group"><label>운용상품</label><select id="v-product"><option value="정기예금">정기예금</option><option value="중금채">중금채</option><option value="국공채">국공채</option><option value="전단채">전단채</option><option value="기타(전환사채 등)">기타(전환사채 등)</option></select></div>
-            <div class="form-group"><label>통화 / 금액</label><div style="display:flex;gap:10px;"><select id="v-currency" style="width:80px;"><option value="KRW">KRW</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="JPY">JPY</option></select><input type="text" id="v-amount" style="flex:1;" placeholder="0" oninput="formatNumericInput(this, true)"></div></div>
-            <div class="form-group"><label>수익률 (%)</label><div class="input-with-unit"><input type="text" id="v-rate" placeholder="3.5" oninput="formatNumericInput(this, true)"><span class="unit">%</span></div></div>
+            <div class="form-group">
+              <label>운용상품</label>
+              <select id="v-product" onchange="onInvestProductChange()">
+                <option value="정기예금">정기예금</option>
+                <option value="중금채">중금채</option>
+                <option value="국공채">국공채</option>
+                <option value="전단채">전단채</option>
+                <option value="기타(전환사채 등)">기타(전환사채 등)</option>
+              </select>
+            </div>
             <div class="form-group"><label>가입일</label><input type="date" id="v-start"></div>
             <div class="form-group"><label>만기일</label><input type="date" id="v-maturity"></div>
+            <div class="form-group"><label>수익률 (%)</label><div class="input-with-unit"><input type="text" id="v-rate" placeholder="3.5" oninput="formatNumericInput(this, true)"><span class="unit">%</span></div></div>
+
+            <!-- 일반 상품: 통화/금액 -->
+            <div class="form-group" id="v-group-amount">
+              <label>통화 / 금액</label>
+              <div style="display:flex;gap:10px;">
+                <select id="v-currency" style="width:80px;"><option value="KRW">KRW</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="JPY">JPY</option></select>
+                <input type="text" id="v-amount" style="flex:1;" placeholder="0" oninput="formatNumericInput(this, true)">
+              </div>
+            </div>
+
+            <!-- 국공채 전용 필드 (기본 숨김) -->
+            <div id="v-group-bond" style="display:none; grid-column:1/-1;">
+              <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:16px 20px;">
+                <div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:14px;">국공채 시세 연동</div>
+                <div class="form-grid-3">
+                  <div class="form-group" style="position:relative;">
+                    <label>종목명 검색</label>
+                    <input type="text" id="v-bond-name" placeholder="국고채 3년 등" oninput="searchBond(this.value)" autocomplete="off">
+                    <div id="v-bond-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;max-height:180px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.4);"></div>
+                  </div>
+                  <div class="form-group">
+                    <label>종목코드 (6자리)</label>
+                    <div style="display:flex;gap:8px;">
+                      <input type="text" id="v-bond-ticker" placeholder="예: KR103501GCC6" style="flex:1;" maxlength="12">
+                      <button class="btn btn-ghost" onclick="fetchBondPrice()" id="v-bond-fetch-btn" style="white-space:nowrap;font-size:12px;padding:6px 10px;border-color:rgba(16,185,129,0.4);color:var(--green);">시세조회</button>
+                    </div>
+                    <div id="v-bond-price-status" style="font-size:11px;margin-top:4px;color:var(--text3);">종목코드 입력 후 시세 조회하세요</div>
+                  </div>
+                  <div class="form-group">
+                    <label>보유 좌수</label>
+                    <div class="input-with-unit">
+                      <input type="text" id="v-bond-qty" placeholder="0" oninput="formatNumericInput(this); calcBondValue();">
+                      <span class="unit">좌</span>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label>기준가격 (1좌당)</label>
+                    <div class="input-with-unit">
+                      <input type="text" id="v-bond-price" placeholder="직접입력 또는 자동조회" oninput="formatNumericInput(this,true); calcBondValue();">
+                      <span class="unit">원</span>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label>평가금액 (자동계산)</label>
+                    <div class="input-with-unit">
+                      <input type="text" id="v-bond-value" readonly style="color:var(--green);font-weight:600;" placeholder="0">
+                      <span class="unit">원</span>
+                    </div>
+                  </div>
+                  <div class="form-group" style="display:flex;align-items:flex-end;">
+                    <div id="v-bond-price-date" style="font-size:11px;color:var(--text3);padding-bottom:10px;">기준가 날짜: —</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="form-actions"><button class="btn btn-primary" onclick="saveInvestment()">운용상품 추가</button></div>
         </div>
-        <div class="card"><div class="card-title">운용자금 목록</div><div class="table-wrap"><table><thead><tr><th>법인</th><th>금융기관</th><th>상품</th><th>통화</th><th class="td-num">운용금액</th><th class="td-num">수익률</th><th>만기일</th><th>D-Day</th><th class="td-num">원화환산액</th><th></th></tr></thead><tbody id="invest-tbody"></tbody></table></div></div>
+        <div class="card"><div class="card-title">운용자금 목록</div><div class="table-wrap"><table><thead><tr><th>법인</th><th>금융기관</th><th>상품</th><th>통화</th><th class="td-num">운용금액/좌수</th><th class="td-num">기준가/수익률</th><th>만기일</th><th>D-Day</th><th class="td-num">평가금액</th><th></th></tr></thead><tbody id="invest-tbody"></tbody></table></div></div>
       </div>
 
       <div class="page" id="page-loans">
@@ -1286,14 +1349,14 @@ function updateMainChart(records) {
       stack: 'main',
     });
 
-  if (selectedChartMetrics.includes('loan'))
+  // 차입금: 0이면 그래프에서 제외
+  if (selectedChartMetrics.includes('loan') && loanTotal > 0)
     datasets.push({
       label: '차입금',
-      // 차입금은 loans 테이블 현재값을 모든 날짜에 동일하게 표시
       data: agg.map(() => loanTotal),
       backgroundColor: '#f59e0b',
       borderRadius: 3,
-      stack: 'loan',  // 별도 스택 — 운전/운용과 구분
+      stack: 'loan',
     });
 
   if (selectedChartMetrics.includes('net'))
@@ -1412,25 +1475,286 @@ function saveDaily() {
   renderDailyHistory(1);
 }
 
+// ── 운용상품 구분 변경 시 폼 토글 ─────────────────────────
+function onInvestProductChange() {
+  const product = document.getElementById('v-product').value;
+  const isBond = product === '국공채';
+  document.getElementById('v-group-amount').style.display = isBond ? 'none' : '';
+  document.getElementById('v-group-bond').style.display   = isBond ? '' : 'none';
+  if (isBond) {
+    document.getElementById('v-amount').value = '';
+  } else {
+    ['v-bond-name','v-bond-ticker','v-bond-qty','v-bond-price','v-bond-value'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.value = '';
+    });
+  }
+}
+
+// ── 국공채 종목 검색 드롭다운 ──────────────────────────────
+const BOND_LIST = [
+  {name:'국고채 1년', code:'KR1030023K93', market:'KRX'},
+  {name:'국고채 2년', code:'KR1030025E80', market:'KRX'},
+  {name:'국고채 3년', code:'KR103501GCC6', market:'KRX'},
+  {name:'국고채 5년', code:'KR1030023M59', market:'KRX'},
+  {name:'국고채 10년', code:'KR1030025A70', market:'KRX'},
+  {name:'국고채 20년', code:'KR1030024F89', market:'KRX'},
+  {name:'국고채 30년', code:'KR1030024W26', market:'KRX'},
+  {name:'통안채 1년', code:'KR2040023F40', market:'KRX'},
+  {name:'통안채 2년', code:'KR2040024N78', market:'KRX'},
+  {name:'산금채 1년', code:'KR6150023F61', market:'KRX'},
+  {name:'산금채 3년', code:'KR6150023P02', market:'KRX'},
+  {name:'중금채 1년', code:'KR6160024B50', market:'KRX'},
+  {name:'중금채 2년', code:'KR6160023E32', market:'KRX'},
+];
+
+function searchBond(query) {
+  const dd = document.getElementById('v-bond-dropdown');
+  if (!query || query.length < 1) { dd.style.display='none'; return; }
+  const q = query.toLowerCase();
+  const results = BOND_LIST.filter(b => b.name.toLowerCase().includes(q) || b.code.toLowerCase().includes(q));
+  if (!results.length) {
+    dd.innerHTML = '<div style="padding:10px 14px;color:var(--text3);font-size:12px;">결과 없음 — 종목코드 직접 입력</div>';
+  } else {
+    dd.innerHTML = results.map(b => `
+      <div onclick="selectBond('${b.name}','${b.code}')"
+        style="padding:9px 14px;cursor:pointer;display:flex;justify-content:space-between;border-bottom:0.5px solid var(--border);"
+        onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background=''">
+        <span style="font-size:13px;color:var(--text);">${b.name}</span>
+        <span style="font-size:11px;color:var(--text3);">${b.code}</span>
+      </div>`).join('');
+  }
+  dd.style.display = 'block';
+}
+
+function selectBond(name, code) {
+  document.getElementById('v-bond-name').value = name;
+  document.getElementById('v-bond-ticker').value = code;
+  document.getElementById('v-bond-dropdown').style.display = 'none';
+  document.getElementById('v-bond-price-status').textContent = `${name} 선택됨 — 시세 조회 버튼을 누르세요`;
+  document.getElementById('v-bond-price-status').style.color = 'var(--accent2)';
+  fetchBondPrice();
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#v-bond-name') && !e.target.closest('#v-bond-dropdown')) {
+    const dd = document.getElementById('v-bond-dropdown');
+    if (dd) dd.style.display = 'none';
+  }
+});
+
+// ── 국공채 기준가 조회 ──────────────────────────────────────
+// 국공채는 주식과 달리 거래소에서 기준가격(종가)을 고시함
+// Yahoo Finance에서 한국 국채 ETF/채권 가격도 조회 가능
+async function fetchBondPrice() {
+  const ticker = document.getElementById('v-bond-ticker').value.trim();
+  const statusEl = document.getElementById('v-bond-price-status');
+  const btn = document.getElementById('v-bond-fetch-btn');
+  if (!ticker) { statusEl.textContent = '❌ 종목코드를 입력하세요'; statusEl.style.color='var(--red)'; return; }
+
+  btn.textContent = '조회중...'; btn.disabled = true;
+  statusEl.textContent = '기준가 조회 중...'; statusEl.style.color = 'var(--text3)';
+
+  let price = null, priceDate = null;
+
+  // 1순위: KRX 채권 기준가 (Yahoo Finance — 채권 심볼은 KR로 시작)
+  // 국내 채권은 Yahoo Finance에서 직접 지원하지 않으므로
+  // 채권 ETF 가격으로 대체 or 직접입력 안내
+  // 단기적 해결: 사용자가 직접 기준가를 입력하고 자동 평가금액 계산
+
+  // 국고채 3년물 ETF(KODEX 국채3년, 148070) 같은 관련 ETF 조회 시도
+  const etfMap = {
+    '국고채 3년': '148070.KS',   // KODEX 국채3년
+    '국고채 10년': '148830.KS',  // KODEX 장기국채
+    '국고채 30년': '304660.KS',  // KODEX 국고채30년액티브
+    '통안채 1년': '157450.KS',   // KODEX 단기채권
+  };
+  const bondName = document.getElementById('v-bond-name').value.trim();
+  const etfSymbol = etfMap[bondName];
+
+  if (etfSymbol) {
+    try {
+      const url = `https://corsproxy.io/?https://query1.finance.yahoo.com/v8/finance/chart/${etfSymbol}?interval=1d&range=5d`;
+      const resp = await fetch(url);
+      if (resp.ok) {
+        const data = await resp.json();
+        const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
+        const timestamps = data?.chart?.result?.[0]?.timestamp;
+        if (closes) {
+          for (let i = closes.length-1; i >= 0; i--) {
+            if (closes[i] > 0) {
+              price = Math.round(closes[i]);
+              const d = new Date(timestamps[i]*1000);
+              priceDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+              break;
+            }
+          }
+        }
+      }
+    } catch(e) {}
+  }
+
+  btn.textContent = '시세조회'; btn.disabled = false;
+
+  if (price) {
+    document.getElementById('v-bond-price').value = price.toLocaleString();
+    document.getElementById('v-bond-price-date').textContent = `기준가 날짜: ${priceDate} (ETF 종가 기준)`;
+    calcBondValue();
+    statusEl.textContent = `✅ ${priceDate} 기준가: ${price.toLocaleString()}원 (ETF 기준)`;
+    statusEl.style.color = 'var(--green)';
+  } else {
+    statusEl.textContent = '⚠ 자동조회 불가 — 기준가를 직접 입력하세요 (채권 기준가는 증권사 HTS/MTS에서 확인)';
+    statusEl.style.color = 'var(--amber)';
+  }
+}
+
+function calcBondValue() {
+  const qty   = parseNum(document.getElementById('v-bond-qty').value);
+  const price = parseNum(document.getElementById('v-bond-price').value);
+  const val   = qty * price;
+  document.getElementById('v-bond-value').value = val ? val.toLocaleString() : '0';
+}
+
+// ── 국공채 시세 업데이트 (목록에서) ────────────────────────
+async function refreshBondPrice(id, bondName) {
+  const inv = DB.get('investments');
+  const item = inv.find(x => String(x.id) === String(id));
+  if (!item) return;
+
+  const etfMap = {
+    '국고채 3년': '148070.KS', '국고채 10년': '148830.KS',
+    '국고채 30년': '304660.KS', '통안채 1년': '157450.KS',
+  };
+  const etfSymbol = etfMap[bondName];
+  if (!etfSymbol) {
+    showToast('자동 조회 불가 — 기준가를 수동으로 업데이트하세요', 'error');
+    return;
+  }
+
+  showToast(`${bondName} 기준가 업데이트 중...`);
+  try {
+    const url = `https://corsproxy.io/?https://query1.finance.yahoo.com/v8/finance/chart/${etfSymbol}?interval=1d&range=5d`;
+    const resp = await fetch(url);
+    if (resp.ok) {
+      const data = await resp.json();
+      const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
+      if (closes) {
+        for (let i = closes.length-1; i >= 0; i--) {
+          if (closes[i] > 0) {
+            const newPrice = Math.round(closes[i]);
+            item.bondPrice = newPrice;
+            item.amount = item.bondQty * newPrice;
+            item.priceDate = new Date().toISOString().slice(0,10);
+            DB.set('investments', inv);
+            renderInvestments();
+            renderDashboard();
+            showToast(`${bondName} 기준가 업데이트: ${newPrice.toLocaleString()}원`, 'success');
+            return;
+          }
+        }
+      }
+    }
+  } catch(e) {}
+  showToast('조회 실패 — 직접 수정하세요', 'error');
+}
+
 function saveInvestment() {
   const compEl = document.getElementById('v-company');
   const iCompany = compEl ? compEl.value : currentCompany;
   if (!iCompany) return showToast('법인을 선택해주세요.', 'error');
-  const i = { id: Date.now(), active: true, company: iCompany, bank: document.getElementById('v-bank').value, product: document.getElementById('v-product').value, currency: document.getElementById('v-currency').value, amount: parseNum(document.getElementById('v-amount').value), rate: parseNum(document.getElementById('v-rate').value), start: document.getElementById('v-start').value, maturity: document.getElementById('v-maturity').value };
-  if(!i.bank || !i.amount) return showToast('필수항목 입력', 'error');
-  DB.append('investments', i); showToast('등록 완료', 'success'); 
-  ['v-bank','v-amount','v-rate','v-start','v-maturity'].forEach(id=>document.getElementById(id).value='');
-  renderInvestments(); renderDashboard();
+
+  const product = document.getElementById('v-product').value;
+  const isBond  = product === '국공채';
+  const bank    = document.getElementById('v-bank').value;
+
+  let item = {
+    id: Date.now(), active: true,
+    company: iCompany, bank,
+    product,
+    currency: 'KRW',
+    rate: parseNum(document.getElementById('v-rate').value),
+    start: document.getElementById('v-start').value,
+    maturity: document.getElementById('v-maturity').value,
+  };
+
+  if (isBond) {
+    const qty   = parseNum(document.getElementById('v-bond-qty').value);
+    const price = parseNum(document.getElementById('v-bond-price').value);
+    if (!bank || !qty || !price) return showToast('금융기관, 좌수, 기준가를 입력하세요', 'error');
+    item.bondName   = document.getElementById('v-bond-name').value;
+    item.bondTicker = document.getElementById('v-bond-ticker').value;
+    item.bondQty    = qty;
+    item.bondPrice  = price;
+    item.amount     = qty * price;  // 평가금액 = 좌수 × 기준가
+    item.priceDate  = new Date().toISOString().slice(0,10);
+  } else {
+    const amount = parseNum(document.getElementById('v-amount').value);
+    item.currency = document.getElementById('v-currency').value;
+    if (!bank || !amount) return showToast('금융기관과 금액을 입력하세요', 'error');
+    item.amount = amount;
+  }
+
+  DB.append('investments', item);
+  showToast(`[${iCompany}] ${product} 등록 완료`, 'success');
+
+  // 폼 초기화
+  ['v-bank','v-amount','v-rate','v-start','v-maturity',
+   'v-bond-name','v-bond-ticker','v-bond-qty','v-bond-price','v-bond-value'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  onInvestProductChange();
+  renderInvestments();
+  renderDashboard();
 }
 
 function renderInvestments() {
-  const i = getFiltered('investments').filter(x=>x.active); const tbody = document.getElementById('invest-tbody');
-  if(!i.length) return tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text3);">등록된 운용자금이 없습니다</td></tr>';
+  const items = getFiltered('investments').filter(x => x.active);
+  const tbody = document.getElementById('invest-tbody');
+  if (!items.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text3);">등록된 운용자금이 없습니다</td></tr>';
+    return;
+  }
   const today = new Date();
-  tbody.innerHTML = i.map(x=>{
-    const days = x.maturity ? Math.ceil((new Date(x.maturity)-today)/86400000) : null;
-    const dday = days!==null ? (days<0 ? `<span style="color:var(--red)">만기경과</span>` : `D-${days}`) : '—';
-    return `<tr><td>${x.company}</td><td>${x.bank}</td><td>${x.product}</td><td>${x.currency}</td><td class="td-num">${x.amount.toLocaleString()}</td><td class="td-num">${x.rate}%</td><td>${x.maturity||'—'}</td><td>${dday}</td><td class="td-num" style="color:var(--green)">${fmtKRW(calcKRW(x.amount, x.currency))}</td><td><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="DB.set('investments', DB.get('investments').filter(v=>v.id!==${x.id})); renderInvestments(); renderDashboard();">해지</button></td></tr>`;
+  tbody.innerHTML = items.map(x => {
+    const isBond = x.product === '국공채';
+    const days   = x.maturity ? Math.ceil((new Date(x.maturity)-today)/86400000) : null;
+    const dday   = days !== null ? (days < 0 ? `<span style="color:var(--red)">만기경과</span>` : `D-${days}`) : '—';
+    const evalAmt = calcKRW(x.amount, x.currency);
+
+    // 운용금액/좌수 컬럼
+    const amtCell = isBond
+      ? `<span style="font-weight:600;">${(x.bondQty||0).toLocaleString()}좌</span>`
+      : `${x.amount.toLocaleString()}`;
+
+    // 기준가/수익률 컬럼
+    const rateCell = isBond
+      ? `<span style="color:var(--green);">${(x.bondPrice||0).toLocaleString()}원</span>
+         ${x.priceDate ? `<br><span style="font-size:10px;color:var(--text3);">${x.priceDate}</span>` : ''}`
+      : `${x.rate}%`;
+
+    // 시세 업데이트 버튼 (국공채만)
+    const refreshBtn = isBond
+      ? `<button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;color:var(--green);border-color:rgba(16,185,129,0.3);margin-bottom:3px;" onclick="refreshBondPrice(${x.id},'${x.bondName||''}')">시세↑</button><br>`
+      : '';
+
+    return `<tr>
+      <td style="font-size:12px;">${x.company}</td>
+      <td>${x.bank}</td>
+      <td>
+        ${isBond ? `<span style="color:var(--green);font-weight:500;">${x.product}</span><br><span style="font-size:10px;color:var(--text3);">${x.bondName||''}</span>` : x.product}
+      </td>
+      <td style="font-size:12px;">${x.currency}</td>
+      <td class="td-num">${amtCell}</td>
+      <td class="td-num">${rateCell}</td>
+      <td style="font-size:12px;">${x.maturity||'—'}</td>
+      <td>${dday}</td>
+      <td class="td-num" style="color:var(--green);font-weight:600;">${fmtKRW(evalAmt)}</td>
+      <td>
+        ${refreshBtn}
+        <button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;" onclick="deleteInvest(${x.id})">해지</button>
+      </td>
+    </tr>`;
   }).join('');
 }
 
