@@ -12,7 +12,7 @@
     --bg: #0f1117; --bg2: #161b27; --bg3: #1e2535;
     --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.14);
     --accent: #3b82f6; --accent2: #60a5fa;
-    --green: #10b981; --red: #ef4444; --amber: #f59e0b;
+    --green: #10b981; --red: #ef4444; --amber: #f59e0b; --purple: #8b5cf6;
     --text: #f1f5f9; --text2: #94a3b8; --text3: #64748b; --card: #1a2035;
   }
 
@@ -23,17 +23,13 @@
   .layout { display: flex; height: 100vh; }
   .sidebar { width: 220px; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
   .sidebar-logo { padding: 24px 20px 20px; border-bottom: 1px solid var(--border); }
-  
-  /* [요청 3 & 4] 로고 텍스트 변경 및 클릭 이벤트 디자인 */
   .sidebar-logo .co { font-size: 22px; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; transition: opacity 0.2s; }
   .sidebar-logo .co:hover { opacity: 0.8; }
   .sidebar-logo .name { font-size: 13px; color: var(--text3); margin-top: 2px; margin-bottom: 16px; letter-spacing: 0.05em; }
-  
-  /* [요청 3] 사이드바 내 CI 이미지 영역 */
   #sidebar-badge-area { background: #fff; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; justify-content: center; height: 48px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); }
   #sidebar-badge-area img { max-width: 100%; max-height: 100%; object-fit: contain; }
 
-  .nav { padding: 12px 0; flex: 1; }
+  .nav { padding: 12px 0; flex: 1; overflow-y: auto; }
   .nav-section { font-size: 10px; color: var(--text3); padding: 12px 20px 6px; text-transform: uppercase; }
   .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 20px; cursor: pointer; color: var(--text2); font-size: 13px; border-left: 2px solid transparent; transition: all .15s; }
   .nav-item:hover { background: rgba(255,255,255,.04); color: var(--text); }
@@ -46,7 +42,7 @@
 
   /* ── 메인 콘텐츠 ── */
   .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-  .topbar { height: 56px; background: var(--bg2); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 28px; }
+  .topbar { height: 56px; background: var(--bg2); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 28px; flex-shrink: 0; }
   .topbar-title { font-size: 15px; font-weight: 600; }
   .topbar-right { display: flex; align-items: center; gap: 12px; }
   .date-badge { font-size: 12px; color: var(--text2); background: var(--bg3); padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border); }
@@ -59,29 +55,31 @@
   .content { flex: 1; overflow-y: auto; padding: 24px 28px; }
   .page { display: none; } .page.active { display: block; }
 
-  /* ── [요청 2] CI 이미지 탭 UI ── */
-  .ci-tab {
-    background: #fff; border: 2px solid transparent; border-radius: 8px;
-    padding: 8px 16px; cursor: pointer; height: 46px; min-width: 120px;
-    display: flex; align-items: center; justify-content: center; transition: all .2s;
-  }
+  /* ── 탭 UI ── */
+  .ci-tab { background: #fff; border: 2px solid transparent; border-radius: 8px; padding: 8px 16px; cursor: pointer; height: 46px; min-width: 120px; display: flex; align-items: center; justify-content: center; transition: all .2s; }
   .ci-tab:hover { opacity: 0.9; }
   .ci-tab.active { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,0.3); }
   .ci-tab img { max-height: 100%; width: auto; max-width: 110px; object-fit: contain; }
 
-  /* ── 카드 & 지표 ── */
+  /* ── 대시보드 카드 (클릭 가능) ── */
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin-bottom: 16px; }
   .card-title { font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
-  .card-title span { color: var(--accent2); }
+  
   .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
-  .metric { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
-  .metric-label { font-size: 11px; color: var(--text3); margin-bottom: 8px; }
-  .metric-value { font-size: 22px; font-weight: 700; }
-  .metric-value.blue { color: var(--accent2); } .metric-value.green { color: var(--green); }
-  .metric-value.amber { color: var(--amber); } .metric-value.red { color: var(--red); }
-  .metric-sub { font-size: 11px; color: var(--text3); margin-top: 6px; }
+  .metric { background: var(--card); border: 2px solid var(--border); border-radius: 12px; padding: 18px 20px; cursor: pointer; transition: all 0.2s; position: relative; }
+  .metric:hover { border-color: var(--border2); background: var(--bg3); }
+  .metric.selected { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,0.2); background: var(--bg3); }
+  .metric-label { font-size: 12px; color: var(--text2); font-weight: 600; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .metric-total { font-size: 24px; font-weight: 700; color: var(--text); line-height: 1; margin-bottom: 14px; }
+  
+  /* 카드 내 세부 지표 (원화/외화) */
+  .metric-details { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--border); padding-top: 12px; }
+  .m-row { display: flex; justify-content: space-between; font-size: 12px; }
+  .m-row .lbl { color: var(--text3); }
+  .m-row .val { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .color-op { color: #3b82f6; } .color-inv { color: #10b981; } .color-loan { color: #f59e0b; } .color-net { color: #8b5cf6; }
 
-  /* ── 폼 ── */
+  /* ── 폼 & 테이블 ── */
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
   .form-group { display: flex; flex-direction: column; gap: 6px; }
@@ -93,30 +91,23 @@
   .input-with-unit { position: relative; }
   .input-with-unit input { padding-right: 44px; width: 100%; }
   .unit { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--text3); pointer-events: none; }
-  .section-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0 16px; color: var(--text3); font-size: 12px; }
+  .section-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0 16px; color: var(--text3); font-size: 12px; font-weight: 600; }
   .section-divider::before, .section-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
   .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
 
-  /* ── 패널 & 테이블 ── */
-  .fx-panel { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
-  .fx-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
-  .fx-currency { font-size: 11px; color: var(--text3); } .fx-rate { font-size: 20px; font-weight: 700; color: var(--accent2); margin: 4px 0; }
   .table-wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { text-align: left; padding: 10px 12px; color: var(--text3); font-size: 11px; border-bottom: 1px solid var(--border); }
+  th { text-align: left; padding: 10px 12px; color: var(--text3); font-size: 11px; border-bottom: 1px solid var(--border); white-space: nowrap; }
   td { padding: 11px 12px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(255,255,255,.02); }
   .td-num { text-align: right; font-variant-numeric: tabular-nums; }
 
-  /* ── 기타 컴포넌트 ── */
-  .policy-item { margin-bottom: 16px; }
-  .policy-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
-  .gauge-bar { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
-  .gauge-fill { height: 100%; border-radius: 3px; transition: width .4s; }
-  .gauge-fill.safe { background: var(--green); } .gauge-fill.warn { background: var(--amber); } .gauge-fill.danger { background: var(--red); }
+  /* ── 알림 및 차트 ── */
   .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; display: flex; gap: 10px; }
   .alert-warn { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.3); color: var(--amber); }
   .alert-danger { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); color: var(--red); }
-  .chart-area { background: var(--bg3); border-radius: 8px; padding: 16px; margin-top: 8px; height: 250px; position: relative; }
+  .chart-area { background: var(--bg3); border-radius: 8px; padding: 16px; margin-top: 8px; height: 280px; position: relative; }
+  
   #toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg2); border: 1px solid var(--border2); padding: 12px 20px; border-radius: 10px; opacity: 0; transition: all .3s; z-index: 999; transform: translateY(80px); }
   #toast.show { opacity: 1; transform: translateY(0); }
   #toast.success { border-color: rgba(16,185,129,.4); } #toast.error { border-color: rgba(239,68,68,.4); }
@@ -129,18 +120,20 @@
     <div class="sidebar-logo">
       <div class="co" onclick="goto('dashboard')">SELVAS</div>
       <div class="name">Treasury</div>
-      <div id="sidebar-badge-area">
-        <img src="selvasai.png" alt="Selvas AI">
-      </div>
+      <div id="sidebar-badge-area"><img src="selvasai.png" alt="Selvas AI"></div>
     </div>
 
     <nav class="nav">
-      <div class="nav-section">메인</div>
-      <div class="nav-item active" onclick="goto('dashboard')">Dashboard</div>
-      <div class="nav-item" onclick="goto('input')">자금 입력</div>
-      <div class="nav-item" onclick="goto('history')">변동 이력</div>
-      <div class="nav-section">관리</div>
-      <div class="nav-item" onclick="goto('loans')">차입금 관리</div>
+      <div class="nav-section">대시보드</div>
+      <div class="nav-item active" onclick="goto('dashboard')">통합 상황판</div>
+      
+      <div class="nav-section">자금 관리</div>
+      <div class="nav-item" onclick="goto('input')">운전자금 입력</div>
+      <div class="nav-item" onclick="goto('invest')">운용자금 (투자)</div>
+      <div class="nav-item" onclick="goto('loans')">차입금 (대출)</div>
+      
+      <div class="nav-section">분석 & 리포트</div>
+      <div class="nav-item" onclick="goto('history')">자금 변동 이력</div>
       <div class="nav-item" onclick="goto('fx')">환율 현황</div>
       <div class="nav-item" onclick="goto('policy')">자금정책</div>
       <div class="nav-item" onclick="goto('report')">자금일보 출력</div>
@@ -157,11 +150,10 @@
 
   <div class="main">
     <div class="topbar">
-      <div class="topbar-title" id="page-title">Dashboard</div>
+      <div class="topbar-title" id="page-title">통합 상황판</div>
       <div class="topbar-right">
         <div class="date-badge" id="today-badge">—</div>
         <button class="btn btn-ghost" onclick="refreshFX()">환율 새로고침</button>
-        <button class="btn btn-primary" onclick="goto('input')">+ 오늘 자금 입력</button>
       </div>
     </div>
 
@@ -170,66 +162,66 @@
       <div class="page active" id="page-dashboard">
         
         <div style="display:flex; gap:10px; margin-bottom:20px; align-items:center;" id="company-tabs">
-          <div class="ci-tab active" onclick="setCompany('셀바스에이아이', this)" title="셀바스에이아이">
-            <img src="selvasai.png" alt="셀바스에이아이">
-          </div>
-          <div class="ci-tab" onclick="setCompany('셀바스헬스케어', this)" title="셀바스헬스케어">
-            <img src="selvashealthcare.png" alt="셀바스헬스케어">
-          </div>
-          <div class="ci-tab" onclick="setCompany('메디아나', this)" title="메디아나">
-            <img src="메디아나 CI.png" alt="메디아나">
-          </div>
-          <button class="btn btn-ghost" id="tab-total" onclick="setCompany('TOTAL', this)" style="height:46px; font-size:14px; font-weight:600; border-radius:8px;">통합 현황</button>
+          <div class="ci-tab active" onclick="setCompany('셀바스에이아이', this)" title="셀바스에이아이"><img src="selvasai.png" alt="셀바스에이아이"></div>
+          <div class="ci-tab" onclick="setCompany('셀바스헬스케어', this)" title="셀바스헬스케어"><img src="selvashealthcare.png" alt="셀바스헬스케어"></div>
+          <div class="ci-tab" onclick="setCompany('메디아나', this)" title="메디아나"><img src="메디아나 CI.png" alt="메디아나"></div>
+          <button class="btn btn-ghost" id="tab-total" onclick="setCompany('TOTAL', this)" style="height:46px; font-size:14px; font-weight:600; border-radius:8px;">통합 현황 (3사)</button>
         </div>
 
         <div id="alerts-area"></div>
 
+        <div style="font-size:12px; color:var(--text3); margin-bottom:8px;">※ 카드를 클릭하면 하단 그래프에 해당 항목이 반영됩니다. (Ctrl+클릭 시 중복 선택 가능)</div>
         <div class="metrics">
-          <div class="metric"><div class="metric-label">원화 예금 합계</div><div class="metric-value blue" id="m-krw-total">—</div><div class="metric-sub">보통예금 + 국책 + MMDA</div></div>
-          <div class="metric"><div class="metric-label">외화 원화환산</div><div class="metric-value green" id="m-fx-total">—</div><div class="metric-sub">USD · EUR · JPY</div></div>
-          <div class="metric"><div class="metric-label">차입금 잔액</div><div class="metric-value amber" id="m-loan-total">—</div><div class="metric-sub" id="m-loan-sub">—</div></div>
-          <div class="metric"><div class="metric-label">순 자금 포지션</div><div class="metric-value" id="m-net">—</div><div class="metric-sub">예금 + 외화 − 차입금</div></div>
-        </div>
-
-        <div class="fx-panel" id="fx-panel">
-          <div class="fx-card"><div class="fx-currency">USD / KRW</div><div class="fx-rate" id="fx-usd">—</div><div class="fx-krw" id="fx-usd-krw">보유 USD 환산: —</div></div>
-          <div class="fx-card"><div class="fx-currency">EUR / KRW</div><div class="fx-rate" id="fx-eur">—</div><div class="fx-krw" id="fx-eur-krw">보유 EUR 환산: —</div></div>
-          <div class="fx-card"><div class="fx-currency">JPY / KRW</div><div class="fx-rate" id="fx-jpy">—</div><div class="fx-krw" id="fx-jpy-krw">보유 JPY 환산: —</div></div>
-          <div class="fx-card"><div class="fx-currency">GBP / KRW</div><div class="fx-rate" id="fx-gbp">—</div><div class="fx-krw">참고 환율</div></div>
-        </div>
-
-        <div style="display:grid;grid-template-columns:1fr 380px;gap:16px;">
-          <div class="card">
-            <div class="card-title">자금 변동 추이 <span>(최근 10일)</span></div>
-            <div class="chart-area" id="chart-area"><canvas id="mainChart"></canvas></div>
+          <div class="metric selected" data-key="op" onclick="toggleMetric('op', event)">
+            <div class="metric-label">운전자금 <span class="color-op">●</span></div>
+            <div class="metric-total" id="d-op-total">0원</div>
+            <div class="metric-details">
+              <div class="m-row"><span class="lbl">원화 (보통/국책 등)</span><span class="val" id="d-op-krw">0</span></div>
+              <div class="m-row"><span class="lbl">외화환산액</span><span class="val" id="d-op-fx">0</span></div>
+            </div>
           </div>
-          <div class="card">
-            <div class="card-title">자금정책 모니터링</div>
-            <div id="policy-monitor"><div style="color:var(--text3);font-size:13px;">정책 설정 후 표시됩니다</div></div>
+          <div class="metric" data-key="inv" onclick="toggleMetric('inv', event)">
+            <div class="metric-label">운용자금 (투자) <span class="color-inv">●</span></div>
+            <div class="metric-total" id="d-inv-total">0원</div>
+            <div class="metric-details">
+              <div class="m-row"><span class="lbl">원화 자금</span><span class="val" id="d-inv-krw">0</span></div>
+              <div class="m-row"><span class="lbl">외화환산액</span><span class="val" id="d-inv-fx">0</span></div>
+            </div>
+          </div>
+          <div class="metric" data-key="loan" onclick="toggleMetric('loan', event)">
+            <div class="metric-label">차입금 (대출) <span class="color-loan">●</span></div>
+            <div class="metric-total" id="d-loan-total">0원</div>
+            <div class="metric-details">
+              <div class="m-row"><span class="lbl">원화 차입금</span><span class="val" id="d-loan-krw">0</span></div>
+              <div class="m-row"><span class="lbl">외화환산액</span><span class="val" id="d-loan-fx">0</span></div>
+            </div>
+          </div>
+          <div class="metric" data-key="net" onclick="toggleMetric('net', event)">
+            <div class="metric-label">순현금 (Net Cash) <span class="color-net">●</span></div>
+            <div class="metric-total" id="d-net-total">0원</div>
+            <div class="metric-details">
+              <div class="m-row"><span class="lbl" style="color:var(--text3);">운전자금 + 운용자금 - 차입금</span></div>
+              <div class="m-row"><span class="lbl">전일대비 변동</span><span class="val" id="d-net-diff">-</span></div>
+            </div>
           </div>
         </div>
 
         <div class="card">
-          <div class="card-title">최근 자금 현황</div>
-          <div class="table-wrap">
-            <table id="recent-table">
-              <thead><tr><th>기준일</th><th class="td-num">보통예금</th><th class="td-num">국책자금</th><th class="td-num">MMDA</th><th class="td-num">USD</th><th class="td-num">EUR</th><th class="td-num">JPY</th><th class="td-num">원화환산합계</th></tr></thead>
-              <tbody id="recent-tbody"><tr><td colspan="8" style="text-align:center;padding:24px;">입력된 데이터가 없습니다</td></tr></tbody>
-            </table>
-          </div>
+          <div class="card-title">일자별 자금 추이 <span>(선택된 카드 데이터 반영)</span></div>
+          <div class="chart-area" id="chart-area"><canvas id="mainChart"></canvas></div>
         </div>
       </div>
 
       <div class="page" id="page-input">
         <div class="card">
-          <div class="card-title">오늘 자금현황 입력 <span>— <span id="input-company-badge">셀바스에이아이</span></span></div>
+          <div class="card-title">일일 운전자금 현황 입력 <span>— <span class="input-company-badge">셀바스에이아이</span></span></div>
           <div class="form-grid">
             <div class="form-group"><label>기준일자 *</label><input type="date" id="i-date"></div>
             <div class="form-group">
               <label>작성자 / 법인</label>
               <div style="display:flex; gap:10px;">
                 <input type="text" id="i-writer" placeholder="홍길동" style="flex:1;">
-                <select id="i-company" style="width:140px;">
+                <select id="i-company" style="width:140px;" disabled>
                   <option value="셀바스에이아이">셀바스에이아이</option>
                   <option value="셀바스헬스케어">셀바스헬스케어</option>
                   <option value="메디아나">메디아나</option>
@@ -237,38 +229,60 @@
               </div>
             </div>
           </div>
-
-          <div class="section-divider">원화 예금</div>
+          <div class="section-divider">원화 운전자금</div>
           <div class="form-grid-3">
             <div class="form-group"><label>보통예금 잔액</label><div class="input-with-unit"><input type="text" id="i-krw-demand" placeholder="0" oninput="formatNumericInput(this)"><span class="unit">원</span></div></div>
             <div class="form-group"><label>국책자금 잔액</label><div class="input-with-unit"><input type="text" id="i-krw-govt" placeholder="0" oninput="formatNumericInput(this)"><span class="unit">원</span></div></div>
-            <div class="form-group"><label>MMDA / 정기예금</label><div class="input-with-unit"><input type="text" id="i-krw-mmda" placeholder="0" oninput="formatNumericInput(this)"><span class="unit">원</span></div></div>
+            <div class="form-group"><label>MMDA 등 수시입출식</label><div class="input-with-unit"><input type="text" id="i-krw-mmda" placeholder="0" oninput="formatNumericInput(this)"><span class="unit">원</span></div></div>
           </div>
-
-          <div class="section-divider">외화 예금</div>
+          <div class="section-divider">외화 운전자금 (현찰 및 수시입출)</div>
           <div class="form-grid-3">
-            <div class="form-group"><label>USD 잔액</label><div class="input-with-unit"><input type="text" id="i-fx-usd" placeholder="0" oninput="formatNumericInput(this, true); calcFX();"><span class="unit">$</span></div><div style="font-size:11px;color:var(--accent2);margin-top:4px;" id="usd-krw-preview">환율 로드 중...</div></div>
-            <div class="form-group"><label>EUR 잔액</label><div class="input-with-unit"><input type="text" id="i-fx-eur" placeholder="0" oninput="formatNumericInput(this, true); calcFX();"><span class="unit">€</span></div><div style="font-size:11px;color:var(--accent2);margin-top:4px;" id="eur-krw-preview">—</div></div>
-            <div class="form-group"><label>JPY 잔액</label><div class="input-with-unit"><input type="text" id="i-fx-jpy" placeholder="0" oninput="formatNumericInput(this, true); calcFX();"><span class="unit">¥</span></div><div style="font-size:11px;color:var(--accent2);margin-top:4px;" id="jpy-krw-preview">—</div></div>
+            <div class="form-group"><label>USD 잔액</label><div class="input-with-unit"><input type="text" id="i-fx-usd" placeholder="0" oninput="formatNumericInput(this, true);"><span class="unit">$</span></div></div>
+            <div class="form-group"><label>EUR 잔액</label><div class="input-with-unit"><input type="text" id="i-fx-eur" placeholder="0" oninput="formatNumericInput(this, true);"><span class="unit">€</span></div></div>
+            <div class="form-group"><label>JPY 잔액</label><div class="input-with-unit"><input type="text" id="i-fx-jpy" placeholder="0" oninput="formatNumericInput(this, true);"><span class="unit">¥</span></div></div>
           </div>
-          
-          <div style="background:var(--bg3);border-radius:8px;padding:12px 16px;margin-top:8px;display:flex;gap:24px;">
-            <div><div style="font-size:11px;color:var(--text3);">외화 원화환산 합계</div><div style="font-size:18px;font-weight:700;color:var(--green);" id="fx-total-preview">—</div></div>
-          </div>
-          
-          <div class="form-group" style="margin-top:16px;"><label>비고</label><textarea id="i-memo" placeholder="예) 급여 지급 완료"></textarea></div>
-          <div class="form-actions"><button class="btn btn-ghost" onclick="clearForm()">초기화</button><button class="btn btn-success" onclick="saveDaily()">저장</button></div>
+          <div class="form-group" style="margin-top:16px;"><label>비고</label><textarea id="i-memo" placeholder="특이사항 입력"></textarea></div>
+          <div class="form-actions"><button class="btn btn-ghost" onclick="clearDailyForm()">초기화</button><button class="btn btn-success" onclick="saveDaily()">저장</button></div>
         </div>
       </div>
 
-      <div class="page" id="page-history">
+      <div class="page" id="page-invest">
         <div class="card">
-          <div class="card-title">자금 변동 이력</div>
-          <div style="display:flex;gap:10px;margin-bottom:16px;"><input type="date" id="h-from" style="width:140px;"><span style="color:var(--text3);line-height:36px;">~</span><input type="date" id="h-to" style="width:140px;"><button class="btn btn-ghost" onclick="filterHistory()">조회</button></div>
+          <div class="card-title">운용상품(투자) 등록 <span>— <span class="input-company-badge">셀바스에이아이</span></span></div>
+          <div class="form-grid">
+            <div class="form-group"><label>금융기관</label><input type="text" id="v-bank" placeholder="예: 산업은행"></div>
+            <div class="form-group">
+              <label>운용상품</label>
+              <select id="v-product">
+                <option value="정기예금">정기예금</option>
+                <option value="중금채">중금채</option>
+                <option value="국공채">국공채</option>
+                <option value="전단채">전단채</option>
+                <option value="기타(전환사채 등)">기타(전환사채 등)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>통화 및 가입금액</label>
+              <div style="display:flex; gap:10px;">
+                <select id="v-currency" style="width:80px;"><option value="KRW">KRW</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="JPY">JPY</option></select>
+                <input type="text" id="v-amount" style="flex:1;" placeholder="금액 입력" oninput="formatNumericInput(this, true)">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>수익률/이자율 (%)</label>
+              <div class="input-with-unit"><input type="text" id="v-rate" placeholder="3.5" oninput="formatNumericInput(this, true)"><span class="unit">%</span></div>
+            </div>
+            <div class="form-group"><label>가입일</label><input type="date" id="v-start"></div>
+            <div class="form-group"><label>만기일</label><input type="date" id="v-maturity"></div>
+          </div>
+          <div class="form-actions"><button class="btn btn-primary" onclick="saveInvestment()">추가 등록</button></div>
+        </div>
+        <div class="card">
+          <div class="card-title">진행중인 운용자금 목록</div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>기준일</th><th>법인</th><th class="td-num">보통예금</th><th class="td-num">국책</th><th class="td-num">MMDA</th><th class="td-num">USD</th><th class="td-num">EUR</th><th class="td-num">JPY</th><th class="td-num">외화환산합계</th><th>비고</th></tr></thead>
-              <tbody id="history-tbody"><tr><td colspan="10" style="text-align:center;padding:24px;">데이터를 조회하세요</td></tr></tbody>
+              <thead><tr><th>법인</th><th>금융기관</th><th>상품</th><th>통화</th><th class="td-num">운용금액</th><th class="td-num">수익률</th><th>만기일</th><th>D-Day</th><th class="td-num">원화환산액</th><th></th></tr></thead>
+              <tbody id="invest-tbody"><tr><td colspan="10" style="text-align:center;padding:24px;">등록된 운용자금이 없습니다</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -276,61 +290,38 @@
 
       <div class="page" id="page-loans">
         <div class="card">
-          <div class="card-title">차입금 등록</div>
+          <div class="card-title">차입금(대출) 등록 <span>— <span class="input-company-badge">셀바스에이아이</span></span></div>
           <div class="form-grid">
-            <div class="form-group"><label>차입처</label><input type="text" id="l-lender" placeholder="하나은행 반포남"></div>
-            <div class="form-group"><label>법인 및 구분</label><div style="display:flex; gap:10px;"><select id="l-company" style="width:140px;"><option value="셀바스에이아이">셀바스에이아이</option><option value="셀바스헬스케어">셀바스헬스케어</option><option value="메디아나">메디아나</option></select><select id="l-type" style="flex:1;"><option value="담보대출">담보대출</option><option value="신용대출">신용대출</option><option value="외화대출">외화대출</option></select></div></div>
-            <div class="form-group"><label>차입금액</label><div class="input-with-unit"><input type="text" id="l-amount" placeholder="0" oninput="formatNumericInput(this)"><span class="unit">원</span></div></div>
-            <div class="form-group"><label>이자율 (%)</label><div class="input-with-unit"><input type="text" id="l-rate" placeholder="3.31" oninput="formatNumericInput(this, true)"><span class="unit">%</span></div></div>
+            <div class="form-group"><label>차입처</label><input type="text" id="l-lender" placeholder="예: 하나은행 반포남"></div>
+            <div class="form-group"><label>구분</label><select id="l-type"><option value="담보대출">담보대출</option><option value="신용대출">신용대출</option><option value="외화대출">외화대출</option><option value="정책자금">정책자금</option></select></div>
+            <div class="form-group">
+              <label>통화 및 차입금액</label>
+              <div style="display:flex; gap:10px;">
+                <select id="l-currency" style="width:80px;"><option value="KRW">KRW</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="JPY">JPY</option></select>
+                <input type="text" id="l-amount" style="flex:1;" placeholder="금액 입력" oninput="formatNumericInput(this, true)">
+              </div>
+            </div>
+            <div class="form-group"><label>이자율 (%)</label><div class="input-with-unit"><input type="text" id="l-rate" placeholder="4.2" oninput="formatNumericInput(this, true)"><span class="unit">%</span></div></div>
+            <div class="form-group"><label>실행일</label><input type="date" id="l-start"></div>
             <div class="form-group"><label>만기일</label><input type="date" id="l-maturity"></div>
-            <div class="form-group"><label>비고</label><input type="text" id="l-note" placeholder="CD + 0.760%"></div>
           </div>
-          <div class="form-actions"><button class="btn btn-primary" onclick="saveLoan()">등록</button></div>
+          <div class="form-actions"><button class="btn btn-primary" onclick="saveLoan()">추가 등록</button></div>
         </div>
         <div class="card">
-          <div class="card-title">차입금 현황</div>
+          <div class="card-title">진행중인 차입금 현황</div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>법인</th><th>차입처</th><th>구분</th><th class="td-num">금액</th><th class="td-num">이자율</th><th>만기일</th><th>D-Day</th><th>비고</th><th></th></tr></thead>
-              <tbody id="loans-tbody"><tr><td colspan="9" style="text-align:center;padding:24px;">등록된 차입금이 없습니다</td></tr></tbody>
+              <thead><tr><th>법인</th><th>차입처</th><th>구분</th><th>통화</th><th class="td-num">차입금액</th><th class="td-num">이자율</th><th>만기일</th><th>D-Day</th><th class="td-num">원화환산액</th><th></th></tr></thead>
+              <tbody id="loans-tbody"><tr><td colspan="10" style="text-align:center;padding:24px;">등록된 차입금이 없습니다</td></tr></tbody>
             </table>
           </div>
-          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;"><div style="font-size:13px;color:var(--text2);">차입금 합계</div><div style="font-size:16px;font-weight:700;color:var(--amber);" id="loan-sum">0 원</div></div>
         </div>
       </div>
 
-      <div class="page" id="page-policy">
-        <div class="card">
-          <div class="card-title">자금정책 등록 <span>— Admin</span></div>
-          <div class="form-grid">
-            <div class="form-group"><label>정책명</label><input type="text" id="p-name" placeholder="차입한도"></div>
-            <div class="form-group"><label>적용 법인 및 유형</label><div style="display:flex; gap:10px;"><select id="p-company" style="width:140px;"><option value="셀바스에이아이">셀바스에이아이</option><option value="셀바스헬스케어">셀바스헬스케어</option><option value="메디아나">메디아나</option><option value="TOTAL">통합(전체)</option></select><select id="p-type" style="flex:1;"><option value="차입한도">차입한도</option><option value="최소유동성">최소유동성</option><option value="외화보유한도">외화보유한도</option></select></div></div>
-            <div class="form-group"><label>한도 금액 / 비율</label><input type="text" id="p-limit" placeholder="20,000,000,000" oninput="formatNumericInput(this)"></div>
-            <div class="form-group"><label>경고 임계값 (한도의 80% 등)</label><input type="text" id="p-warn" placeholder="16,000,000,000" oninput="formatNumericInput(this)"></div>
-          </div>
-          <div class="form-actions"><button class="btn btn-primary" onclick="savePolicy()">등록</button></div>
-        </div>
-        <div class="card">
-          <div class="card-title">정책 준수 모니터링</div>
-          <div id="policy-list"><div style="color:var(--text3);font-size:13px;">등록된 정책이 없습니다</div></div>
-        </div>
-      </div>
-
-      <div class="page" id="page-fx">
-        <div class="card"><div class="card-title">실시간 환율</div><div class="fx-panel" style="margin-bottom:0;"><div class="fx-card"><div class="fx-currency">USD / KRW</div><div class="fx-rate" id="p-fx-usd">—</div></div><div class="fx-card"><div class="fx-currency">EUR / KRW</div><div class="fx-rate" id="p-fx-eur">—</div></div><div class="fx-card"><div class="fx-currency">JPY / KRW</div><div class="fx-rate" id="p-fx-jpy">—</div></div></div></div>
-      </div>
-      
-      <div class="page" id="page-report">
-        <div class="card">
-          <div class="card-title">자금일보 출력</div>
-          <div class="form-grid">
-            <div class="form-group"><label>출력 기준일</label><input type="date" id="r-date"></div>
-            <div class="form-group"><label>출력 양식</label><select id="r-format"><option value="셀바스에이아이">셀바스에이아이 자금일보</option><option value="셀바스헬스케어">셀바스헬스케어 자금일보</option><option value="메디아나">메디아나 자금일보</option><option value="TOTAL">통합 자금일보 (3사 합산)</option></select></div>
-          </div>
-          <div class="form-actions" style="margin-top:16px;"><button class="btn btn-ghost" onclick="previewReport()">미리보기</button><button class="btn btn-primary" onclick="printReport()">인쇄 / PDF 저장</button></div>
-        </div>
-        <div class="card" id="report-preview" style="display:none;"><div id="report-content" style="color:var(--text);"></div></div>
-      </div>
+      <div class="page" id="page-history"><div class="card"><div class="card-title">운전자금 변동 이력</div><div style="display:flex;gap:10px;margin-bottom:16px;"><input type="date" id="h-from" style="width:140px;"><span style="line-height:36px;">~</span><input type="date" id="h-to" style="width:140px;"><button class="btn btn-ghost" onclick="filterHistory()">조회</button></div><div class="table-wrap"><table><thead><tr><th>일자</th><th>법인</th><th class="td-num">원화운전</th><th class="td-num">USD</th><th class="td-num">EUR</th><th class="td-num">JPY</th><th class="td-num">외화환산</th><th>비고</th></tr></thead><tbody id="history-tbody"></tbody></table></div></div></div>
+      <div class="page" id="page-fx"><div class="card"><div class="card-title">실시간 환율</div><div class="fx-panel"><div class="fx-card"><div class="fx-currency">USD / KRW</div><div class="fx-rate" id="p-fx-usd">—</div></div><div class="fx-card"><div class="fx-currency">EUR / KRW</div><div class="fx-rate" id="p-fx-eur">—</div></div><div class="fx-card"><div class="fx-currency">JPY / KRW</div><div class="fx-rate" id="p-fx-jpy">—</div></div></div></div></div>
+      <div class="page" id="page-policy"><div class="card"><div class="card-title">자금정책</div><div style="color:var(--text3);">운영 정책이 적용되는 공간입니다.</div></div></div>
+      <div class="page" id="page-report"><div class="card"><div class="card-title">자금일보 (통합)</div><div style="color:var(--text3);">리포트 출력 모듈입니다.</div></div></div>
 
     </div>
   </div>
@@ -340,46 +331,42 @@
 
 <script>
 // ══════════════════════════════════════════════════════
-// [기능 통합 1] 숫자 콤마 & 파서
+// 공통 포맷터 및 DB 유틸
 // ══════════════════════════════════════════════════════
 function formatNumericInput(el, allowDecimal = false) {
-  let value = el.value || '';
-  value = value.toString().replace(/,/g, '').replace(/[^\d.]/g, '');
+  let value = el.value || ''; value = value.toString().replace(/,/g, '').replace(/[^\d.]/g, '');
   if (!allowDecimal) value = value.replace(/\./g, '');
-  const parts = value.split('.');
-  const intPart = parts[0] || (parts[1] ? '0' : '');
-  const fracPart = parts[1];
+  const parts = value.split('.'); const intPart = parts[0] || (parts[1] ? '0' : ''); const fracPart = parts[1];
   const formattedInt = intPart ? intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
   el.value = fracPart !== undefined ? `${formattedInt}.${fracPart}` : formattedInt;
 }
-
 function parseNum(val) { return parseFloat((val || '').toString().replace(/,/g, '')) || 0; }
+function fmtKRW(n) { if(!n&&n!==0) return '0'; const a=Math.abs(n); if(a>=1e12) return (n/1e12).toFixed(1)+'조원'; if(a>=1e8) return (n/1e8).toFixed(1)+'억원'; if(a>=1e4) return (n/1e4).toFixed(0)+'만원'; return n.toLocaleString()+'원'; }
+function showToast(msg, type='') { const t = document.getElementById('toast'); t.textContent = msg; t.className = 'show '+type; setTimeout(()=>t.className='',3000); }
 
-// ══════════════════════════════════════════════════════
-// DB & 초기화 로직
-// ══════════════════════════════════════════════════════
 const DB = {
   get: (k) => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch { return []; } },
   set: (k, v) => localStorage.setItem(k, JSON.stringify(v)),
   append: (k, item) => { const arr = DB.get(k); arr.push(item); DB.set(k, arr); },
 };
 
-let FX = { USD: null, EUR: null, JPY: null, GBP: null, date: null };
-let currentCompany = '셀바스에이아이'; // 기본 선택 회사
+let FX = { KRW: 1, USD: 1380, EUR: 1500, JPY: 9.2, GBP: 1750 }; // Default Fallback
+let currentCompany = '셀바스에이아이';
 let mainChartObj = null;
+let selectedChartMetrics = ['op', 'inv', 'loan']; // Default Chart View
 
-// 구버전(A, B, C) 데이터를 새 이름으로 자동 변환해주는 마이그레이션 함수
+// ══════════════════════════════════════════════════════
+// 초기화 및 마이그레이션
+// ══════════════════════════════════════════════════════
 function migrateOldData() {
-  ['daily', 'loans', 'policies'].forEach(table => {
-    let data = DB.get(table);
-    let changed = false;
+  ['daily', 'loans', 'investments'].forEach(table => {
+    let data = DB.get(table); let changed = false;
     data = data.map(row => {
-      if (row.company === 'A' || row.company === 'B' || row.company === 'C') {
-        if(row.company === 'A') row.company = '셀바스에이아이';
-        if(row.company === 'B') row.company = '셀바스헬스케어';
-        if(row.company === 'C') row.company = '메디아나';
-        changed = true;
-      }
+      if (row.company === 'A') { row.company = '셀바스에이아이'; changed=true; }
+      if (row.company === 'B') { row.company = '셀바스헬스케어'; changed=true; }
+      if (row.company === 'C') { row.company = '메디아나'; changed=true; }
+      // 기존 차입금에 통화 정보 없을 시 KRW 추가
+      if (table === 'loans' && !row.currency) { row.currency = 'KRW'; changed=true; }
       return row;
     });
     if(changed) DB.set(table, data);
@@ -387,279 +374,309 @@ function migrateOldData() {
 }
 
 window.onload = () => {
-  migrateOldData(); // 실행 시 기존 데이터 이름 일괄 업데이트
-  
+  migrateOldData();
   const today = new Date().toISOString().slice(0, 10);
   document.getElementById('today-badge').textContent = today.replace(/-/g, '.');
   document.getElementById('i-date').value = today;
-  document.getElementById('r-date').value = today;
-  
-  const from = new Date(); from.setDate(from.getDate() - 30);
-  document.getElementById('h-from').value = from.toISOString().slice(0, 10);
-  document.getElementById('h-to').value = today;
-
   refreshFX();
-  setCompany('셀바스에이아이', document.querySelector('.ci-tab')); // 초기 렌더링
+  setCompany('셀바스에이아이', document.querySelector('.ci-tab')); 
 };
 
 // ══════════════════════════════════════════════════════
-// [기능 통합 2] 회사(탭) 전환 및 CI 변경 로직
+// 회사(탭) 전환 로직
 // ══════════════════════════════════════════════════════
 function setCompany(comp, btnEl) {
   currentCompany = comp;
-  
-  // 탭 스타일 초기화
   document.querySelectorAll('.ci-tab').forEach(el => el.classList.remove('active'));
   const btnTotal = document.getElementById('tab-total');
   if (btnTotal) { btnTotal.classList.remove('btn-primary'); btnTotal.classList.add('btn-ghost'); }
-
   const badgeArea = document.getElementById('sidebar-badge-area');
 
   if(comp === 'TOTAL') {
     if(btnEl) { btnEl.classList.remove('btn-ghost'); btnEl.classList.add('btn-primary'); }
     badgeArea.innerHTML = '<span style="color:#1e2535; font-weight:700; font-size:13px;">통합 현황 (3사)</span>';
-    document.getElementById('input-company-badge').textContent = '통합';
+    document.querySelectorAll('.input-company-badge').forEach(el => el.textContent = '통합(선택불가)');
   } else {
     if(btnEl) btnEl.classList.add('active');
-    
-    // [요청 2 & 3] 선택된 회사에 맞춰 사이드바 이미지 교체
-    let imgSrc = '';
-    if(comp === '셀바스에이아이') imgSrc = 'selvasai.png';
-    if(comp === '셀바스헬스케어') imgSrc = 'selvashealthcare.png';
-    if(comp === '메디아나') imgSrc = '메디아나 CI.png';
-    
-    badgeArea.innerHTML = `<img src="${imgSrc}" style="max-width:100%; max-height:100%; object-fit:contain;" alt="${comp}">`;
-    document.getElementById('input-company-badge').textContent = comp;
+    let imgSrc = comp==='셀바스에이아이'?'selvasai.png':comp==='셀바스헬스케어'?'selvashealthcare.png':'메디아나 CI.png';
+    badgeArea.innerHTML = `<img src="${imgSrc}" alt="${comp}">`;
+    document.querySelectorAll('.input-company-badge').forEach(el => el.textContent = comp);
+    const ic = document.getElementById('i-company'); if(ic) ic.value = comp;
   }
-
-  // 자금 입력 등 다른 폼의 Select 박스도 동기화
-  if(comp !== 'TOTAL') {
-    const ic = document.getElementById('i-company');
-    if(ic) ic.value = comp;
-  }
-
-  renderDashboard();
-  renderHistory();
-  renderLoans();
+  renderDashboard(); renderInvestments(); renderLoans();
 }
 
-function getFilteredRecords(tableName) {
-  const all = DB.get(tableName);
-  if (currentCompany === 'TOTAL') return all;
-  return all.filter(r => (r.company || '셀바스에이아이') === currentCompany);
+function getFiltered(table) {
+  const all = DB.get(table);
+  return currentCompany === 'TOTAL' ? all : all.filter(r => r.company === currentCompany);
 }
 
 // ══════════════════════════════════════════════════════
-// 환율 & 입력 폼
+// 메뉴 네비게이션 & 환율 API
 // ══════════════════════════════════════════════════════
-const PAGE_TITLES = { dashboard:'Dashboard', input:'자금 입력', history:'변동 이력', loans:'차입금 관리', fx:'환율 현황', policy:'자금정책', report:'자금일보 출력' };
 function goto(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
-  document.getElementById('page-title').textContent = PAGE_TITLES[page];
-  if(event && event.currentTarget.classList.contains('nav-item')) event.currentTarget.classList.add('active');
-  
+  document.getElementById('page-title').textContent = event.currentTarget.textContent.trim();
+  event.currentTarget.classList.add('active');
   if(page === 'dashboard') renderDashboard();
-  if(page === 'history') renderHistory();
+  if(page === 'invest') renderInvestments();
   if(page === 'loans') renderLoans();
+  if(page === 'history') filterHistory();
 }
 
 async function refreshFX() {
   try {
-    const resp = await fetch('https://open.er-api.com/v6/latest/USD');
-    const data = await resp.json();
+    const resp = await fetch('https://open.er-api.com/v6/latest/USD'); const data = await resp.json();
     if (data.result === 'success') {
       const k = data.rates.KRW;
-      FX = { USD: k, EUR: k/data.rates.EUR, JPY: k/data.rates.JPY, GBP: k/data.rates.GBP, date: data.time_last_update_utc.slice(0,16) };
+      FX = { KRW: 1, USD: k, EUR: k/data.rates.EUR, JPY: k/data.rates.JPY, GBP: k/data.rates.GBP };
       updateFXDisplay();
     }
-  } catch (e) { FX = { USD: 1378.5, EUR: 1492.3, JPY: 9.21, GBP: 1748.2, date: '샘플' }; updateFXDisplay(); }
+  } catch (e) { updateFXDisplay(); } // fallback
 }
 
 function updateFXDisplay() {
   const fmt = v => v ? v.toFixed(2)+'원' : '—';
   ['usd','eur','jpy'].forEach(c => { const el = document.getElementById('sf-'+c); if(el) el.textContent = fmt(FX[c.toUpperCase()]); });
-  ['usd','eur','jpy','gbp'].forEach(c => { const el = document.getElementById('fx-'+c); if(el) el.textContent = fmt(FX[c.toUpperCase()]); });
-  calcFX();
 }
+function calcKRW(amount, currency) { return amount * (FX[currency] || 1); }
 
-function calcFX() {
-  const usd = parseNum(document.getElementById('i-fx-usd').value), eur = parseNum(document.getElementById('i-fx-eur').value), jpy = parseNum(document.getElementById('i-fx-jpy').value);
-  const total = (usd*(FX.USD||0)) + (eur*(FX.EUR||0)) + (jpy*(FX.JPY||0));
-  document.getElementById('usd-krw-preview').textContent = usd>0 ? '≈ '+fmtKRW(usd*FX.USD) : '—';
-  document.getElementById('eur-krw-preview').textContent = eur>0 ? '≈ '+fmtKRW(eur*FX.EUR) : '—';
-  document.getElementById('jpy-krw-preview').textContent = jpy>0 ? '≈ '+fmtKRW(jpy*FX.JPY) : '—';
-  document.getElementById('fx-total-preview').textContent = fmtKRW(total);
-}
-
+// ══════════════════════════════════════════════════════
+// [기능 1] 운전자금 저장 (스냅샷 포함)
+// ══════════════════════════════════════════════════════
 function saveDaily() {
   const date = document.getElementById('i-date').value;
   if (!date) return showToast('일자를 입력하세요', 'error');
+  if (currentCompany === 'TOTAL') return showToast('법인을 선택해주세요.', 'error');
   
-  const comp = document.getElementById('i-company').value || '셀바스에이아이';
   const usd = parseNum(document.getElementById('i-fx-usd').value), eur = parseNum(document.getElementById('i-fx-eur').value), jpy = parseNum(document.getElementById('i-fx-jpy').value);
+  
+  // 현재 시점의 차입금/운용자금 총액 스냅샷 (히스토리 차트용)
+  const loans = DB.get('loans').filter(l => l.active && l.company === currentCompany);
+  const invs = DB.get('investments').filter(i => i.active && i.company === currentCompany);
+  const loanKrw = loans.filter(l=>l.currency==='KRW').reduce((s,l)=>s+l.amount,0);
+  const loanFx = loans.filter(l=>l.currency!=='KRW').reduce((s,l)=>s+calcKRW(l.amount, l.currency),0);
+  const invKrw = invs.filter(i=>i.currency==='KRW').reduce((s,i)=>s+i.amount,0);
+  const invFx = invs.filter(i=>i.currency!=='KRW').reduce((s,i)=>s+calcKRW(i.amount, i.currency),0);
+
   const record = {
-    id: Date.now(), date, company: comp,
+    date, company: currentCompany,
     krw_demand: parseNum(document.getElementById('i-krw-demand').value),
     krw_govt: parseNum(document.getElementById('i-krw-govt').value),
     krw_mmda: parseNum(document.getElementById('i-krw-mmda').value),
     fx_usd: usd, fx_eur: eur, fx_jpy: jpy,
-    fx_rate_usd: FX.USD, fx_rate_eur: FX.EUR, fx_rate_jpy: FX.JPY,
-    fx_krw: (usd*(FX.USD||0)) + (eur*(FX.EUR||0)) + (jpy*(FX.JPY||0)),
-    memo: document.getElementById('i-memo').value,
-    writer: document.getElementById('i-writer').value
+    fx_krw: (usd*FX.USD) + (eur*FX.EUR) + (jpy*FX.JPY),
+    loan_krw: loanKrw, loan_fx: loanFx, inv_krw: invKrw, inv_fx: invFx // Snapshot
   };
 
-  const records = DB.get('daily');
-  const existingIdx = records.findIndex(r => r.date === date && r.company === comp);
-  if (existingIdx >= 0) {
-    if (!confirm(`${comp}의 ${date} 데이터가 있습니다. 덮어쓰시겠습니까?`)) return;
-    records[existingIdx] = record; DB.set('daily', records);
-  } else DB.append('daily', record);
+  let records = DB.get('daily');
+  const idx = records.findIndex(r => r.date === date && r.company === currentCompany);
+  if (idx >= 0) { if (!confirm(`덮어쓰시겠습니까?`)) return; records[idx] = record; DB.set('daily', records); } 
+  else DB.append('daily', record);
 
-  showToast('저장 완료', 'success');
-  clearForm(); renderDashboard();
+  showToast('운전자금 저장 완료', 'success');
+  clearDailyForm(); renderDashboard();
+}
+function clearDailyForm() { ['i-krw-demand','i-krw-govt','i-krw-mmda','i-fx-usd','i-fx-eur','i-fx-jpy','i-memo'].forEach(id => document.getElementById(id).value = ''); }
+
+// ══════════════════════════════════════════════════════
+// [기능 2] 운용자금(투자) 저장 및 목록
+// ══════════════════════════════════════════════════════
+function saveInvestment() {
+  if(currentCompany === 'TOTAL') return showToast('법인을 선택한 후 등록하세요', 'error');
+  const inv = {
+    id: Date.now(), active: true, company: currentCompany,
+    bank: document.getElementById('v-bank').value,
+    product: document.getElementById('v-product').value,
+    currency: document.getElementById('v-currency').value,
+    amount: parseNum(document.getElementById('v-amount').value),
+    rate: parseNum(document.getElementById('v-rate').value),
+    start: document.getElementById('v-start').value,
+    maturity: document.getElementById('v-maturity').value
+  };
+  if(!inv.bank || !inv.amount) return showToast('금융기관과 금액을 입력하세요', 'error');
+  DB.append('investments', inv); showToast('등록 완료', 'success');
+  ['v-bank','v-amount','v-rate','v-start','v-maturity'].forEach(id=>document.getElementById(id).value='');
+  renderInvestments(); renderDashboard();
 }
 
-function clearForm() { ['i-krw-demand','i-krw-govt','i-krw-mmda','i-fx-usd','i-fx-eur','i-fx-jpy','i-memo'].forEach(id => document.getElementById(id).value = ''); calcFX(); }
+function deleteInv(id) { if(!confirm('삭제하시겠습니까?')) return; DB.set('investments', DB.get('investments').filter(i=>i.id!==id)); renderInvestments(); renderDashboard(); }
+
+function renderInvestments() {
+  const invs = getFiltered('investments').filter(i=>i.active);
+  const tbody = document.getElementById('invest-tbody');
+  if(!invs.length) return tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text3);">등록된 운용자금이 없습니다</td></tr>';
+  
+  const today = new Date();
+  tbody.innerHTML = invs.map(i => {
+    const krwVal = calcKRW(i.amount, i.currency);
+    const days = i.maturity ? Math.ceil((new Date(i.maturity)-today)/86400000) : null;
+    const dday = days!==null ? (days<0 ? `<span style="color:var(--red)">만기경과</span>` : days<=30 ? `<span style="color:var(--amber);font-weight:700;">D-${days}</span>` : `D-${days}`) : '—';
+    return `<tr><td>${i.company}</td><td>${i.bank}</td><td>${i.product}</td><td>${i.currency}</td><td class="td-num">${i.amount.toLocaleString()}</td><td class="td-num">${i.rate}%</td><td>${i.maturity||'—'}</td><td>${dday}</td><td class="td-num" style="color:var(--green)">${fmtKRW(krwVal)}</td><td><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="deleteInv(${i.id})">해지</button></td></tr>`;
+  }).join('');
+}
 
 // ══════════════════════════════════════════════════════
-// 대시보드 & Chart.js
+// [기능 3] 차입금 저장 및 목록 (다통화 지원)
 // ══════════════════════════════════════════════════════
-function getAggregatedDaily() {
-  const records = getFilteredRecords('daily');
-  const map = {};
-  records.forEach(r => {
-    if(!map[r.date]) map[r.date] = { date: r.date, krw_demand:0, krw_govt:0, krw_mmda:0, fx_usd:0, fx_eur:0, fx_jpy:0, fx_krw:0 };
-    map[r.date].krw_demand += r.krw_demand; map[r.date].krw_govt += r.krw_govt; map[r.date].krw_mmda += r.krw_mmda;
-    map[r.date].fx_usd += r.fx_usd; map[r.date].fx_eur += r.fx_eur; map[r.date].fx_jpy += r.fx_jpy; map[r.date].fx_krw += (r.fx_krw||0);
-  });
-  return Object.values(map).sort((a,b) => b.date.localeCompare(a.date));
+function saveLoan() {
+  if(currentCompany === 'TOTAL') return showToast('법인을 선택한 후 등록하세요', 'error');
+  const l = {
+    id: Date.now(), active: true, company: currentCompany,
+    lender: document.getElementById('l-lender').value,
+    type: document.getElementById('l-type').value,
+    currency: document.getElementById('l-currency').value,
+    amount: parseNum(document.getElementById('l-amount').value),
+    rate: parseNum(document.getElementById('l-rate').value),
+    start: document.getElementById('l-start').value,
+    maturity: document.getElementById('l-maturity').value
+  };
+  if(!l.lender||!l.amount) return showToast('차입처와 금액을 입력하세요','error');
+  DB.append('loans', l); showToast('등록 완료','success');
+  ['l-lender','l-amount','l-rate','l-start','l-maturity'].forEach(id=>document.getElementById(id).value='');
+  renderLoans(); renderDashboard();
+}
+
+function deleteLoan(id) { if(!confirm('상환/삭제 하시겠습니까?')) return; DB.set('loans', DB.get('loans').filter(l=>l.id!==id)); renderLoans(); renderDashboard(); }
+
+function renderLoans() {
+  const loans = getFiltered('loans').filter(l=>l.active);
+  const tbody = document.getElementById('loans-tbody');
+  if(!loans.length) return tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text3);">등록된 차입금이 없습니다</td></tr>';
+  const today = new Date();
+  tbody.innerHTML = loans.map(l => {
+    const krwVal = calcKRW(l.amount, l.currency||'KRW');
+    const days = l.maturity ? Math.ceil((new Date(l.maturity)-today)/86400000) : null;
+    const dday = days!==null ? (days<0 ? `<span style="color:var(--red)">만기경과</span>` : days<=30 ? `<span style="color:var(--amber);font-weight:700;">D-${days}</span>` : `D-${days}`) : '—';
+    return `<tr><td>${l.company}</td><td>${l.lender}</td><td>${l.type}</td><td>${l.currency||'KRW'}</td><td class="td-num">${l.amount.toLocaleString()}</td><td class="td-num">${l.rate}%</td><td>${l.maturity||'—'}</td><td>${dday}</td><td class="td-num" style="color:var(--amber)">${fmtKRW(krwVal)}</td><td><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="deleteLoan(${l.id})">상환</button></td></tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════
+// [기능 4 & 5] Dashboard & Chart (선택적 뷰어)
+// ══════════════════════════════════════════════════════
+function toggleMetric(key, event) {
+  if(event && (event.ctrlKey || event.metaKey)) {
+    if(selectedChartMetrics.includes(key)) selectedChartMetrics = selectedChartMetrics.filter(k=>k!==key);
+    else selectedChartMetrics.push(key);
+  } else { selectedChartMetrics = [key]; }
+  if(selectedChartMetrics.length === 0) selectedChartMetrics = ['op', 'inv', 'loan']; // all unchecked = show all
+  renderDashboard();
 }
 
 function renderDashboard() {
-  const aggRecords = getAggregatedDaily();
-  const loans = getFilteredRecords('loans').filter(l => l.active);
-  const latest = aggRecords[0];
-
-  if (latest) {
-    const krw = latest.krw_demand + latest.krw_govt + latest.krw_mmda, fx = latest.fx_krw||0, loanTotal = loans.reduce((s,l)=>s+l.amount,0);
-    document.getElementById('m-krw-total').textContent = fmtKRW(krw);
-    document.getElementById('m-fx-total').textContent = fmtKRW(fx);
-    document.getElementById('m-loan-total').textContent = fmtKRW(loanTotal);
-    document.getElementById('m-net').textContent = fmtKRW(krw + fx - loanTotal);
-    document.getElementById('m-net').className = 'metric-value ' + (krw+fx-loanTotal >= 0 ? 'green' : 'red');
-    
-    document.getElementById('fx-usd-krw').textContent = `보유 USD 환산: ${fmtKRW(latest.fx_usd*(FX.USD||0))}`;
-    document.getElementById('fx-eur-krw').textContent = `보유 EUR 환산: ${fmtKRW(latest.fx_eur*(FX.EUR||0))}`;
-    document.getElementById('fx-jpy-krw').textContent = `보유 JPY 환산: ${fmtKRW(latest.fx_jpy*(FX.JPY||0))}`;
-  } else {
-    ['m-krw-total','m-fx-total','m-loan-total','m-net'].forEach(id => document.getElementById(id).textContent = '0원');
+  // 1. 현재 데이터 계산 (대시보드 카드용)
+  const dailyRecords = getFiltered('daily').sort((a,b)=>b.date.localeCompare(a.date));
+  let opKrw=0, opFx=0;
+  if(currentCompany === 'TOTAL') { // 합산
+    const latestDate = dailyRecords[0]?.date;
+    const latests = dailyRecords.filter(r=>r.date===latestDate);
+    latests.forEach(r=>{ opKrw += (r.krw_demand+r.krw_govt+r.krw_mmda); opFx += (r.fx_krw||0); });
+  } else if(dailyRecords[0]) {
+    const r = dailyRecords[0]; opKrw = r.krw_demand+r.krw_govt+r.krw_mmda; opFx = r.fx_krw||0;
   }
+  const opTotal = opKrw + opFx;
 
-  // 테이블 업데이트
-  const tbody = document.getElementById('recent-tbody');
-  if(!aggRecords.length) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3);">데이터가 없습니다.</td></tr>';
-  else tbody.innerHTML = aggRecords.slice(0, 7).map(r => `<tr><td>${r.date}</td><td class="td-num">${fmtKRW(r.krw_demand)}</td><td class="td-num">${fmtKRW(r.krw_govt)}</td><td class="td-num">${fmtKRW(r.krw_mmda)}</td><td class="td-num">${r.fx_usd?r.fx_usd.toLocaleString()+'$':'—'}</td><td class="td-num">${r.fx_eur?r.fx_eur.toLocaleString()+'€':'—'}</td><td class="td-num">${r.fx_jpy?r.fx_jpy.toLocaleString()+'¥':'—'}</td><td class="td-num" style="color:var(--accent2);font-weight:600;">${fmtKRW(r.krw_demand+r.krw_govt+r.krw_mmda+r.fx_krw)}</td></tr>`).join('');
+  const invs = getFiltered('investments').filter(i=>i.active);
+  const invKrw = invs.filter(i=>i.currency==='KRW').reduce((s,i)=>s+i.amount,0);
+  const invFx = invs.filter(i=>i.currency!=='KRW').reduce((s,i)=>s+calcKRW(i.amount, i.currency),0);
+  const invTotal = invKrw + invFx;
 
-  // [기능 통합 3] Chart.js 적용
-  renderChart(aggRecords.slice(0, 10).reverse());
+  const loans = getFiltered('loans').filter(l=>l.active);
+  const loanKrw = loans.filter(l=>l.currency==='KRW').reduce((s,l)=>s+l.amount,0);
+  const loanFx = loans.filter(l=>l.currency!=='KRW').reduce((s,l)=>s+calcKRW(l.amount, l.currency),0);
+  const loanTotal = loanKrw + loanFx;
+
+  const netTotal = opTotal + invTotal - loanTotal;
+
+  // 카드 텍스트 업데이트
+  document.getElementById('d-op-total').textContent = fmtKRW(opTotal);
+  document.getElementById('d-op-krw').textContent = fmtKRW(opKrw); document.getElementById('d-op-fx').textContent = fmtKRW(opFx);
+  document.getElementById('d-inv-total').textContent = fmtKRW(invTotal);
+  document.getElementById('d-inv-krw').textContent = fmtKRW(invKrw); document.getElementById('d-inv-fx').textContent = fmtKRW(invFx);
+  document.getElementById('d-loan-total').textContent = fmtKRW(loanTotal);
+  document.getElementById('d-loan-krw').textContent = fmtKRW(loanKrw); document.getElementById('d-loan-fx').textContent = fmtKRW(loanFx);
+  document.getElementById('d-net-total').textContent = fmtKRW(netTotal);
+  document.getElementById('d-net-total').style.color = netTotal >= 0 ? 'var(--green)' : 'var(--red)';
+
+  // 메트릭 시각적 선택 상태 반영
+  document.querySelectorAll('.metric').forEach(el => {
+    if(selectedChartMetrics.includes(el.dataset.key)) el.classList.add('selected'); else el.classList.remove('selected');
+  });
+
+  renderAlerts(invs, loans);
+  updateChart(dailyRecords);
 }
 
-function renderChart(records) {
+function renderAlerts(invs, loans) {
+  const area = document.getElementById('alerts-area'); const alerts = []; const today = new Date();
+  invs.forEach(i => {
+    if(!i.maturity) return; const d = Math.ceil((new Date(i.maturity)-today)/86400000);
+    if(d>=0 && d<=30) alerts.push({ cls: 'alert-ok', msg: `[운용자금 만기 임박] ${i.company} - ${i.bank} ${i.product} 만기 D-${d} (${i.maturity})` });
+  });
+  loans.forEach(l => {
+    if(!l.maturity) return; const d = Math.ceil((new Date(l.maturity)-today)/86400000);
+    if(d<0) alerts.push({ cls: 'alert-danger', msg: `⚠ [차입금 만기 경과] ${l.company} - ${l.lender} 상환 기한 지남 (${l.maturity})` });
+    else if(d<=30) alerts.push({ cls: 'alert-warn', msg: `⚠ [차입금 만기 임박] ${l.company} - ${l.lender} 상환 D-${d} (${l.maturity})` });
+  });
+  area.innerHTML = alerts.map(a => `<div class="alert ${a.cls}">${a.msg}</div>`).join('');
+}
+
+function updateChart(records) {
   const ctx = document.getElementById('mainChart').getContext('2d');
   if (mainChartObj) mainChartObj.destroy();
   if (!records.length) return;
 
-  const labels = records.map(r => r.date.slice(5));
-  const krwData = records.map(r => r.krw_demand + r.krw_govt + r.krw_mmda);
-  const fxData = records.map(r => r.fx_krw || 0);
+  // 일자별 그룹핑 (TOTAL 처리)
+  const map = {};
+  records.forEach(r => {
+    if(!map[r.date]) map[r.date] = { date: r.date, op_k:0, op_f:0, inv_k:0, inv_f:0, loan_k:0, loan_f:0 };
+    map[r.date].op_k += (r.krw_demand+r.krw_govt+r.krw_mmda); map[r.date].op_f += (r.fx_krw||0);
+    map[r.date].inv_k += (r.inv_krw||0); map[r.date].inv_f += (r.inv_fx||0);
+    map[r.date].loan_k += (r.loan_krw||0); map[r.date].loan_f += (r.loan_fx||0);
+  });
+  const agg = Object.values(map).sort((a,b)=>a.date.localeCompare(b.date)).slice(-14); // 최근 14일
+  const labels = agg.map(r => r.date.slice(5));
+
+  const datasets = [];
+  if(selectedChartMetrics.includes('op')) {
+    datasets.push({ label: '운전자금 (원화)', data: agg.map(r=>r.op_k), backgroundColor: '#3b82f6', stack: 'op' });
+    datasets.push({ label: '운전자금 (외화)', data: agg.map(r=>r.op_f), backgroundColor: '#60a5fa', stack: 'op' });
+  }
+  if(selectedChartMetrics.includes('inv')) {
+    datasets.push({ label: '운용자금 (원화)', data: agg.map(r=>r.inv_k), backgroundColor: '#10b981', stack: 'inv' });
+    datasets.push({ label: '운용자금 (외화)', data: agg.map(r=>r.inv_f), backgroundColor: '#34d399', stack: 'inv' });
+  }
+  if(selectedChartMetrics.includes('loan')) {
+    datasets.push({ label: '차입금 (원화)', data: agg.map(r=>r.loan_k), backgroundColor: '#f59e0b', stack: 'loan' });
+    datasets.push({ label: '차입금 (외화)', data: agg.map(r=>r.loan_f), backgroundColor: '#fbbf24', stack: 'loan' });
+  }
+  if(selectedChartMetrics.includes('net')) {
+    datasets.push({ label: '순현금 트렌드', type: 'line', data: agg.map(r=>(r.op_k+r.op_f+r.inv_k+r.inv_f) - (r.loan_k+r.loan_f)), borderColor: '#8b5cf6', backgroundColor: '#8b5cf6', tension: 0.3, fill: false });
+  }
 
   mainChartObj = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [
-        { label: '원화 예금 합계', data: krwData, backgroundColor: '#3b82f6', borderRadius: 4, order: 2 },
-        { label: '외화 원화환산', data: fxData, type: 'line', borderColor: '#10b981', backgroundColor: '#10b981', tension: 0.3, fill: false, order: 1 }
-      ]
-    },
+    type: 'bar', data: { labels, datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11, family: "'Pretendard', sans-serif" } } } },
+      plugins: { legend: { labels: { color: '#94a3b8', font: { family: "'Pretendard', sans-serif" } } } },
       scales: {
-        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', callback: v => (v/100000000).toFixed(0) + '억' } },
-        x: { grid: { display: false }, ticks: { color: '#64748b' } }
+        y: { stacked: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', callback: v => (v/100000000).toFixed(0) + '억' } },
+        x: { stacked: true, grid: { display: false }, ticks: { color: '#64748b' } }
       }
     }
   });
 }
 
-// ══════════════════════════════════════════════════════
-// 이력, 차입금, 기타
-// ══════════════════════════════════════════════════════
 function filterHistory() {
   const from = document.getElementById('h-from').value, to = document.getElementById('h-to').value;
-  const records = getFilteredRecords('daily').filter(r => (!from||r.date>=from)&&(!to||r.date<=to)).sort((a,b)=>b.date.localeCompare(a.date));
+  const records = getFiltered('daily').filter(r => (!from||r.date>=from)&&(!to||r.date<=to)).sort((a,b)=>b.date.localeCompare(a.date));
   const tbody = document.getElementById('history-tbody');
-  if(!records.length) return tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text3);">데이터가 없습니다</td></tr>';
-  tbody.innerHTML = records.map(r => `<tr><td>${r.date}</td><td>${r.company}</td><td class="td-num">${fmtKRW(r.krw_demand)}</td><td class="td-num">${fmtKRW(r.krw_govt)}</td><td class="td-num">${fmtKRW(r.krw_mmda)}</td><td class="td-num">${r.fx_usd?r.fx_usd.toLocaleString()+'$':'—'}</td><td class="td-num">${r.fx_eur?r.fx_eur.toLocaleString()+'€':'—'}</td><td class="td-num">${r.fx_jpy?r.fx_jpy.toLocaleString()+'¥':'—'}</td><td class="td-num" style="color:var(--accent2);">${fmtKRW(r.fx_krw||0)}</td><td style="font-size:12px;color:var(--text3);">${r.memo||''}</td></tr>`).join('');
+  if(!records.length) return tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3);">데이터가 없습니다</td></tr>';
+  tbody.innerHTML = records.map(r => `<tr><td>${r.date}</td><td>${r.company}</td><td class="td-num">${fmtKRW(r.krw_demand+r.krw_govt+r.krw_mmda)}</td><td class="td-num">${r.fx_usd?r.fx_usd.toLocaleString()+'$':'—'}</td><td class="td-num">${r.fx_eur?r.fx_eur.toLocaleString()+'€':'—'}</td><td class="td-num">${r.fx_jpy?r.fx_jpy.toLocaleString()+'¥':'—'}</td><td class="td-num" style="color:var(--accent2);">${fmtKRW(r.fx_krw||0)}</td><td style="font-size:12px;color:var(--text3);">${r.memo||''}</td></tr>`).join('');
 }
-
-function saveLoan() {
-  const l = { id:Date.now(), company: document.getElementById('l-company').value, lender:document.getElementById('l-lender').value, type:document.getElementById('l-type').value, amount:parseNum(document.getElementById('l-amount').value), rate:parseNum(document.getElementById('l-rate').value), maturity:document.getElementById('l-maturity').value, note:document.getElementById('l-note').value, active:true };
-  if(!l.lender||!l.amount) return showToast('차입처와 금액을 입력하세요','error');
-  DB.append('loans', l); showToast('등록 완료','success'); ['l-lender','l-amount','l-rate','l-maturity','l-note'].forEach(id=>document.getElementById(id).value=''); renderLoans(); renderDashboard();
-}
-
-function deleteLoan(id) { if(!confirm('삭제하시겠습니까?')) return; DB.set('loans', DB.get('loans').filter(l=>l.id!==id)); renderLoans(); renderDashboard(); }
-
-function renderLoans() {
-  const loans = getFilteredRecords('loans').filter(l=>l.active);
-  const tbody = document.getElementById('loans-tbody');
-  if(!loans.length) { document.getElementById('loan-sum').textContent='0 원'; return tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text3);">등록된 차입금이 없습니다</td></tr>'; }
-  const today = new Date();
-  tbody.innerHTML = loans.map(l => {
-    const days = l.maturity ? Math.ceil((new Date(l.maturity)-today)/86400000) : null;
-    const dday = days!==null ? (days<0 ? `<span style="color:var(--red)">만기경과</span>` : days<90 ? `<span style="color:var(--amber)">D-${days}</span>` : `D-${days}`) : '—';
-    return `<tr><td>${l.company}</td><td>${l.lender}</td><td>${l.type}</td><td class="td-num">${fmtKRW(l.amount)}</td><td class="td-num">${l.rate}%</td><td>${l.maturity||'—'}</td><td>${dday}</td><td style="color:var(--text3);font-size:12px;">${l.note||''}</td><td><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="deleteLoan(${l.id})">삭제</button></td></tr>`;
-  }).join('');
-  document.getElementById('loan-sum').textContent = fmtKRW(loans.reduce((s,l)=>s+l.amount,0));
-}
-
-function previewReport() {
-  const date = document.getElementById('r-date').value, format = document.getElementById('r-format').value;
-  const allDaily = DB.get('daily');
-  const daily = format === 'TOTAL' ? allDaily.filter(r => r.date === date) : allDaily.filter(r => r.date === date && r.company === format);
-  
-  document.getElementById('report-preview').style.display = 'block';
-  if(!daily.length) return document.getElementById('report-content').innerHTML = `<div style="text-align:center;padding:40px;color:var(--text3);">${date} ${format} 데이터가 없습니다.</div>`;
-
-  const rec = { krw_demand:0, krw_govt:0, krw_mmda:0, fx_usd:0, fx_eur:0, fx_jpy:0, fx_krw:0, writer:daily[0].writer, memo:daily.map(d=>d.memo).filter(Boolean).join(' / ') };
-  daily.forEach(d => { rec.krw_demand+=d.krw_demand; rec.krw_govt+=d.krw_govt; rec.krw_mmda+=d.krw_mmda; rec.fx_usd+=d.fx_usd; rec.fx_eur+=d.fx_eur; rec.fx_jpy+=d.fx_jpy; rec.fx_krw+=(d.fx_krw||0); });
-
-  document.getElementById('report-content').innerHTML = `
-    <div style="font-size:16px;font-weight:700;text-align:center;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border);">${format==='TOTAL'?'통합 (3사)':format} 일일 자금일보</div>
-    <table style="margin-bottom:16px;">
-      <thead><tr><th>구분</th><th class="td-num">잔액</th><th>비고</th></tr></thead>
-      <tbody>
-        <tr><td>보통예금</td><td class="td-num">${fmtKRW(rec.krw_demand)}</td><td></td></tr>
-        <tr style="font-weight:600;"><td>원화 합계</td><td class="td-num" style="color:var(--accent2);">${fmtKRW(rec.krw_demand+rec.krw_govt+rec.krw_mmda)}</td><td></td></tr>
-      </tbody>
-    </table>
-    <table style="margin-bottom:16px;">
-      <thead><tr><th>외화</th><th class="td-num">외화잔액</th><th class="td-num">원화환산</th></tr></thead>
-      <tbody>
-        <tr><td>USD</td><td class="td-num">${rec.fx_usd?.toLocaleString()||0}$</td><td class="td-num">${fmtKRW(rec.fx_usd*(FX.USD||0))}</td></tr>
-        <tr style="font-weight:600;"><td>외화합계</td><td></td><td class="td-num" style="color:var(--green);">${fmtKRW(rec.fx_krw||0)}</td></tr>
-      </tbody>
-    </table>
-    ${rec.memo ? `<div style="padding:12px;background:var(--bg3);border-radius:8px;font-size:13px;color:var(--text2);"><strong>특이사항:</strong> ${rec.memo}</div>` : ''}`;
-}
-
-function fmtKRW(n) { if(!n&&n!==0) return '—'; const a=Math.abs(n); if(a>=1e12) return (n/1e12).toFixed(1)+'조원'; if(a>=1e8) return (n/1e8).toFixed(1)+'억원'; if(a>=1e4) return (n/1e4).toFixed(0)+'만원'; return n.toLocaleString()+'원'; }
-function showToast(msg, type='') { const t = document.getElementById('toast'); t.textContent = msg; t.className = 'show '+type; setTimeout(()=>t.className='',3000); }
 </script>
 </body>
 </html>
