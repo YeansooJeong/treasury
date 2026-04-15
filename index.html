@@ -180,8 +180,30 @@
     <div id="modal-master-section" style="display:none;">
       <div style="font-size:12px;color:#94a3b8;margin-bottom:16px;">각 계정의 접속 코드를 확인하거나 초기 코드로 초기화할 수 있습니다.</div>
       <div id="modal-master-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;"></div>
+
+    <!-- 데이터 마이그레이션 -->
+    <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:16px;margin-top:4px;">
+      <div style="font-size:12px;color:#64748b;margin-bottom:10px;">데이터 관리 (Master 전용)</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button onclick="migrateLocalToSupabase()" style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:#60a5fa;padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">
+          ☁ localStorage → Supabase 이전
+        </button>
+        <button onclick="exportAllData()" style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);color:#34d399;padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">
+          ↓ JSON 백업
+        </button>
+        <button onclick="importDataFromJSON()" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.2);color:#fbbf24;padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">
+          ↑ JSON 복원
+        </button>
+      </div>
+      <div id="migration-status" style="font-size:11px;color:#64748b;margin-top:8px;"></div>
+    </div>
     </div>
   </div>
+</div>
+
+<!-- Supabase 로딩 배너 -->
+<div id="sb-loading-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9997;background:rgba(59,130,246,0.1);border-bottom:1px solid rgba(59,130,246,0.3);padding:8px 20px;font-size:12px;color:#3b82f6;text-align:center;">
+  ☁ Supabase에서 데이터 불러오는 중...
 </div>
 
 <div id="login-overlay" style="
@@ -852,11 +874,160 @@ function parseNum(val) { return parseFloat((val || '').toString().replace(/,/g, 
 function fmtKRW(n) { if(!n&&n!==0) return '0'; const a=Math.abs(n); if(a>=1e12) return (n/1e12).toFixed(1)+'조원'; if(a>=1e8) return (n/1e8).toFixed(1)+'억원'; if(a>=1e4) return (n/1e4).toFixed(0)+'만원'; return n.toLocaleString()+'원'; }
 function showToast(msg, type='') { const t = document.getElementById('toast'); t.textContent = msg; t.className = 'show '+type; setTimeout(()=>t.className='',3000); }
 
-const DB = {
-  get: (k) => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch { return []; } },
-  set: (k, v) => localStorage.setItem(k, JSON.stringify(v)),
-  append: (k, item) => { const arr = DB.get(k); arr.push(item); DB.set(k, arr); },
+// ══════════════════════════════════════════════════════
+// Supabase 연동 설정
+// ══════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://qobfmihxcclbzfaohnor.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvYmZtaWh4Y2NsYnpmYW9obm9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNTQ1ODEsImV4cCI6MjA5MTczMDU4MX0.9Bh5drygpl-cNEsdXQM6dS9RYo8_mjy2bI4G7jUoN2I';
+const SB_HEADERS = {
+  'apikey': SUPABASE_KEY,
+  'Authorization': 'Bearer ' + SUPABASE_KEY,
+  'Content-Type': 'application/json',
+  'Prefer': 'return=representation',
 };
+
+// 테이블명 매핑 (localStorage key → Supabase table)
+const TABLE_MAP = {
+  'daily': 'daily',
+  'investments': 'investments',
+  'loans': 'loans',
+  'equities': 'equities',
+  'price_history': 'price_history',
+};
+
+// 메모리 캐시 (페이지 내 빠른 조회용)
+const _cache = {};
+let _supabaseReady = false;
+
+// ── Supabase REST API 헬퍼 ────────────────────────────────
+async function sbFetch(path, options = {}) {
+  const res = await fetch(SUPABASE_URL + path, {
+    headers: SB_HEADERS,
+    ...options,
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    console.error('Supabase error:', res.status, err);
+    return null;
+  }
+  const text = await res.text();
+  return text ? JSON.parse(text) : [];
+}
+
+// ── DB 클래스 (Supabase + 메모리 캐시 이중화) ─────────────
+const DB = {
+  // 동기 캐시 조회 (렌더링용)
+  get: (table) => {
+    return _cache[table] || [];
+  },
+
+  // 캐시 + Supabase 동기화 저장
+  set: async (table, arr) => {
+    _cache[table] = arr;
+    const sbTable = TABLE_MAP[table];
+    if (!sbTable) return;
+    // 전체 삭제 후 재삽입
+    await sbFetch('/rest/v1/' + sbTable + '?id=neq.00000000-0000-0000-0000-000000000000', { method: 'DELETE' });
+    if (arr.length > 0) {
+      const rows = arr.map(r => normalizeRow(table, r));
+      await sbFetch('/rest/v1/' + sbTable, { method: 'POST', body: JSON.stringify(rows) });
+    }
+  },
+
+  // 단건 추가
+  append: async (table, item) => {
+    const arr = DB.get(table);
+    const newItem = { ...item, id: item.id || crypto.randomUUID() };
+    arr.push(newItem);
+    _cache[table] = arr;
+    const sbTable = TABLE_MAP[table];
+    if (!sbTable) return;
+    const row = normalizeRow(table, newItem);
+    await sbFetch('/rest/v1/' + sbTable, { method: 'POST', body: JSON.stringify(row) });
+  },
+
+  // Supabase에서 전체 로드 (앱 시작 시 1회)
+  load: async (table) => {
+    const sbTable = TABLE_MAP[table];
+    if (!sbTable) return [];
+    const data = await sbFetch('/rest/v1/' + sbTable + '?order=created_at.asc');
+    if (!data) return _cache[table] || [];
+    const normalized = (data || []).map(r => denormalizeRow(table, r));
+    _cache[table] = normalized;
+    return normalized;
+  },
+};
+
+// ── 컬럼명 정규화 (JS camelCase → DB snake_case) ──────────
+function normalizeRow(table, r) {
+  if (!r) return r;
+  const row = { ...r };
+  // id가 숫자(Date.now())면 UUID로 변환
+  if (row.id && typeof row.id === 'number') {
+    row.id = 'legacy-' + row.id;
+  }
+  if (!row.id) row.id = crypto.randomUUID();
+
+  if (table === 'investments') {
+    if (row.start !== undefined) { row.start_date = row.start; delete row.start; }
+    if (row.bondName !== undefined) { row.bond_name = row.bondName; delete row.bondName; }
+    if (row.bondTicker !== undefined) { row.bond_ticker = row.bondTicker; delete row.bondTicker; }
+    if (row.bondQty !== undefined) { row.bond_qty = row.bondQty; delete row.bondQty; }
+    if (row.bondPrice !== undefined) { row.bond_price = row.bondPrice; delete row.bondPrice; }
+  }
+  if (table === 'loans') {
+    if (row.start !== undefined) { row.start_date = row.start; delete row.start; }
+  }
+  // created_at 제거 (DB 자동 생성)
+  delete row.created_at;
+  return row;
+}
+
+// ── DB → JS 역정규화 (snake_case → camelCase) ────────────
+function denormalizeRow(table, r) {
+  if (!r) return r;
+  const row = { ...r };
+  if (table === 'investments') {
+    if (row.start_date !== undefined) { row.start = row.start_date; delete row.start_date; }
+    if (row.bond_name !== undefined) { row.bondName = row.bond_name; delete row.bond_name; }
+    if (row.bond_ticker !== undefined) { row.bondTicker = row.bond_ticker; delete row.bond_ticker; }
+    if (row.bond_qty !== undefined) { row.bondQty = row.bond_qty; delete row.bond_qty; }
+    if (row.bond_price !== undefined) { row.bondPrice = row.bond_price; delete row.bond_price; }
+  }
+  if (table === 'loans') {
+    if (row.start_date !== undefined) { row.start = row.start_date; delete row.start_date; }
+  }
+  return row;
+}
+
+// ── 앱 시작 시 Supabase에서 전체 데이터 로드 ─────────────
+async function initSupabase() {
+  const banner = document.getElementById('sb-loading-banner');
+  if (banner) banner.style.display = '';
+  try {
+    await Promise.all([
+      DB.load('daily'),
+      DB.load('investments'),
+      DB.load('loans'),
+      DB.load('equities'),
+      DB.load('price_history'),
+    ]);
+    _supabaseReady = true;
+    if (banner) banner.style.display = 'none';
+    console.log('✅ Supabase 연결 완료');
+  } catch(e) {
+    console.error('Supabase 연결 실패, localStorage 폴백:', e);
+    // 폴백: localStorage에서 로드
+    ['daily','investments','loans','equities','price_history'].forEach(k => {
+      try { _cache[k] = JSON.parse(localStorage.getItem(k) || '[]'); } catch { _cache[k] = []; }
+    });
+    if (banner) {
+      banner.style.background = 'rgba(239,68,68,0.1)';
+      banner.style.borderColor = 'rgba(239,68,68,0.3)';
+      banner.innerHTML = '⚠ Supabase 연결 실패 — 로컬 데이터로 임시 운영 중';
+    }
+  }
+}
 
 let FX = { KRW: 1, USD: 1380, EUR: 1500, JPY: 9.2, GBP: 1750 }; 
 let currentCompany = '셀바스에이아이';
@@ -1211,19 +1382,7 @@ function doLogout() {
   document.getElementById('login-error').style.display = 'none';
 }
 
-// 세션 복원 (새로고침 시 재로그인 방지)
-(function restoreSession() {
-  const saved = sessionStorage.getItem('treasury_user');
-  if (saved) {
-    try {
-      currentUser = JSON.parse(saved);
-      // DOMContentLoaded 후 적용
-      document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(() => applyAccessControl(currentUser), 100);
-      });
-    } catch(e) { sessionStorage.removeItem('treasury_user'); }
-  }
-})();
+// 세션 복원은 DOMContentLoaded + initSupabase 완료 후 실행 (위 코드 참조)
 
 document.addEventListener('DOMContentLoaded', () => {
   const today = new Date().toISOString().slice(0, 10);
@@ -1235,8 +1394,18 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('h-from').value = from.toISOString().slice(0, 10);
   document.getElementById('h-to').value = today;
 
-  refreshFX();
-  setCompany('셀바스에이아이', document.querySelector('.ci-tab'));
+  // Supabase 초기화 → 완료 후 세션 복원
+  initSupabase().then(() => {
+    const saved = sessionStorage.getItem('treasury_user');
+    if (saved) {
+      try {
+        currentUser = JSON.parse(saved);
+        applyAccessControl(currentUser);
+      } catch(e) { sessionStorage.removeItem('treasury_user'); }
+    }
+    refreshFX();
+    setCompany('셀바스에이아이', document.querySelector('.ci-tab'));
+  });
 });
 
 // ══════════════════════════════════════════════════════
@@ -1784,7 +1953,7 @@ function loadEquityToForm(id) {
   showToast(eq.name + ' — 수정 후 저장하세요', '');
 }
 
-function saveEquity() {
+async function saveEquity() {
   // 보유법인: 드롭박스 선택값 우선, 없으면 현재 탭
   const companyEl = document.getElementById('e-company');
   const company = companyEl ? companyEl.value : currentCompany;
@@ -1820,7 +1989,7 @@ function saveEquity() {
     total_value
   };
 
-  DB.append('equities', eq); // 항상 신규 기록으로 추가 (히스토리 유지)
+  await DB.append('equities', eq); // 항상 신규 기록으로 추가 (히스토리 유지)
   showToast('[' + company + '] ' + name + ' ' + (editingEquityKey ? '업데이트' : '저장') + ' 완료', 'success');
 
   // 평가금액 히스토리 기록
@@ -1834,7 +2003,7 @@ function saveEquity() {
   renderDashboard();
 }
 
-function deleteEquity(id) {
+async function deleteEquity(id) {
   if(!confirm('삭제하시겠습니까?')) return;
   DB.set('equities', DB.get('equities').filter(e => e.id !== id));
   renderEquity();
@@ -2042,6 +2211,96 @@ function renderDashboardAlerts() {
   html += '</div>';
   banner.innerHTML = html;
   banner.style.display = '';
+}
+
+
+// ══════════════════════════════════════════════════════
+// 데이터 마이그레이션 도구
+// ══════════════════════════════════════════════════════
+
+// localStorage → Supabase 일괄 이전
+async function migrateLocalToSupabase() {
+  const status = document.getElementById('migration-status');
+  if (!confirm('현재 PC의 localStorage 데이터를 Supabase로 이전합니다.\n기존 Supabase 데이터는 유지되고 새 데이터만 추가됩니다.\n계속하시겠습니까?')) return;
+
+  if (status) status.textContent = '이전 중...';
+  const tables = ['daily', 'investments', 'loans', 'equities', 'price_history'];
+  let total = 0, skipped = 0;
+
+  for (const table of tables) {
+    let local = [];
+    try { local = JSON.parse(localStorage.getItem(table) || '[]'); } catch { local = []; }
+    if (!local.length) continue;
+
+    // 현재 Supabase 데이터 로드
+    const existing = await DB.load(table);
+    const existingIds = new Set(existing.map(r => String(r.id)));
+
+    // 중복 제외 후 삽입
+    const toInsert = local.filter(r => !existingIds.has(String(r.id)));
+    skipped += (local.length - toInsert.length);
+
+    for (const item of toInsert) {
+      await DB.append(table, item);
+      total++;
+    }
+  }
+
+  if (status) status.textContent = `✅ 완료: ${total}건 이전, ${skipped}건 중복 제외`;
+  showToast(`마이그레이션 완료 — ${total}건`, 'success');
+
+  // 화면 갱신
+  renderDashboard();
+}
+
+// JSON 백업 (전체 다운로드)
+function exportAllData() {
+  const data = {};
+  ['daily','investments','loans','equities','price_history'].forEach(k => {
+    data[k] = DB.get(k);
+  });
+  data._exported_at = new Date().toISOString();
+  data._version = '1.0';
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'selvas_treasury_backup_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('JSON 백업 다운로드 완료', 'success');
+}
+
+// JSON 복원 (파일 업로드 → Supabase 저장)
+async function importDataFromJSON() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const text = await file.text();
+    let data;
+    try { data = JSON.parse(text); } catch { return showToast('JSON 파일 오류', 'error'); }
+
+    if (!confirm(`백업 파일(${data._exported_at || '날짜 미상'})을 복원합니다.\nSupabase의 기존 데이터는 모두 삭제되고 백업 데이터로 교체됩니다.\n계속하시겠습니까?`)) return;
+
+    const status = document.getElementById('migration-status');
+    if (status) status.textContent = '복원 중...';
+
+    const tables = ['daily','investments','loans','equities','price_history'];
+    for (const table of tables) {
+      if (data[table]) {
+        await DB.set(table, data[table]);
+      }
+    }
+
+    if (status) status.textContent = '✅ 복원 완료';
+    showToast('데이터 복원 완료', 'success');
+    renderDashboard();
+  };
+  input.click();
 }
 
 function renderDetailCard() {
@@ -2471,7 +2730,7 @@ function updateEquityChart(allEqRecords) {
 // ══════════════════════════════════════════════════════
 // 일반 자금 입력 로직 (운전, 운용, 차입)
 // ══════════════════════════════════════════════════════
-function saveDaily() {
+async function saveDaily() {
   // 드롭박스에서 법인 읽기
   const compEl = document.getElementById('i-company');
   const company = compEl ? compEl.value : currentCompany;
@@ -2502,8 +2761,8 @@ function saveDaily() {
 
   let rs = DB.get('daily');
   const idx = rs.findIndex(x=>x.date===d&&x.company===company);
-  if(idx>=0) { if(!confirm('덮어쓰시겠습니까?')) return; rs[idx]=r; DB.set('daily',rs); }
-  else DB.append('daily', r);
+  if(idx>=0) { if(!confirm('덮어쓰시겠습니까?')) return; rs[idx]=r; await DB.set('daily',rs); }
+  else await DB.append('daily', r);
 
   showToast(`[${company}] ${d} 운전자금 저장 완료`, 'success');
   ['i-krw-demand','i-krw-govt','i-krw-mmda','i-fx-usd','i-fx-eur','i-fx-jpy','i-memo'].forEach(id=>document.getElementById(id).value='');
@@ -2747,7 +3006,7 @@ function loadInvestmentToForm(id) {
   showToast('수정할 내용을 변경 후 저장하세요', '');
 }
 
-function saveInvestment() {
+async function saveInvestment() {
   const compEl = document.getElementById('v-company');
   const iCompany = compEl ? compEl.value : currentCompany;
   if (!iCompany) return showToast('법인을 선택해주세요.', 'error');
@@ -2792,7 +3051,7 @@ function saveInvestment() {
     if (idx >= 0) {
       item.id = all[idx].id; // 기존 id 유지
       all[idx] = item;
-      DB.set('investments', all);
+      await DB.set('investments', all);
       showToast('[' + iCompany + '] ' + product + ' 수정 완료', 'success');
     }
     editingInvestId = null;
@@ -2801,7 +3060,7 @@ function saveInvestment() {
     renderInvestments();
     renderDashboard();
   } else {
-    DB.append('investments', item);
+    await DB.append('investments', item);
     showToast('[' + iCompany + '] ' + product + ' 등록 완료', 'success');
   }
 
@@ -2830,7 +3089,7 @@ function deleteInvest(id) {
 
 // ── 운용자금 company 불일치 데이터 정리 ───────────────────────
 // 잘못 저장된 국공채 등 company가 맞지 않는 데이터를 확인/수정
-function fixInvestmentCompany() {
+async function fixInvestmentCompany() {
   const all = DB.get('investments');
   const companies = ['셀바스에이아이', '셀바스헬스케어', '메디아나'];
 
@@ -2849,7 +3108,7 @@ function fixInvestmentCompany() {
   if (!confirm('저장된 운용자금 현황:\n\n' + summary + '\n\n⚠ 오류 ' + invalid.length + '건 삭제?')) return;
 
   var cleaned = all.filter(function(i) { return companies.includes(i.company); });
-  DB.set('investments', cleaned);
+  await DB.set('investments', cleaned);
   renderInvestments();
   renderDashboard();
   showToast(invalid.length + '건 정리 완료', 'success');
@@ -2938,7 +3197,7 @@ function loadLoanToForm(id) {
   showToast('수정할 내용을 변경 후 저장하세요', '');
 }
 
-function saveLoan() {
+async function saveLoan() {
   const compEl = document.getElementById('l-company');
   const lCompany = compEl ? compEl.value : currentCompany;
   if (!lCompany) return showToast('법인을 선택해주세요.', 'error');
@@ -2957,12 +3216,12 @@ function saveLoan() {
   if (editingLoanId !== null) {
     const all = DB.get('loans');
     const idx = all.findIndex(x => String(x.id) === String(editingLoanId));
-    if (idx >= 0) { l.id = all[idx].id; all[idx] = l; DB.set('loans', all); showToast('차입금 수정 완료', 'success'); }
+    if (idx >= 0) { l.id = all[idx].id; all[idx] = l; await DB.set('loans', all); showToast('차입금 수정 완료', 'success'); }
     editingLoanId = null;
     const saveBtn = document.querySelector('#page-loans .form-actions button');
     if (saveBtn) { saveBtn.textContent = '차입금 추가'; saveBtn.style.background = ''; }
   } else {
-    DB.append('loans', l);
+    await DB.append('loans', l);
     showToast('[' + lCompany + '] 차입금 등록 완료', 'success');
   }
   ['l-lender','l-amount','l-rate','l-start','l-maturity'].forEach(id => document.getElementById(id).value = '');
@@ -3205,13 +3464,13 @@ function renderFXEquivTable() {
 // 평가금액 변동 히스토리 (price_history)
 // key 형식: 'equity:company_name' 또는 'bond:company_bank'
 // ══════════════════════════════════════════════════════
-function recordPriceHistory(type, key, date, value) {
+async function recordPriceHistory(type, key, date, value) {
   const histKey = type + ':' + key;
   const all = DB.get('price_history');
   // 같은 날짜+키 중복 제거 후 추가
   const filtered = all.filter(h => !(h.key === histKey && h.date === date));
   filtered.push({ key: histKey, date, value });
-  DB.set('price_history', filtered);
+  await DB.set('price_history', filtered);
 }
 
 function getPriceHistory(type, key, days) {
