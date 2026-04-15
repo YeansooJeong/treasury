@@ -120,6 +120,47 @@
 <body>
 
 
+
+<!-- 코드 변경 모달 -->
+<div id="code-change-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9998;align-items:center;justify-content:center;">
+  <div style="background:#161b27;border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:32px 36px;width:420px;max-width:92vw;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+      <div style="font-size:16px;font-weight:700;color:#f1f5f9;" id="modal-title">접속 코드 변경</div>
+      <button onclick="closeCodeModal()" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1;">×</button>
+    </div>
+
+    <!-- 일반 사용자: 본인 코드 변경 -->
+    <div id="modal-user-section">
+      <div style="font-size:12px;color:#94a3b8;margin-bottom:16px;" id="modal-user-desc"></div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:6px;">현재 코드 확인</label>
+        <input type="password" id="modal-current-code" placeholder="현재 접속 코드 입력"
+          style="width:100%;background:#1e2535;border:1px solid rgba(255,255,255,0.14);color:#f1f5f9;padding:9px 12px;border-radius:8px;font-size:13px;outline:none;font-family:inherit;">
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:6px;">새 코드</label>
+        <input type="password" id="modal-new-code" placeholder="새 접속 코드 입력 (6자 이상)"
+          style="width:100%;background:#1e2535;border:1px solid rgba(255,255,255,0.14);color:#f1f5f9;padding:9px 12px;border-radius:8px;font-size:13px;outline:none;font-family:inherit;"
+          oninput="checkCodeStrength(this.value)">
+        <div id="code-strength" style="font-size:11px;margin-top:4px;"></div>
+      </div>
+      <div style="margin-bottom:20px;">
+        <label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:6px;">새 코드 확인</label>
+        <input type="password" id="modal-new-code2" placeholder="새 접속 코드 재입력"
+          style="width:100%;background:#1e2535;border:1px solid rgba(255,255,255,0.14);color:#f1f5f9;padding:9px 12px;border-radius:8px;font-size:13px;outline:none;font-family:inherit;">
+      </div>
+      <button onclick="saveNewCode()" style="width:100%;background:#3b82f6;color:#fff;border:none;padding:10px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;">코드 변경 저장</button>
+      <div id="modal-user-error" style="font-size:12px;color:#ef4444;margin-top:10px;text-align:center;display:none;"></div>
+    </div>
+
+    <!-- 마스터 전용: 사용자 코드 관리 -->
+    <div id="modal-master-section" style="display:none;">
+      <div style="font-size:12px;color:#94a3b8;margin-bottom:16px;">각 계정의 접속 코드를 확인하거나 초기 코드로 초기화할 수 있습니다.</div>
+      <div id="modal-master-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;"></div>
+    </div>
+  </div>
+</div>
+
 <div id="login-overlay" style="
   position:fixed;inset:0;background:#0f1117;z-index:9999;
   display:flex;align-items:center;justify-content:center;
@@ -238,6 +279,7 @@
         <div class="date-badge" id="today-badge">—</div>
         <div id="user-info" style="display:none;font-size:12px;color:#94a3b8;padding:4px 10px;background:#1e2535;border-radius:8px;border:1px solid rgba(255,255,255,0.08);"></div>
         <button class="btn btn-ghost" onclick="refreshFX()" style="font-size:12px;padding:6px 12px;">↻ 환율</button>
+        <button id="code-mgr-btn" onclick="openCodeModal()" style="display:none;background:#1e2535;border:1px solid rgba(255,255,255,0.1);color:#94a3b8;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">⚙ 코드 관리</button>
         <button id="logout-btn" onclick="doLogout()" style="display:none;background:#1e2535;border:1px solid rgba(255,255,255,0.1);color:#94a3b8;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">로그아웃</button>
       </div>
     </div>
@@ -742,17 +784,234 @@ const ACCESS_CODES = {
 
 let currentUser = null;
 
+
+// ══════════════════════════════════════════════════════
+// 접속 코드 관리 시스템
+// ══════════════════════════════════════════════════════
+
+// 초기 기본 코드 (초기화 시 이 값으로 복원)
+const DEFAULT_CODES = {
+  'master': 'SELVAS-MASTER-2026',
+  'ceo':    'CEO-SELVAS-2026',
+  '셀바스에이아이':  'AI-FUND-2026',
+  '셀바스헬스케어': 'HC-FUND-2026',
+  '메디아나':      'MD-FUND-2026',
+};
+
+// 현재 유효 코드 (localStorage에서 불러오거나 기본값 사용)
+function loadCurrentCodes() {
+  try {
+    const saved = localStorage.getItem('treasury_access_codes');
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  // 기본값 구조 반환
+  return {
+    'master': { role:'master', company:null, label:'Master',           code: DEFAULT_CODES.master },
+    'ceo':    { role:'ceo',    company:null, label:'CEO',              code: DEFAULT_CODES.ceo    },
+    'ai':     { role:'company', company:'셀바스에이아이', label:'셀바스에이아이 담당자', code: DEFAULT_CODES['셀바스에이아이'] },
+    'hc':     { role:'company', company:'셀바스헬스케어', label:'셀바스헬스케어 담당자', code: DEFAULT_CODES['셀바스헬스케어'] },
+    'md':     { role:'company', company:'메디아나',      label:'메디아나 담당자',       code: DEFAULT_CODES['메디아나']     },
+  };
+}
+
+function saveCurrentCodes(codesObj) {
+  localStorage.setItem('treasury_access_codes', JSON.stringify(codesObj));
+}
+
+// doLogin 함수가 동적 코드를 사용하도록 오버라이드
 function doLogin() {
-  const code = document.getElementById('login-code').value.trim();
-  const user = ACCESS_CODES[code];
-  if (!user) {
+  const inputCode = document.getElementById('login-code').value.trim();
+  const codes = loadCurrentCodes();
+
+  let matchedUser = null;
+  Object.values(codes).forEach(u => {
+    if (u.code === inputCode) matchedUser = u;
+  });
+
+  if (!matchedUser) {
     document.getElementById('login-error').style.display = 'block';
     document.getElementById('login-code').value = '';
     return;
   }
-  currentUser = user;
-  sessionStorage.setItem('treasury_user', JSON.stringify(user));
-  applyAccessControl(user);
+
+  currentUser = matchedUser;
+  sessionStorage.setItem('treasury_user', JSON.stringify(matchedUser));
+  applyAccessControl(matchedUser);
+}
+
+// ── 모달 열기/닫기 ─────────────────────────────────────────────
+function openCodeModal() {
+  const modal = document.getElementById('code-change-modal');
+  modal.style.display = 'flex';
+
+  const isMaster = currentUser && currentUser.role === 'master';
+
+  if (isMaster) {
+    // 마스터 전용 관리 패널
+    document.getElementById('modal-title').textContent = '접속 코드 관리 (Master)';
+    document.getElementById('modal-user-section').style.display = 'none';
+    document.getElementById('modal-master-section').style.display = '';
+    renderMasterCodeList();
+  } else {
+    // 일반 사용자: 본인 코드 변경
+    document.getElementById('modal-title').textContent = '내 접속 코드 변경';
+    document.getElementById('modal-user-section').style.display = '';
+    document.getElementById('modal-master-section').style.display = 'none';
+    document.getElementById('modal-user-desc').textContent =
+      '현재 계정: ' + (currentUser ? currentUser.label : '') +
+      '  |  코드를 변경하면 다음 로그인부터 적용됩니다.';
+    // 입력 초기화
+    ['modal-current-code','modal-new-code','modal-new-code2'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('code-strength').textContent = '';
+    document.getElementById('modal-user-error').style.display = 'none';
+  }
+}
+
+function closeCodeModal() {
+  document.getElementById('code-change-modal').style.display = 'none';
+}
+
+// 모달 외부 클릭 시 닫기
+document.getElementById('code-change-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeCodeModal();
+});
+
+// ── 코드 강도 표시 ─────────────────────────────────────────────
+function checkCodeStrength(val) {
+  const el = document.getElementById('code-strength');
+  if (!val) { el.textContent = ''; return; }
+  if (val.length < 6) {
+    el.textContent = '너무 짧음 — 6자 이상 입력하세요';
+    el.style.color = '#ef4444';
+  } else if (val.length < 10) {
+    el.textContent = '보통 강도';
+    el.style.color = '#f59e0b';
+  } else {
+    el.textContent = '강함';
+    el.style.color = '#10b981';
+  }
+}
+
+// ── 일반 사용자 코드 변경 저장 ────────────────────────────────
+function saveNewCode() {
+  const current  = document.getElementById('modal-current-code').value.trim();
+  const newCode  = document.getElementById('modal-new-code').value.trim();
+  const newCode2 = document.getElementById('modal-new-code2').value.trim();
+  const errEl    = document.getElementById('modal-user-error');
+
+  errEl.style.display = 'none';
+
+  const codes = loadCurrentCodes();
+  // 현재 사용자의 코드 키 찾기
+  const userKey = Object.keys(codes).find(k => codes[k].label === currentUser.label);
+  if (!userKey) return;
+
+  if (codes[userKey].code !== current) {
+    errEl.textContent = '현재 코드가 올바르지 않습니다';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (newCode.length < 6) {
+    errEl.textContent = '새 코드는 6자 이상이어야 합니다';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (newCode !== newCode2) {
+    errEl.textContent = '새 코드가 일치하지 않습니다';
+    errEl.style.display = 'block';
+    return;
+  }
+  // 다른 계정과 중복 확인
+  const duplicate = Object.entries(codes).find(([k, u]) => k !== userKey && u.code === newCode);
+  if (duplicate) {
+    errEl.textContent = '이미 사용 중인 코드입니다. 다른 코드를 입력하세요';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  codes[userKey].code = newCode;
+  saveCurrentCodes(codes);
+
+  // 세션 정보도 업데이트
+  currentUser = codes[userKey];
+  sessionStorage.setItem('treasury_user', JSON.stringify(currentUser));
+
+  closeCodeModal();
+  showToast('접속 코드가 변경되었습니다', 'success');
+}
+
+// ── 마스터 전용: 코드 목록 렌더링 ────────────────────────────
+function renderMasterCodeList() {
+  const codes = loadCurrentCodes();
+  const listEl = document.getElementById('modal-master-list');
+  if (!listEl) return;
+
+  const entries = Object.entries(codes);
+  const rows = entries.map(function(entry) {
+    const key = entry[0], u = entry[1];
+    const defaultCode = DEFAULT_CODES[u.role] || DEFAULT_CODES[u.company] || '';
+    const isDefault = u.code === defaultCode;
+    const statusColor = isDefault ? '#f59e0b' : '#10b981';
+    const statusBg    = isDefault ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)';
+    const statusText  = isDefault ? '초기값' : '변경됨';
+    const resetBtn    = key !== 'master'
+      ? '<button onclick="resetUserCode(\'' + key + '\')" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;padding:3px 10px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;">초기화</button>'
+      : '<span style="font-size:11px;color:#64748b;">본인 변경만 가능</span>';
+
+    return '<div style="background:#1e2535;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 14px;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+        + '<div style="display:flex;align-items:center;gap:8px;">'
+          + '<span style="font-size:13px;font-weight:500;color:#f1f5f9;">' + u.label + '</span>'
+          + '<span style="font-size:10px;background:' + statusBg + ';color:' + statusColor + ';padding:2px 6px;border-radius:4px;">' + statusText + '</span>'
+        + '</div>'
+        + resetBtn
+      + '</div>'
+      + '<div style="display:flex;align-items:center;gap:8px;">'
+        + '<span style="font-size:11px;color:#64748b;">현재 코드:</span>'
+        + '<span style="font-size:12px;font-family:monospace;color:#94a3b8;background:rgba(255,255,255,0.04);padding:2px 8px;border-radius:4px;">' + u.code + '</span>'
+      + '</div>'
+      + '</div>';
+  });
+  listEl.innerHTML = rows.join('');
+}
+
+// ── 마스터의 특정 사용자 코드 초기화 ─────────────────────────
+function resetUserCode(userKey) {
+  const codes = loadCurrentCodes();
+  const u = codes[userKey];
+  if (!u) return;
+
+  const defaultCode = DEFAULT_CODES[u.role] || DEFAULT_CODES[u.company];
+  if (!defaultCode) return;
+
+  if (!confirm(u.label + ' 의 코드를 초기값(' + defaultCode + ')으로 초기화하시겠습니까?')) return;
+
+  codes[userKey].code = defaultCode;
+  saveCurrentCodes(codes);
+  renderMasterCodeList();
+  showToast(u.label + ' 코드 초기화 완료', 'success');
+}
+
+function doLogin() {
+  const inputCode = document.getElementById('login-code').value.trim();
+
+  // localStorage에 저장된 코드 우선, 없으면 기본 코드 사용
+  const codes = loadCurrentCodes();
+  let matchedUser = null;
+  Object.values(codes).forEach(u => {
+    if (u.code === inputCode) matchedUser = u;
+  });
+
+  if (!matchedUser) {
+    document.getElementById('login-error').style.display = 'block';
+    document.getElementById('login-code').value = '';
+    return;
+  }
+  currentUser = matchedUser;
+  sessionStorage.setItem('treasury_user', JSON.stringify(matchedUser));
+  applyAccessControl(matchedUser);
 }
 
 function applyAccessControl(user) {
@@ -760,6 +1019,8 @@ function applyAccessControl(user) {
   document.getElementById('login-overlay').style.display = 'none';
   const logoutBtn = document.getElementById('logout-btn');
   if (logoutBtn) logoutBtn.style.display = 'block';
+  const codeMgrBtn = document.getElementById('code-mgr-btn');
+  if (codeMgrBtn) codeMgrBtn.style.display = 'block';
   const userInfo = document.getElementById('user-info');
   if (userInfo) {
     userInfo.style.display = 'block';
@@ -820,6 +1081,8 @@ function doLogout() {
   document.getElementById('login-overlay').style.display = 'flex';
   const logoutBtn2 = document.getElementById('logout-btn');
   if (logoutBtn2) logoutBtn2.style.display = 'none';
+  const codeMgrBtn2 = document.getElementById('code-mgr-btn');
+  if (codeMgrBtn2) codeMgrBtn2.style.display = 'none';
   const userInfo2 = document.getElementById('user-info');
   if (userInfo2) userInfo2.style.display = 'none';
   document.getElementById('login-code').value = '';
@@ -874,7 +1137,14 @@ function setCompany(comp, btnEl) {
       badgeArea.innerHTML = `<img src="${imgMap[comp]}" alt="${comp}" onerror="this.style.display='none'" style="max-width:100%;max-height:100%;object-fit:contain;">`;
     document.querySelectorAll('.input-company-badge').forEach(el => el.textContent = comp);
   }
-  renderDashboard(); renderInvestments(); renderLoans(); renderEquity(); filterHistory();
+  // 드롭박스를 현재 선택 법인에 맞춤
+  if (comp !== 'TOTAL') {
+    ['i-company','v-company','l-company','e-company'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = comp;
+    });
+  }
+  renderDashboard(); renderInvestments(); renderLoans(); renderEquity(); filterHistory(); renderDailyHistory(1);
 }
 
 function getFiltered(table) {
@@ -884,6 +1154,39 @@ function getFiltered(table) {
   if (currentCompany === 'TOTAL') return all;
   return all.filter(r => r.company === currentCompany);
 }
+// ── 입력 페이지 법인 드롭박스 → currentCompany 동기화 ─────────
+function syncCompanySelect(selectId) {
+  const el = document.getElementById(selectId);
+  if (!el) return;
+  const company = el.value;
+  if (!company) return;
+
+  // 담당자 계정은 자사 이외 선택 불가
+  if (currentUser && currentUser.role === 'company' && company !== currentUser.company) {
+    el.value = currentUser.company;
+    return;
+  }
+
+  currentCompany = company;
+
+  // 다른 드롭박스도 동기화
+  ['i-company','v-company','l-company','e-company'].forEach(id => {
+    const other = document.getElementById(id);
+    if (other && other !== el) other.value = company;
+  });
+
+  // 현재 페이지의 목록 갱신
+  const activePage = document.querySelector('.page.active');
+  if (!activePage) return;
+  const pageId = activePage.id;
+  if (pageId === 'page-input')   renderDailyHistory(1);
+  if (pageId === 'page-invest')  renderInvestments();
+  if (pageId === 'page-loans')   renderLoans();
+  if (pageId === 'page-equity')  renderEquity();
+  if (pageId === 'page-history') filterHistory();
+}
+
+
 
 // 메뉴 이동 충돌 방지 로직 고도화
 function goto(page) {
@@ -900,13 +1203,19 @@ function goto(page) {
     }
   });
   
+  // 드롭박스를 현재 currentCompany에 맞춤
+  ['i-company','v-company','l-company','e-company'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && currentCompany && currentCompany !== 'TOTAL') el.value = currentCompany;
+  });
+
   if(page === 'dashboard') renderDashboard();
-  if(page === 'input') renderDailyHistory(1);
-  if(page === 'equity') renderEquity();
+  if(page === 'input')   renderDailyHistory(1);
+  if(page === 'equity')  renderEquity();
   if(page === 'history') filterHistory();
-  if(page === 'invest') renderInvestments();
-  if(page === 'fx') renderFXEquivTable();
-  if(page === 'loans') renderLoans();
+  if(page === 'invest')  renderInvestments();
+  if(page === 'fx')      renderFXEquivTable();
+  if(page === 'loans')   renderLoans();
 }
 
 async function refreshFX() {
