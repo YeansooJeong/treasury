@@ -317,7 +317,7 @@
           <div class="card" style="margin-bottom:0;padding:16px 20px;">
             <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">원화 자금 합계</div>
             <div style="font-size:20px;font-weight:700;color:var(--accent2);" id="s-krw-total">—</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:4px;">보통예금 + 국책 + MMDA</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px;">보통예금/MMDA + 국책 + MMDA</div>
           </div>
           <div class="card" style="margin-bottom:0;padding:16px 20px;">
             <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">외화 원화환산</div>
@@ -425,9 +425,9 @@
           </div>
           <div class="section-divider">원화 운전자금</div>
           <div class="form-grid-3">
-            <div class="form-group"><label>보통예금</label><div class="input-with-unit"><input type="text" id="i-krw-demand" placeholder="0" oninput="formatNumericInput(this)"><span class="unit">원</span></div></div>
+            <div class="form-group"><label>보통예금/MMDA</label><div class="input-with-unit"><input type="text" id="i-krw-demand" placeholder="0" oninput="formatNumericInput(this)"><span class="unit">원</span></div></div>
             <div class="form-group"><label>국책자금</label><div class="input-with-unit"><input type="text" id="i-krw-govt" placeholder="0" oninput="formatNumericInput(this)"><span class="unit">원</span></div></div>
-            <div class="form-group"><label>MMDA 등 수시입출식</label><div class="input-with-unit"><input type="text" id="i-krw-mmda" placeholder="0" oninput="formatNumericInput(this)"><span class="unit">원</span></div></div>
+            <div class="form-group"><label>증권(CMA) 예수금</label><div class="input-with-unit"><input type="text" id="i-krw-mmda" placeholder="0" oninput="formatNumericInput(this)"><span class="unit">원</span></div></div>
           </div>
           <div class="section-divider">외화 운전자금</div>
           <div class="form-grid-3">
@@ -450,7 +450,7 @@
               <thead>
                 <tr>
                   <th>일자</th><th>법인</th>
-                  <th class="td-num">보통예금</th><th class="td-num">국책</th><th class="td-num">MMDA</th>
+                  <th class="td-num">보통예금/MMDA</th><th class="td-num">국책</th><th class="td-num">MMDA</th>
                   <th class="td-num">USD</th><th class="td-num">EUR</th><th class="td-num">JPY</th>
                   <th class="td-num">외화환산</th><th>비고</th><th></th>
                 </tr>
@@ -474,7 +474,7 @@
                 <option value="메디아나">메디아나</option>
               </select>
             </div>
-            <div class="form-group"><label>금융기관</label><input type="text" id="v-bank" placeholder="예: 산업은행"></div>
+            <div class="form-group"><label>금융기관/발행처</label><input type="text" id="v-bank" placeholder="예: 산업은행"></div>
             <div class="form-group">
               <label>운용상품</label>
               <select id="v-product" onchange="onInvestProductChange()">
@@ -549,7 +549,7 @@
         <div class="card"><div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
               <span>운용자금 목록</span>
               <button onclick="fixInvestmentCompany()" style="font-size:11px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:var(--red);padding:3px 10px;border-radius:6px;cursor:pointer;font-family:inherit;">데이터 정리</button>
-            </div><div class="table-wrap"><table><thead><tr><th>법인</th><th>금융기관</th><th>상품</th><th>통화</th><th class="td-num">운용금액/좌수</th><th class="td-num">기준가/수익률</th><th>만기일</th><th>D-Day</th><th class="td-num">평가금액</th><th></th></tr></thead><tbody id="invest-tbody"></tbody></table></div></div>
+            </div><div class="table-wrap"><table><thead><tr><th>법인</th><th>금융기관/발행처</th><th>상품</th><th>통화</th><th class="td-num">운용금액/좌수</th><th class="td-num">기준가/수익률</th><th>만기일</th><th>D-Day</th><th class="td-num">평가금액</th><th></th></tr></thead><tbody id="invest-tbody"></tbody></table></div></div>
       </div>
 
       <div class="page" id="page-loans">
@@ -1934,7 +1934,7 @@ function renderDetailCard() {
       html += '<div style="font-size:11px;font-weight:600;color:#3b82f6;margin-bottom:6px;">● 운전자금 (' + (r ? r.date : '데이터 없음') + ')</div>';
       if (r) {
         const rows = [
-          ['보통예금', r.krw_demand],
+          ['보통예금/MMDA', r.krw_demand],
           ['국책자금', r.krw_govt],
           ['MMDA', r.krw_mmda],
           ['외화환산', r.fx_krw || 0],
@@ -2591,7 +2591,7 @@ function saveInvestment() {
   if (isBond) {
     const qty   = parseNum(document.getElementById('v-bond-qty').value);
     const price = parseNum(document.getElementById('v-bond-price').value);
-    if (!bank || !qty || !price) return showToast('금융기관, 좌수, 기준가를 입력하세요', 'error');
+    if (!bank || !qty || !price) return showToast('금융기관/발행처, 좌수, 기준가를 입력하세요', 'error');
     item.bondName   = document.getElementById('v-bond-name').value;
     item.bondTicker = document.getElementById('v-bond-ticker').value;
     item.bondQty    = qty;
@@ -2601,7 +2601,7 @@ function saveInvestment() {
   } else {
     const amount = parseNum(document.getElementById('v-amount').value);
     item.currency = document.getElementById('v-currency').value;
-    if (!bank || !amount) return showToast('금융기관과 금액을 입력하세요', 'error');
+    if (!bank || !amount) return showToast('금융기관/발행처과 금액을 입력하세요', 'error');
     item.amount = amount;
   }
 
