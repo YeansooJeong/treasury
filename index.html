@@ -255,6 +255,9 @@
         <div style="font-size:12px; color:var(--text3); margin-bottom:8px;">※ 현금흐름 (순현금에 반영됨) - 카드를 클릭하면 하단 그래프가 변경됩니다.</div>
 
         <!-- 원화/외화 구분 요약 카드 -->
+        <!-- 미입력/누락 알림 배너 -->
+        <div id="dash-alert-banner" style="display:none;margin-bottom:12px;"></div>
+
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:20px;">
           <div class="card" style="margin-bottom:0;padding:16px 20px;border-color:rgba(59,130,246,0.3);grid-column:1/3;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;">
@@ -536,7 +539,7 @@
           <div class="form-grid">
             <div class="form-group">
               <label>기준일자</label>
-              <input type="date" id="e-date">
+              <input type="date" id="e-date" onchange="onEquityDateChange()">
             </div>
             <div class="form-group">
               <label>보유 법인 *</label>
@@ -1132,7 +1135,7 @@ function selectStock(name, code, market) {
   document.getElementById('e-stock-dropdown').style.display = 'none';
   document.getElementById('e-price-status').textContent = `${name}(${code}) 선택됨 — 주가 조회 버튼을 눌러 최신 종가를 가져오세요`;
   document.getElementById('e-price-status').style.color = 'var(--accent2)';
-  // 선택 즉시 주가 자동조회
+  // 선택 즉시 기준일자 기반 직전 영업일 종가 조회
   fetchStockPrice();
 }
 
@@ -1184,8 +1187,9 @@ async function _fetchViaProxy(proxyUrl, timeout = 3000) {
 }
 
 // ── 병렬 조회: 3개 프록시를 동시에 쏘고 가장 빠른 성공 결과 사용
-async function _fetchStockParallel(symbol) {
-  const yahooUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d&includePrePost=false`;
+async function _fetchStockParallel(symbol, rangeDays) {
+  const range = rangeDays || '10d';
+  const yahooUrl = 'https://query2.finance.yahoo.com/v8/finance/chart/' + symbol + '?interval=1d&range=' + range + '&includePrePost=false';
 
   // 3개 프록시를 동시 요청 — 먼저 성공한 것 채택
   const proxies = [
@@ -1234,24 +1238,49 @@ async function fetchStockPrice() {
   const suffix = market === 'KOSDAQ' ? '.KQ' : '.KS';
   const symbol = ticker + suffix;
 
+  // ── 기준일자 기반 직전 영업일 계산 ──────────────────────────
+  // 기준일자가 오늘이면 가장 최근 종가(직전 영업일)
+  // 과거 일자이면 해당일 또는 그 이전 가장 최근 종가
+  const baseDateEl = document.getElementById('e-date');
+  const baseDate = baseDateEl ? baseDateEl.value : null;
+  const today = new Date().toISOString().slice(0, 10);
+
+  // 기준일과 오늘 사이 일수 계산 (Yahoo range 설정용)
+  let rangeDays = '7d'; // 기본: 최근 7거래일
+  if (baseDate && baseDate < today) {
+    const diff = Math.ceil((new Date(today) - new Date(baseDate)) / 86400000);
+    if (diff > 7) rangeDays = Math.min(diff + 10, 30) + 'd';
+  }
+
   fetchBtn.textContent = '조회중...';
   fetchBtn.disabled = true;
-  statusEl.textContent = `${symbol} 조회 중...`;
+  statusEl.textContent = symbol + ' 조회 중...';
   statusEl.style.color = 'var(--text3)';
 
-  // 두 소스를 동시에 요청 — 먼저 응답한 쪽 사용
-  const result = await _fetchStockParallel(symbol);
+  const result = await _fetchStockParallel(symbol, rangeDays);
 
   fetchBtn.textContent = '주가 조회';
   fetchBtn.disabled = false;
 
   if (result) {
-    document.getElementById('e-price').value = result.price.toLocaleString();
+    // 기준일자 이전 가장 최근 종가 필터 (과거 일자 입력 시)
+    let finalPrice = result.price;
+    let finalDate  = result.date;
+
+    // 기준일이 오늘보다 과거면 해당일 이전 종가를 가져왔는지 확인
+    if (baseDate && result.date > baseDate) {
+      // 조회된 날짜가 기준일보다 미래면 range 내 기준일 이전 데이터 없음
+      statusEl.textContent = '⚠ ' + baseDate + ' 기준 종가 없음 — 최근 종가(' + result.date + ') 적용';
+      statusEl.style.color = 'var(--amber)';
+    } else {
+      statusEl.textContent = '✅ ' + finalDate + ' 종가: ' + finalPrice.toLocaleString() + '원';
+      statusEl.style.color = 'var(--green)';
+    }
+
+    document.getElementById('e-price').value = finalPrice.toLocaleString();
     calcEquityValue();
-    statusEl.textContent = `✅ ${result.date} 종가: ${result.price.toLocaleString()}원`;
-    statusEl.style.color = 'var(--green)';
-    if (sourceEl) sourceEl.textContent = `${result.date} 종가 (${result.source})`;
-    showToast(`${symbol} ${result.price.toLocaleString()}원`, 'success');
+    if (sourceEl) sourceEl.textContent = finalDate + ' 직전 영업일 종가';
+    showToast(symbol + ' ' + finalPrice.toLocaleString() + '원 (' + finalDate + ')', 'success');
   } else {
     statusEl.textContent = '❌ 조회 실패 — 직접 입력하세요';
     statusEl.style.color = 'var(--red)';
@@ -1280,6 +1309,16 @@ function clearEquityForm() {
 
 // ── 지분투자 목록 클릭 → 폼에 로드 (수정 모드) ──────────────
 let editingEquityKey = null; // company_name 키
+
+
+// ── 기준일자 변경 시 직전 영업일 종가 자동 조회 ──────────────
+function onEquityDateChange() {
+  const ticker = document.getElementById('e-ticker').value.trim();
+  const market = document.getElementById('e-market').value;
+  if (ticker && ticker.length === 6 && market !== '비상장') {
+    fetchStockPrice(); // 기준일자 기반으로 직전 영업일 종가 조회
+  }
+}
 
 function loadEquityToForm(id) {
   const all = DB.get('equities');
@@ -1440,6 +1479,135 @@ function toggleMetric(key, event) {
 
 
 // ── 카드 선택 시 우측 상세내역 목록 렌더링 ──────────────────────
+
+// ══════════════════════════════════════════════════════
+// 통합 상황판 알림 배너 — 당일/누락 입력 경고
+// ══════════════════════════════════════════════════════
+function renderDashboardAlerts() {
+  const banner = document.getElementById('dash-alert-banner');
+  if (!banner) return;
+
+  // 알림 대상: Master/CEO는 3사 전체, 담당자는 자사만
+  const user = currentUser;
+  const isAll = !user || user.role === 'master' || user.role === 'ceo';
+  const targetCompanies = isAll
+    ? ['셀바스에이아이', '셀바스헬스케어', '메디아나']
+    : [user.company];
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  // 오늘이 영업일인지 확인 (주말 제외)
+  const todayDow = new Date().getDay();
+  const isTodayBizDay = todayDow !== 0 && todayDow !== 6;
+
+  // 직전 영업일 계산
+  function prevBizDay(dateStr) {
+    const d = new Date(dateStr);
+    do { d.setDate(d.getDate() - 1); } while (d.getDay() === 0 || d.getDay() === 6);
+    return d.toISOString().slice(0, 10);
+  }
+
+  const alerts = [];
+
+  targetCompanies.forEach(company => {
+    const daily = DB.get('daily').filter(r => r.company === company);
+    const inputDates = new Set(daily.map(r => r.date));
+
+    // 당일 미입력 (영업일인 경우)
+    if (isTodayBizDay && !inputDates.has(today)) {
+      alerts.push({
+        level: 'error',
+        msg: '[' + company + '] 오늘(' + today + ') 운전자금 미입력',
+      });
+    }
+
+    // 직전 영업일 미입력
+    const yesterday = prevBizDay(today);
+    if (!inputDates.has(yesterday) && daily.length > 0) {
+      alerts.push({
+        level: 'warn',
+        msg: '[' + company + '] 직전 영업일(' + yesterday + ') 운전자금 누락',
+      });
+    }
+
+    // 지분투자 — 당일 평가금액 업데이트 여부
+    if (isTodayBizDay) {
+      const equities = DB.get('equities').filter(e => e.company === company);
+      const latestMap = {};
+      equities.forEach(e => {
+        const key = e.company + '_' + e.name;
+        if (!latestMap[key] || e.date > latestMap[key].date) latestMap[key] = e;
+      });
+      Object.values(latestMap).forEach(eq => {
+        if (eq.market !== '비상장' && eq.date < today) {
+          alerts.push({
+            level: 'info',
+            msg: '[' + company + '] ' + eq.name + ' 평가금액 미업데이트 (최종: ' + eq.date + ')',
+          });
+        }
+      });
+    }
+
+    // 운용자금 국공채 — 당일 기준가 업데이트 여부
+    if (isTodayBizDay) {
+      const bonds = DB.get('investments').filter(i =>
+        i.company === company && i.active && i.product === '국공채'
+      );
+      bonds.forEach(b => {
+        if (b.priceDate && b.priceDate < today) {
+          alerts.push({
+            level: 'info',
+            msg: '[' + company + '] ' + (b.bondName || b.bank) + ' 기준가 미업데이트 (최종: ' + b.priceDate + ')',
+          });
+        }
+      });
+    }
+  });
+
+  if (!alerts.length) {
+    banner.style.display = 'none';
+    return;
+  }
+
+  // 알림 종류별 그루핑
+  const errors = alerts.filter(a => a.level === 'error');
+  const warns  = alerts.filter(a => a.level === 'warn');
+  const infos  = alerts.filter(a => a.level === 'info');
+
+  let html = '<div style="display:flex;flex-direction:column;gap:6px;">';
+
+  if (errors.length) {
+    html += '<div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:10px 14px;">';
+    html += '<div style="font-size:11px;font-weight:600;color:var(--red);margin-bottom:4px;">🔴 즉시 입력 필요</div>';
+    errors.forEach(a => {
+      html += '<div style="font-size:12px;color:var(--text2);padding:2px 0;">· ' + a.msg + '</div>';
+    });
+    html += '</div>';
+  }
+
+  if (warns.length) {
+    html += '<div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:10px 14px;">';
+    html += '<div style="font-size:11px;font-weight:600;color:var(--amber);margin-bottom:4px;">🟡 누락 확인 필요</div>';
+    warns.forEach(a => {
+      html += '<div style="font-size:12px;color:var(--text2);padding:2px 0;">· ' + a.msg + '</div>';
+    });
+    html += '</div>';
+  }
+
+  if (infos.length) {
+    html += '<div style="background:rgba(96,165,250,0.06);border:1px solid rgba(96,165,250,0.2);border-radius:8px;padding:10px 14px;">';
+    html += '<div style="font-size:11px;font-weight:600;color:var(--accent2);margin-bottom:4px;">🔵 평가금액 업데이트 필요</div>';
+    infos.forEach(a => {
+      html += '<div style="font-size:12px;color:var(--text2);padding:2px 0;">· ' + a.msg + '</div>';
+    });
+    html += '</div>';
+  }
+
+  html += '</div>';
+  banner.innerHTML = html;
+  banner.style.display = '';
+}
+
 function renderDetailCard() {
   const el = document.getElementById('dash-detail-list');
   if (!el) return;
@@ -1641,6 +1809,7 @@ function renderDashboard() {
   updateMainChart(dailyRecords);
   updateEquityChart(allEq);
   renderDetailCard();
+  renderDashboardAlerts();
 }
 
 // ── 차트 기간 설정 ─────────────────────────────────────────
