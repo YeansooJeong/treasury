@@ -66,16 +66,28 @@
   .card-title { font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
   
   .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
-  .metric { background: var(--card); border: 2px solid var(--border); border-radius: 12px; padding: 18px 20px; cursor: pointer; transition: all 0.2s; position: relative; }
-  .metric::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; border-radius:12px 12px 0 0; background:transparent; transition:background .2s; }
-  .metric[data-key="op"]::before { background: rgba(59,130,246,0.5); }
-  .metric[data-key="inv"]::before { background: rgba(16,185,129,0.5); }
-  .metric[data-key="loan"]::before { background: rgba(245,158,11,0.5); }
-  .metric[data-key="net"]::before { background: rgba(139,92,246,0.5); }
-  .metric.selected[data-key="op"]::before { background: #3b82f6; }
-  .metric.selected[data-key="inv"]::before { background: #10b981; }
-  .metric.selected[data-key="loan"]::before { background: #f59e0b; }
-  .metric.selected[data-key="net"]::before { background: #8b5cf6; }
+  .metric {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    position: relative;
+  }
+  .metric:hover { transform: scale(1.025); box-shadow: 0 4px 16px rgba(0,0,0,0.18); z-index: 1; }
+  .metric[data-key="op"] { border-color: rgba(59,130,246,0.35); }
+  .metric[data-key="inv"] { border-color: rgba(16,185,129,0.35); }
+  .metric[data-key="loan"] { border-color: rgba(245,158,11,0.35); }
+  .metric[data-key="net"] { border-color: rgba(139,92,246,0.35); }
+  .metric[data-key="op"]:hover { border-color: rgba(59,130,246,0.7); }
+  .metric[data-key="inv"]:hover { border-color: rgba(16,185,129,0.7); }
+  .metric[data-key="loan"]:hover { border-color: rgba(245,158,11,0.7); }
+  .metric[data-key="net"]:hover { border-color: rgba(139,92,246,0.7); }
+  .metric.selected[data-key="op"] { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); background: var(--bg3); }
+  .metric.selected[data-key="inv"] { border-color: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,0.15); background: var(--bg3); }
+  .metric.selected[data-key="loan"] { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.15); background: var(--bg3); }
+  .metric.selected[data-key="net"] { border-color: #8b5cf6; box-shadow: 0 0 0 3px rgba(139,92,246,0.15); background: var(--bg3); }
   .metric-click-hint { font-size:9px; color:var(--text3); position:absolute; bottom:8px; right:10px; opacity:0; transition:opacity .15s; }
   .metric:hover .metric-click-hint { opacity:1; }
   .metric:hover { border-color: var(--border2); background: var(--bg3); }
@@ -239,7 +251,7 @@
       </div>
 
       <div class="nav-section">지분투자 관리</div>
-      <div class="nav-item" onclick="goto('equity')" style="color:var(--pink);">
+      <div class="nav-item" onclick="goto('equity')" data-page="equity">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M8 1l2 4 4 .5-3 3 .8 4.5L8 11l-3.8 2L5 8.5 2 5.5 6 5z"/>
         </svg>
@@ -398,11 +410,18 @@
               <div class="m-row"><span class="lbl">외화환산액</span><span class="val" id="d-loan-fx">0</span></div>
             </div>
           </div>
-          <div class="metric" data-key="net" onclick="toggleMetric('net', event)">
-            <span class="metric-click-hint">그래프 선택</span><div class="metric-label">순현금 (Net Cash) <span class="color-net">●</span></div>
+          <div class="metric" data-key="net" onclick="toggleMetric('net', event)" id="metric-net">
+            <span class="metric-click-hint">그래프 선택</span>
+            <div class="metric-label">순현금 (Net Cash) <span class="color-net">●</span></div>
             <div class="metric-total" id="d-net-total">0원</div>
             <div class="metric-details">
-              <div class="m-row"><span class="lbl" style="color:var(--text3);">운전 + 운용 - 차입금</span></div>
+              <div class="m-row"><span class="lbl" style="color:var(--text3);">운전 + 운용 − 차입금</span></div>
+              <div id="d-net-bar" style="margin-top:8px;display:none;">
+                <div style="height:4px;border-radius:2px;background:var(--border);overflow:hidden;margin-bottom:4px;">
+                  <div id="d-net-bar-fill" style="height:4px;border-radius:2px;transition:width .4s;"></div>
+                </div>
+                <div style="font-size:10px;color:var(--text3);" id="d-net-bar-label"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -532,6 +551,13 @@
             <div class="form-group"><label>가입일</label><input type="date" id="v-start"></div>
             <div class="form-group"><label>만기일</label><input type="date" id="v-maturity"></div>
             <div class="form-group"><label>수익률 (%)</label><div class="input-with-unit"><input type="text" id="v-rate" placeholder="3.5" oninput="formatNumericInput(this, true)"><span class="unit">%</span></div></div>
+            <div class="form-group">
+              <label>가용여부</label>
+              <select id="v-available">
+                <option value="가용">가용 (즉시 사용 가능)</option>
+                <option value="불가용">불가용 (만기 전 인출 불가)</option>
+              </select>
+            </div>
 
             <!-- 일반 상품: 통화/금액 -->
             <div class="form-group" id="v-group-amount">
@@ -716,7 +742,24 @@
         <div class="card">
           <div class="card-title">자금 변동 이력</div>
           <div style="display:flex;gap:10px;margin-bottom:16px;"><input type="date" id="h-from" style="width:140px;"><span style="line-height:36px;">~</span><input type="date" id="h-to" style="width:140px;"><button class="btn btn-ghost" onclick="filterHistory()">조회</button></div>
-          <div class="table-wrap"><table><thead><tr><th>일자</th><th>법인</th><th class="td-num">원화운전</th><th class="td-num">USD</th><th class="td-num">EUR</th><th class="td-num">JPY</th><th class="td-num">외화환산</th><th>비고</th></tr></thead><tbody id="history-tbody"></tbody></table></div>
+          <div class="table-wrap" style="overflow-x:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>일자</th><th>법인</th>
+                  <th class="td-num">원화운전</th>
+                  <th class="td-num">USD</th><th class="td-num">EUR</th><th class="td-num">JPY</th>
+                  <th class="td-num">외화환산</th>
+                  <th class="td-num" style="color:var(--green);">운용자금</th>
+                  <th class="td-num" style="color:var(--amber);">차입금</th>
+                  <th class="td-num" style="color:var(--pink);">지분투자</th>
+                  <th class="td-num" style="color:var(--purple);">순현금</th>
+                  <th>비고</th>
+                </tr>
+              </thead>
+              <tbody id="history-tbody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
       
@@ -899,10 +942,16 @@ function openCodeModal() {
   const isMaster = currentUser && currentUser.role === 'master';
 
   if (isMaster) {
-    // 마스터 전용 관리 패널
+    // 마스터: 본인 코드 변경 + 사용자 관리 패널 모두 표시
     document.getElementById('modal-title').textContent = '접속 코드 관리 (Master)';
-    document.getElementById('modal-user-section').style.display = 'none';
+    document.getElementById('modal-user-section').style.display = '';
     document.getElementById('modal-master-section').style.display = '';
+    document.getElementById('modal-user-desc').textContent = 'Master 계정 코드 변경 — 현재 코드 입력 후 새 코드를 설정하세요.';
+    ['modal-current-code','modal-new-code','modal-new-code2'].forEach(function(id) {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('code-strength').textContent = '';
+    document.getElementById('modal-user-error').style.display = 'none';
     renderMasterCodeList();
   } else {
     // 일반 사용자: 본인 코드 변경
@@ -1091,14 +1140,35 @@ function applyAccessControl(user) {
     document.querySelectorAll('.ci-tab').forEach(tab => {
       tab.style.display = '';  // 모든 탭 표시
     });
-    currentCompany = '셀바스에이아이';  // 기본값: 첫 번째 법인
-    // 입력 폼 드롭박스 — 모든 옵션 활성화
+    currentCompany = '셀바스에이아이';
     ['i-company','v-company','l-company','e-company'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
       Array.from(el.options).forEach(opt => { opt.disabled = false; });
       el.value = '셀바스에이아이';
     });
+    // CEO는 열람만 — 모든 저장/추가/삭제 버튼 비활성화
+    if (user.role === 'ceo') {
+      setTimeout(() => {
+        document.querySelectorAll('.btn-primary, .btn-success, button[onclick*="save"], button[onclick*="delete"], button[onclick*="Delete"]').forEach(btn => {
+          if (!btn.id || !btn.id.includes('logout')) {
+            btn.disabled = true;
+            btn.style.opacity = '0.4';
+            btn.style.cursor = 'not-allowed';
+            btn.title = 'CEO 계정은 열람만 가능합니다';
+          }
+        });
+        // 삭제 버튼 포함
+        document.querySelectorAll('.btn-ghost').forEach(btn => {
+          const txt = btn.textContent.trim();
+          if (['삭제','해지','상환','저장','추가','초기화'].includes(txt)) {
+            btn.disabled = true;
+            btn.style.opacity = '0.4';
+            btn.style.cursor = 'not-allowed';
+          }
+        });
+      }, 300);
+    }
   } else {
     // 법인 담당자 — 해당 법인 탭만 표시, 나머지 숨김
     document.querySelectorAll('.ci-tab').forEach(tab => {
@@ -2102,6 +2172,22 @@ function renderDashboard() {
   document.getElementById('d-loan-krw').textContent = fmtKRW(loanKrw); document.getElementById('d-loan-fx').textContent = fmtKRW(loanFx);
   document.getElementById('d-net-total').textContent = fmtKRW(netTotal);
   document.getElementById('d-net-total').style.color = netTotal >= 0 ? 'var(--green)' : 'var(--red)';
+  // 순현금 바 업데이트
+  const netBarWrap = document.getElementById('d-net-bar');
+  const netBarFill = document.getElementById('d-net-bar-fill');
+  const netBarLabel = document.getElementById('d-net-bar-label');
+  if (netBarWrap && netBarFill) {
+    const totalAsset = opTotal + invTotal;
+    if (totalAsset > 0 && loanTotal > 0) {
+      netBarWrap.style.display = '';
+      const loanPct = Math.min(Math.round(loanTotal / totalAsset * 100), 100);
+      netBarFill.style.width = loanPct + '%';
+      netBarFill.style.background = loanPct > 80 ? 'var(--red)' : loanPct > 50 ? 'var(--amber)' : 'var(--green)';
+      if (netBarLabel) netBarLabel.textContent = '자산 대비 차입 비율 ' + loanPct + '%' + (netTotal < 0 ? ' — 차입금 > 보유자금' : '');
+    } else {
+      netBarWrap.style.display = 'none';
+    }
+  }
 
   // ── 원화/외화 요약 카드 업데이트 ──────────────────────────
   // 운전자금 + 운용자금 합산 기준
@@ -2712,6 +2798,8 @@ function saveInvestment() {
     editingInvestId = null;
     const saveBtn = document.querySelector('#page-invest .form-actions button');
     if (saveBtn) { saveBtn.textContent = '운용상품 추가'; saveBtn.style.background = ''; }
+    renderInvestments();
+    renderDashboard();
   } else {
     DB.append('investments', item);
     showToast('[' + iCompany + '] ' + product + ' 등록 완료', 'success');
@@ -2818,14 +2906,66 @@ function renderInvestments() {
   }).join('');
 }
 
+
+// ── 차입금 목록 클릭 → 폼에 로드 (수정 모드) ──────────────
+let editingLoanId = null;
+
+function loadLoanToForm(id) {
+  const item = DB.get('loans').find(x => String(x.id) === String(id));
+  if (!item) return;
+  editingLoanId = id;
+
+  const compEl = document.getElementById('l-company');
+  if (compEl) compEl.value = item.company;
+
+  const set = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val || ''; };
+  set('l-lender', item.lender);
+  set('l-amount', item.amount ? item.amount.toLocaleString() : '');
+  set('l-rate', item.rate);
+  set('l-start', item.start);
+  set('l-maturity', item.maturity);
+
+  const typeEl = document.getElementById('l-type');
+  if (typeEl) typeEl.value = item.type;
+  const curEl = document.getElementById('l-currency');
+  if (curEl) curEl.value = item.currency || 'KRW';
+
+  const saveBtn = document.querySelector('#page-loans .form-actions button');
+  if (saveBtn) { saveBtn.textContent = '차입금 수정 저장'; saveBtn.style.background = 'var(--amber)'; }
+
+  const formCard = document.querySelector('#page-loans .card');
+  if (formCard) formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  showToast('수정할 내용을 변경 후 저장하세요', '');
+}
+
 function saveLoan() {
   const compEl = document.getElementById('l-company');
   const lCompany = compEl ? compEl.value : currentCompany;
   if (!lCompany) return showToast('법인을 선택해주세요.', 'error');
-  const l = { id: Date.now(), active: true, company: lCompany, lender: document.getElementById('l-lender').value, type: document.getElementById('l-type').value, currency: document.getElementById('l-currency').value, amount: parseNum(document.getElementById('l-amount').value), rate: parseNum(document.getElementById('l-rate').value), start: document.getElementById('l-start').value, maturity: document.getElementById('l-maturity').value };
-  if(!l.lender || !l.amount) return showToast('필수항목 입력', 'error');
-  DB.append('loans', l); showToast('등록 완료', 'success'); 
-  ['l-lender','l-amount','l-rate','l-start','l-maturity'].forEach(id=>document.getElementById(id).value='');
+  const l = {
+    id: Date.now(), active: true, company: lCompany,
+    lender: document.getElementById('l-lender').value,
+    type: document.getElementById('l-type').value,
+    currency: document.getElementById('l-currency').value,
+    amount: parseNum(document.getElementById('l-amount').value),
+    rate: parseNum(document.getElementById('l-rate').value),
+    start: document.getElementById('l-start').value,
+    maturity: document.getElementById('l-maturity').value
+  };
+  if (!l.lender || !l.amount) return showToast('필수항목 입력', 'error');
+
+  if (editingLoanId !== null) {
+    const all = DB.get('loans');
+    const idx = all.findIndex(x => String(x.id) === String(editingLoanId));
+    if (idx >= 0) { l.id = all[idx].id; all[idx] = l; DB.set('loans', all); showToast('차입금 수정 완료', 'success'); }
+    editingLoanId = null;
+    const saveBtn = document.querySelector('#page-loans .form-actions button');
+    if (saveBtn) { saveBtn.textContent = '차입금 추가'; saveBtn.style.background = ''; }
+  } else {
+    DB.append('loans', l);
+    showToast('[' + lCompany + '] 차입금 등록 완료', 'success');
+  }
+  ['l-lender','l-amount','l-rate','l-start','l-maturity'].forEach(id => document.getElementById(id).value = '');
   renderLoans(); renderDashboard();
 }
 
@@ -2836,7 +2976,15 @@ function renderLoans() {
   tbody.innerHTML = l.map(x=>{
     const days = x.maturity ? Math.ceil((new Date(x.maturity)-today)/86400000) : null;
     const dday = days!==null ? (days<0 ? `<span style="color:var(--red)">만기경과</span>` : `D-${days}`) : '—';
-    return `<tr><td>${x.company}</td><td>${x.lender}</td><td>${x.type}</td><td>${x.currency}</td><td class="td-num">${x.amount.toLocaleString()}</td><td class="td-num">${x.rate}%</td><td>${x.maturity||'—'}</td><td>${dday}</td><td class="td-num" style="color:var(--amber)">${fmtKRW(calcKRW(x.amount, x.currency))}</td><td><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="DB.set('loans', DB.get('loans').filter(v=>v.id!==${x.id})); renderLoans(); renderDashboard();">상환</button></td></tr>`;
+    return `<tr style="cursor:pointer;" onclick="loadLoanToForm(${x.id})" title="클릭하면 위 폼에 불러옵니다">
+      <td>${x.company}</td><td>${x.lender}</td><td>${x.type}</td><td>${x.currency}</td>
+      <td class="td-num">${x.amount.toLocaleString()}</td><td class="td-num">${x.rate}%</td>
+      <td>${x.maturity||'—'}</td><td>${dday}</td>
+      <td class="td-num" style="color:var(--amber)">${fmtKRW(calcKRW(x.amount, x.currency))}</td>
+      <td onclick="event.stopPropagation()">
+        <button class="btn btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="deleteLoan(${x.id})">상환</button>
+      </td>
+    </tr>`;
   }).join('');
 }
 
@@ -3080,8 +3228,53 @@ function filterHistory() {
   const from = document.getElementById('h-from').value, to = document.getElementById('h-to').value;
   const records = getFiltered('daily').filter(r => (!from||r.date>=from)&&(!to||r.date<=to)).sort((a,b)=>b.date.localeCompare(a.date));
   const tbody = document.getElementById('history-tbody');
-  if(!records.length) return tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3);">데이터가 없습니다</td></tr>';
-  tbody.innerHTML = records.map(r => `<tr><td>${r.date}</td><td>${r.company}</td><td class="td-num">${fmtKRW(r.krw_demand+r.krw_govt+r.krw_mmda)}</td><td class="td-num">${r.fx_usd?r.fx_usd.toLocaleString()+'$':'—'}</td><td class="td-num">${r.fx_eur?r.fx_eur.toLocaleString()+'€':'—'}</td><td class="td-num">${r.fx_jpy?r.fx_jpy.toLocaleString()+'¥':'—'}</td><td class="td-num" style="color:var(--accent2);">${fmtKRW(r.fx_krw||0)}</td><td style="font-size:12px;color:var(--text3);">${r.memo||''}</td></tr>`).join('');
+  if (!records.length) return tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:24px;color:var(--text3);">데이터가 없습니다</td></tr>';
+
+  // 날짜별 운용자금·차입금·지분투자 스냅샷 계산
+  const allInv = DB.get('investments');
+  const allLoans = DB.get('loans');
+  const allEq = DB.get('equities');
+
+  tbody.innerHTML = records.map(r => {
+    const opKrw = r.krw_demand + r.krw_govt + r.krw_mmda;
+    const fxKrw = r.fx_krw || 0;
+    const opTotal = opKrw + fxKrw;
+
+    // 해당 날짜 기준 운용자금 (active이면서 가입일 ≤ 날짜 ≤ 만기일)
+    const invOnDate = allInv.filter(i => i.active && i.company === r.company &&
+      (!i.start || i.start <= r.date) && (!i.maturity || i.maturity >= r.date));
+    const invTotal = invOnDate.reduce((s, i) => s + calcKRW(i.amount, i.currency), 0);
+
+    // 해당 날짜 기준 차입금
+    const loanOnDate = allLoans.filter(l => l.active && l.company === r.company &&
+      (!l.start || l.start <= r.date) && (!l.maturity || l.maturity >= r.date));
+    const loanTotal = loanOnDate.reduce((s, l) => s + calcKRW(l.amount, l.currency), 0);
+
+    // 해당 날짜 기준 지분투자 최신 평가금액
+    const eqMap = {};
+    allEq.filter(e => e.company === r.company && e.date <= r.date)
+      .sort((a,b) => a.date.localeCompare(b.date))
+      .forEach(e => { eqMap[e.name] = e.total_value; });
+    const eqTotal = Object.values(eqMap).reduce((s, v) => s + v, 0);
+
+    const netCash = opTotal + invTotal - loanTotal;
+    const netColor = netCash >= 0 ? 'var(--green)' : 'var(--red)';
+
+    return '<tr>' +
+      '<td>' + r.date + '</td>' +
+      '<td style="font-size:11px;color:var(--text3);">' + r.company + '</td>' +
+      '<td class="td-num">' + fmtKRW(opKrw) + '</td>' +
+      '<td class="td-num">' + (r.fx_usd > 0 ? r.fx_usd.toLocaleString() + '$' : '—') + '</td>' +
+      '<td class="td-num">' + (r.fx_eur > 0 ? r.fx_eur.toLocaleString() + '€' : '—') + '</td>' +
+      '<td class="td-num">' + (r.fx_jpy > 0 ? r.fx_jpy.toLocaleString() + '¥' : '—') + '</td>' +
+      '<td class="td-num" style="color:var(--accent2);">' + fmtKRW(fxKrw) + '</td>' +
+      '<td class="td-num" style="color:var(--green);">' + (invTotal > 0 ? fmtKRW(invTotal) : '—') + '</td>' +
+      '<td class="td-num" style="color:var(--amber);">' + (loanTotal > 0 ? fmtKRW(loanTotal) : '—') + '</td>' +
+      '<td class="td-num" style="color:var(--pink);">' + (eqTotal > 0 ? fmtKRW(eqTotal) : '—') + '</td>' +
+      '<td class="td-num" style="color:' + netColor + ';font-weight:600;">' + fmtKRW(netCash) + '</td>' +
+      '<td style="font-size:11px;color:var(--text3);">' + (r.memo || '') + '</td>' +
+      '</tr>';
+  }).join('');
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
