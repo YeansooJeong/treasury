@@ -119,6 +119,39 @@
 </head>
 <body>
 
+
+<div id="login-overlay" style="
+  position:fixed;inset:0;background:#0f1117;z-index:9999;
+  display:flex;align-items:center;justify-content:center;
+">
+  <div style="background:#161b27;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:40px 48px;width:380px;max-width:90vw;">
+    <div style="font-size:24px;font-weight:800;color:#f1f5f9;letter-spacing:.05em;margin-bottom:4px;">SELVAS</div>
+    <div style="font-size:13px;color:#64748b;margin-bottom:32px;">Treasury — 통합자금관리</div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:12px;color:#94a3b8;font-weight:500;display:block;margin-bottom:6px;">접근 코드</label>
+      <input id="login-code" type="password" placeholder="접근 코드를 입력하세요"
+        style="width:100%;background:#1e2535;border:1px solid rgba(255,255,255,0.14);color:#f1f5f9;padding:10px 14px;border-radius:8px;font-size:14px;outline:none;font-family:inherit;"
+        onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button onclick="doLogin()" style="width:100%;background:#3b82f6;color:#fff;border:none;padding:11px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;">
+      로그인
+    </button>
+    <div id="login-error" style="color:#ef4444;font-size:12px;margin-top:10px;text-align:center;display:none;">
+      접근 코드가 올바르지 않습니다
+    </div>
+    <div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.06);font-size:11px;color:#475569;line-height:1.8;">
+      <div>· Master / CEO : 전체 3사 열람 및 편집</div>
+      <div>· 각 법인 담당자 : 해당 법인만 열람/입력</div>
+    </div>
+  </div>
+</div>
+
+<div id="logout-btn" style="display:none;position:fixed;top:14px;right:70px;z-index:1000;">
+  <button onclick="doLogout()" style="background:#1e2535;border:1px solid rgba(255,255,255,0.1);color:#94a3b8;padding:5px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">
+    로그아웃
+  </button>
+</div>
+
 <div class="layout">
   <aside class="sidebar">
     <div class="sidebar-logo">
@@ -224,24 +257,32 @@
         <div style="font-size:12px; color:var(--text3); margin-bottom:8px;">※ 현금흐름 (순현금에 반영됨) - 카드를 클릭하면 하단 그래프가 변경됩니다.</div>
 
         <!-- 원화/외화 구분 요약 카드 -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:20px;">
+          <div class="card" style="margin-bottom:0;padding:16px 20px;border-color:rgba(59,130,246,0.3);grid-column:1/3;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <div>
+                <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">운전자금 + 운용자금 합계</div>
+                <div style="font-size:26px;font-weight:700;color:var(--accent2);" id="s-op-inv-total">—</div>
+                <div style="font-size:11px;color:var(--text3);margin-top:6px;">
+                  운전 <span style="color:var(--accent2);" id="s-op-sub">—</span> &nbsp;+&nbsp; 운용 <span style="color:var(--green);" id="s-inv-sub">—</span>
+                </div>
+              </div>
+              <button onclick="goto('input')" style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);color:var(--accent2);padding:5px 12px;border-radius:8px;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap;">+ 입력</button>
+            </div>
+          </div>
           <div class="card" style="margin-bottom:0;padding:16px 20px;">
             <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">원화 자금 합계</div>
-            <div style="font-size:22px;font-weight:700;color:var(--accent2);" id="s-krw-total">—</div>
+            <div style="font-size:20px;font-weight:700;color:var(--accent2);" id="s-krw-total">—</div>
             <div style="font-size:11px;color:var(--text3);margin-top:4px;">보통예금 + 국책 + MMDA</div>
           </div>
           <div class="card" style="margin-bottom:0;padding:16px 20px;">
-            <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">외화 원화환산 합계</div>
-            <div style="font-size:22px;font-weight:700;color:var(--green);" id="s-fx-total">—</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:4px;" id="s-fx-detail">USD · EUR · JPY</div>
-          </div>
-          <div class="card" style="margin-bottom:0;padding:16px 20px;">
-            <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">원화 / 외화 비율</div>
-            <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;margin:10px 0;gap:2px;">
-              <div style="height:8px;border-radius:2px;background:var(--accent);transition:flex .4s;flex:70;" id="s-ratio-krw-bar"></div>
-              <div style="height:8px;border-radius:2px;background:var(--green);transition:flex .4s;flex:30;" id="s-ratio-fx-bar"></div>
+            <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">외화 원화환산</div>
+            <div style="font-size:20px;font-weight:700;color:var(--green);" id="s-fx-total">—</div>
+            <div style="display:flex;height:6px;border-radius:3px;overflow:hidden;margin:8px 0;gap:2px;">
+              <div style="height:6px;border-radius:2px;background:var(--accent);transition:flex .4s;flex:70;" id="s-ratio-krw-bar"></div>
+              <div style="height:6px;border-radius:2px;background:var(--green);transition:flex .4s;flex:30;" id="s-ratio-fx-bar"></div>
             </div>
-            <div style="font-size:12px;color:var(--text2);" id="s-ratio-text">—</div>
+            <div style="font-size:11px;color:var(--text2);" id="s-ratio-text">—</div>
           </div>
         </div>
         <div class="metrics">
@@ -253,8 +294,8 @@
               <div class="m-row"><span class="lbl">외화환산액</span><span class="val" id="d-op-fx">0</span></div>
             </div>
           </div>
-          <div class="metric" data-key="inv" onclick="toggleMetric('inv', event)">
-            <div class="metric-label">운용자금 (단기투자) <span class="color-inv">●</span></div>
+          <div class="metric" data-key="inv" onclick="toggleMetric('inv', event); toggleInvDetail(event)">
+            <div class="metric-label">운용자금 (단기투자) <span class="color-inv">●</span> <span style="font-size:10px;color:var(--text3);" id="inv-detail-hint">클릭 시 목록</span></div>
             <div class="metric-total" id="d-inv-total">0원</div>
             <div class="metric-details">
               <div class="m-row"><span class="lbl">원화 자금</span><span class="val" id="d-inv-krw">0</span></div>
@@ -289,6 +330,21 @@
             </div>
           </div>
           <div class="chart-area" id="chart-area"><canvas id="mainChart"></canvas></div>
+        </div>
+
+        <div id="inv-detail-card" style="display:none;margin-bottom:16px;">
+          <div class="card" style="border-color:rgba(16,185,129,0.3);">
+            <div class="card-title" style="display:flex;justify-content:space-between;">
+              <span>운용자금 목록</span>
+              <button onclick="goto('invest')" style="font-size:11px;background:transparent;border:none;color:var(--green);cursor:pointer;font-family:inherit;">전체 보기 →</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>법인</th><th>금융기관</th><th>상품</th><th>만기일</th><th>D-Day</th><th class="td-num">평가금액</th></tr></thead>
+                <tbody id="dash-inv-tbody"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
         <div class="equity-metric">
@@ -567,7 +623,63 @@
       </div>
       
       <div class="page" id="page-fx">
-        <div class="card"><div class="card-title">실시간 환율</div><div class="fx-panel"><div class="fx-card"><div class="fx-currency">USD / KRW</div><div class="fx-rate" id="p-fx-usd">—</div></div><div class="fx-card"><div class="fx-currency">EUR / KRW</div><div class="fx-rate" id="p-fx-eur">—</div></div><div class="fx-card"><div class="fx-currency">JPY / KRW</div><div class="fx-rate" id="p-fx-jpy">—</div></div></div></div>
+        <div class="card">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>실시간 환율</span>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span id="fx-last-update" style="font-size:11px;color:var(--text3);font-weight:400;">—</span>
+              <button onclick="refreshFX().then(updateAllEvaluation)" style="background:var(--bg3);border:1px solid var(--border2);color:var(--accent2);padding:5px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">
+                ↻ 전체 평가금액 업데이트
+              </button>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;">
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:20px;">
+              <div style="font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">USD / KRW</div>
+              <div style="font-size:28px;font-weight:700;color:var(--accent2);margin-bottom:4px;" id="p-fx-usd">—</div>
+              <div style="font-size:12px;color:var(--text3);" id="p-fx-usd-prev">전일 대비 —</div>
+              <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);">
+                보유: <span id="p-usd-amt">—</span><br>
+                환산: <span style="color:var(--green);font-weight:600;" id="p-usd-krw">—</span>
+              </div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:20px;">
+              <div style="font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">EUR / KRW</div>
+              <div style="font-size:28px;font-weight:700;color:var(--accent2);margin-bottom:4px;" id="p-fx-eur">—</div>
+              <div style="font-size:12px;color:var(--text3);" id="p-fx-eur-prev">전일 대비 —</div>
+              <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);">
+                보유: <span id="p-eur-amt">—</span><br>
+                환산: <span style="color:var(--green);font-weight:600;" id="p-eur-krw">—</span>
+              </div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:20px;">
+              <div style="font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">JPY / KRW</div>
+              <div style="font-size:28px;font-weight:700;color:var(--accent2);margin-bottom:4px;" id="p-fx-jpy">—</div>
+              <div style="font-size:12px;color:var(--text3);" id="p-fx-jpy-prev">전일 대비 —</div>
+              <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);">
+                보유: <span id="p-jpy-amt">—</span><br>
+                환산: <span style="color:var(--green);font-weight:600;" id="p-jpy-krw">—</span>
+              </div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:20px;">
+              <div style="font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">GBP / KRW</div>
+              <div style="font-size:28px;font-weight:700;color:var(--accent2);margin-bottom:4px;" id="p-fx-gbp">—</div>
+              <div style="font-size:12px;color:var(--text3);" id="p-fx-gbp-prev">전일 대비 —</div>
+              <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);">참고 환율</div>
+            </div>
+          </div>
+          <div class="card" style="background:var(--bg3);margin-bottom:0;">
+            <div class="card-title">보유 외화 원화환산 현황 <span style="font-weight:400;color:var(--text3);">— 최신 입력 기준</span></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>통화</th><th class="td-num">외화잔액</th><th class="td-num">적용환율</th><th class="td-num">원화환산</th></tr></thead>
+                <tbody id="fx-equiv-tbody">
+                  <tr><td colspan="4" style="color:var(--text3);text-align:center;padding:20px;">자금 입력 후 표시됩니다</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
       
       <div class="page" id="page-policy">
@@ -610,6 +722,99 @@ let currentCompany = '셀바스에이아이';
 let mainChartObj = null;
 let equityChartObj = null;
 let selectedChartMetrics = ['op', 'inv', 'loan']; 
+
+
+// ══════════════════════════════════════════════════════
+// 접근통제 — 역할별 패스코드 시스템
+// ══════════════════════════════════════════════════════
+// ⚠️ 실 운영 전 반드시 코드를 변경하세요
+const ACCESS_CODES = {
+  'SELVAS-MASTER-2026': { role: 'master',   company: null,        label: 'Master' },
+  'CEO-SELVAS-2026':    { role: 'ceo',      company: null,        label: 'CEO' },
+  'AI-FUND-2026':       { role: 'company',  company: '셀바스에이아이',  label: '셀바스에이아이 담당자' },
+  'HC-FUND-2026':       { role: 'company',  company: '셀바스헬스케어', label: '셀바스헬스케어 담당자' },
+  'MD-FUND-2026':       { role: 'company',  company: '메디아나',      label: '메디아나 담당자' },
+};
+
+let currentUser = null;
+
+function doLogin() {
+  const code = document.getElementById('login-code').value.trim();
+  const user = ACCESS_CODES[code];
+  if (!user) {
+    document.getElementById('login-error').style.display = 'block';
+    document.getElementById('login-code').value = '';
+    return;
+  }
+  currentUser = user;
+  sessionStorage.setItem('treasury_user', JSON.stringify(user));
+  applyAccessControl(user);
+}
+
+function applyAccessControl(user) {
+  // 오버레이 숨김
+  document.getElementById('login-overlay').style.display = 'none';
+  document.getElementById('logout-btn').style.display = 'block';
+
+  // 사용자 이름 topbar에 표시
+  const badge = document.getElementById('today-badge');
+  const today = new Date().toISOString().slice(0,10).replace(/-/g,'.');
+  if (badge) badge.textContent = today;
+
+  // 역할에 따른 UI 제어
+  if (user.role === 'master' || user.role === 'ceo') {
+    // 전체 접근 — 통합현황 버튼 노출
+    const totalBtn = document.getElementById('tab-total');
+    if (totalBtn) totalBtn.style.display = '';
+  } else {
+    // 법인 담당자 — 해당 법인 탭만 활성, 나머지 숨김
+    document.querySelectorAll('.ci-tab').forEach(tab => {
+      if (tab.title !== user.company) {
+        tab.style.display = 'none';
+      }
+    });
+    // 법인 고정
+    currentCompany = user.company;
+    // 입력 폼 드롭박스 고정
+    ['i-company','v-company','l-company','e-company'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      Array.from(el.options).forEach(opt => {
+        opt.disabled = opt.value !== user.company;
+      });
+      el.value = user.company;
+    });
+  }
+
+  // 초기화
+  refreshFX();
+  const firstTab = document.querySelector('.ci-tab:not([style*="none"])');
+  setCompany(user.company || '셀바스에이아이', firstTab);
+}
+
+function doLogout() {
+  if (!confirm('로그아웃 하시겠습니까?')) return;
+  sessionStorage.removeItem('treasury_user');
+  currentUser = null;
+  document.getElementById('login-overlay').style.display = 'flex';
+  document.getElementById('logout-btn').style.display = 'none';
+  document.getElementById('login-code').value = '';
+  document.getElementById('login-error').style.display = 'none';
+}
+
+// 세션 복원 (새로고침 시 재로그인 방지)
+(function restoreSession() {
+  const saved = sessionStorage.getItem('treasury_user');
+  if (saved) {
+    try {
+      currentUser = JSON.parse(saved);
+      // DOMContentLoaded 후 적용
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => applyAccessControl(currentUser), 100);
+      });
+    } catch(e) { sessionStorage.removeItem('treasury_user'); }
+  }
+})();
 
 document.addEventListener('DOMContentLoaded', () => {
   const today = new Date().toISOString().slice(0, 10);
@@ -673,6 +878,7 @@ function goto(page) {
   if(page === 'equity') renderEquity();
   if(page === 'history') filterHistory();
   if(page === 'invest') renderInvestments();
+  if(page === 'fx') renderFXEquivTable();
   if(page === 'loans') renderLoans();
 }
 
@@ -749,13 +955,17 @@ async function refreshFX() {
 }
 
 function updateFXDisplay() {
-  ['usd','eur','jpy'].forEach(c => {
+  ['usd','eur','jpy','gbp'].forEach(c => {
     const val = FX[c.toUpperCase()];
     const sf = document.getElementById('sf-'+c);
     if(sf) sf.textContent = val ? val.toFixed(2)+'원' : '—';
     const pf = document.getElementById('p-fx-'+c);
     if(pf) pf.textContent = val ? val.toFixed(2)+'원' : '—';
   });
+  // 환율 업데이트 시각
+  const el = document.getElementById('fx-last-update');
+  if (el) el.textContent = '업데이트: ' + new Date().toLocaleTimeString('ko-KR');
+  renderFXEquivTable();
 }
 function calcKRW(amount, currency) { return amount * (FX[currency] || 1); }
 
@@ -910,10 +1120,83 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// ── 주가 자동 조회 (Yahoo Finance API — 무료, 키 불필요) ──────
+// ── 주가 자동 조회 ────────────────────────────────────────────
+// 전략: 빠른 프록시 3개를 동시에 쏘고 가장 먼저 성공한 결과 사용
+// 타임아웃 3초 — 실패 시 즉시 null 반환 (기존 6초에서 단축)
+
+// ── Yahoo 응답 파싱 공통 함수 ──────────────────────────────────
+function _extractYahooPrice(data) {
+  const result = data?.chart?.result?.[0];
+  if (!result) return null;
+  const closes     = result.indicators?.quote?.[0]?.close;
+  const timestamps = result.timestamp;
+  if (!closes || !closes.length) return null;
+  for (let i = closes.length - 1; i >= 0; i--) {
+    if (closes[i] !== null && closes[i] > 0) {
+      const d = new Date(timestamps[i] * 1000);
+      return {
+        price: Math.round(closes[i]),
+        date: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,
+      };
+    }
+  }
+  return null;
+}
+
+// ── 단일 프록시 호출 (타임아웃 3초) ───────────────────────────
+async function _fetchViaProxy(proxyUrl, timeout = 3000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+  try {
+    const resp = await fetch(proxyUrl, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    return _extractYahooPrice(data);
+  } catch(e) {
+    clearTimeout(timer);
+    return null;
+  }
+}
+
+// ── 병렬 조회: 3개 프록시를 동시에 쏘고 가장 빠른 성공 결과 사용
+async function _fetchStockParallel(symbol) {
+  const yahooUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d&includePrePost=false`;
+
+  // 3개 프록시를 동시 요청 — 먼저 성공한 것 채택
+  const proxies = [
+    // 1순위: allorigins (빠름, 안정적)
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`,
+    // 2순위: corsproxy.io
+    `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`,
+    // 3순위: thingproxy
+    `https://thingproxy.freeboard.io/fetch/${yahooUrl}`,
+  ];
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (result, label) => {
+      if (!settled && result) {
+        settled = true;
+        resolve({ ...result, source: label });
+      }
+    };
+
+    proxies.forEach((url, i) => {
+      const labels = ['allorigins', 'corsproxy', 'thingproxy'];
+      _fetchViaProxy(url, 3000).then(r => done(r, labels[i]));
+    });
+
+    // 3초 후에도 성공 없으면 null
+    setTimeout(() => {
+      if (!settled) { settled = true; resolve(null); }
+    }, 3500);
+  });
+}
+
 async function fetchStockPrice() {
-  const ticker = document.getElementById('e-ticker').value.trim();
-  const market = document.getElementById('e-market').value;
+  const ticker  = document.getElementById('e-ticker').value.trim();
+  const market  = document.getElementById('e-market').value;
   const statusEl = document.getElementById('e-price-status');
   const sourceEl = document.getElementById('e-price-source');
   const fetchBtn = document.getElementById('e-fetch-btn');
@@ -924,87 +1207,29 @@ async function fetchStockPrice() {
     return;
   }
 
-  // 한국 주식 Yahoo Finance 심볼: 6자리코드.KS (KOSPI) 또는 .KQ (KOSDAQ)
   const suffix = market === 'KOSDAQ' ? '.KQ' : '.KS';
   const symbol = ticker + suffix;
 
   fetchBtn.textContent = '조회중...';
   fetchBtn.disabled = true;
-  statusEl.textContent = `${symbol} 주가 조회 중...`;
+  statusEl.textContent = `${symbol} 조회 중...`;
   statusEl.style.color = 'var(--text3)';
 
-  let price = null;
-  let priceDate = null;
-  let source = '';
+  // 두 소스를 동시에 요청 — 먼저 응답한 쪽 사용
+  const result = await _fetchStockParallel(symbol);
 
-  // 1순위: Yahoo Finance (CORS 프록시 경유)
-  try {
-    const proxyUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`;
-    const resp = await fetch(proxyUrl, {
-      headers: { 'Accept': 'application/json' }
-    });
-    if (resp.ok) {
-      const data = await resp.json();
-      const result = data?.chart?.result?.[0];
-      if (result) {
-        const closes = result.indicators?.quote?.[0]?.close;
-        const timestamps = result.timestamp;
-        if (closes && closes.length > 0) {
-          // 가장 최근 유효한 종가
-          for (let i = closes.length - 1; i >= 0; i--) {
-            if (closes[i] !== null && closes[i] > 0) {
-              price = Math.round(closes[i]);
-              const d = new Date(timestamps[i] * 1000);
-              priceDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-              break;
-            }
-          }
-          source = 'Yahoo Finance';
-        }
-      }
-    }
-  } catch(e) { console.log('Yahoo Finance 직접 실패:', e.message); }
-
-  // 2순위: CORS 프록시 경유 Yahoo Finance
-  if (!price) {
-    try {
-      const proxyUrl = `https://corsproxy.io/?https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`;
-      const resp = await fetch(proxyUrl);
-      if (resp.ok) {
-        const data = await resp.json();
-        const result = data?.chart?.result?.[0];
-        if (result) {
-          const closes = result.indicators?.quote?.[0]?.close;
-          const timestamps = result.timestamp;
-          if (closes && closes.length > 0) {
-            for (let i = closes.length - 1; i >= 0; i--) {
-              if (closes[i] !== null && closes[i] > 0) {
-                price = Math.round(closes[i]);
-                const d = new Date(timestamps[i] * 1000);
-                priceDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-                break;
-              }
-            }
-            source = 'Yahoo Finance (프록시)';
-          }
-        }
-      }
-    } catch(e) { console.log('Yahoo Finance 프록시 실패:', e.message); }
-  }
-
-  // 결과 처리
   fetchBtn.textContent = '주가 조회';
   fetchBtn.disabled = false;
 
-  if (price) {
-    document.getElementById('e-price').value = price.toLocaleString();
+  if (result) {
+    document.getElementById('e-price').value = result.price.toLocaleString();
     calcEquityValue();
-    statusEl.textContent = `✅ ${priceDate} 종가: ${price.toLocaleString()}원 (${source})`;
+    statusEl.textContent = `✅ ${result.date} 종가: ${result.price.toLocaleString()}원`;
     statusEl.style.color = 'var(--green)';
-    if(sourceEl) sourceEl.textContent = `${priceDate} 종가 자동조회`;
-    showToast(`${symbol} 주가 조회 완료: ${price.toLocaleString()}원`, 'success');
+    if (sourceEl) sourceEl.textContent = `${result.date} 종가 (${result.source})`;
+    showToast(`${symbol} ${result.price.toLocaleString()}원`, 'success');
   } else {
-    statusEl.textContent = `❌ 주가 조회 실패 — 종목코드 확인 또는 직접 입력하세요`;
+    statusEl.textContent = '❌ 조회 실패 — 직접 입력하세요';
     statusEl.style.color = 'var(--red)';
     showToast('주가 조회 실패 — 직접 입력하세요', 'error');
   }
@@ -1109,54 +1334,25 @@ function renderEquity() {
   `).join('');
 }
 
-// 목록에서 특정 종목 시세 업데이트
+// 목록에서 특정 종목 시세 업데이트 (병렬 조회)
 async function refreshEquityPrice(id, ticker, market) {
   const suffix = market === 'KOSDAQ' ? '.KQ' : '.KS';
   const symbol = ticker + suffix;
   showToast(`${symbol} 시세 업데이트 중...`);
 
-  let price = null;
-  try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`;
-    const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
-    if (resp.ok) {
-      const data = await resp.json();
-      const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
-      if (closes) {
-        for (let i = closes.length-1; i >= 0; i--) {
-          if (closes[i] > 0) { price = Math.round(closes[i]); break; }
-        }
-      }
-    }
-  } catch(e) {}
+  const result = await _fetchStockParallel(symbol);
 
-  if (!price) {
-    try {
-      const url = `https://corsproxy.io/?https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`;
-      const resp = await fetch(url);
-      if (resp.ok) {
-        const data = await resp.json();
-        const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
-        if (closes) {
-          for (let i = closes.length-1; i >= 0; i--) {
-            if (closes[i] > 0) { price = Math.round(closes[i]); break; }
-          }
-        }
-      }
-    } catch(e) {}
-  }
-
-  if (price) {
+  if (result) {
     const equities = DB.get('equities');
     const eq = equities.find(e => String(e.id) === String(id));
     if (eq) {
-      eq.price = price;
-      eq.total_value = eq.shares * price;
-      eq.date = new Date().toISOString().slice(0, 10);
+      eq.price = result.price;
+      eq.total_value = eq.shares * result.price;
+      eq.date = result.date;
       DB.set('equities', equities);
       renderEquity();
       renderDashboard();
-      showToast(`${eq.name} 시세 업데이트: ${price.toLocaleString()}원`, 'success');
+      showToast(`${eq.name} ${result.price.toLocaleString()}원 (${result.date})`, 'success');
     }
   } else {
     showToast('시세 조회 실패 — 직접 수정하세요', 'error');
@@ -1218,6 +1414,14 @@ function renderDashboard() {
   const sfxb = document.getElementById('s-ratio-fx-bar');
   if (skrw) skrw.textContent = fmtKRW(opKrw);
   if (sfx)  sfx.textContent  = fmtKRW(opFx);
+
+  // 운전+운용 합계 카드
+  const soiTotal = document.getElementById('s-op-inv-total');
+  const soSub    = document.getElementById('s-op-sub');
+  const siSub    = document.getElementById('s-inv-sub');
+  if (soiTotal) soiTotal.textContent = fmtKRW(opTotal + invTotal);
+  if (soSub)    soSub.textContent    = fmtKRW(opTotal);
+  if (siSub)    siSub.textContent    = fmtKRW(invTotal);
   const grandTotal = opKrw + opFx;
   if (grandTotal > 0 && srkb && sfxb) {
     const krwPct = Math.round(opKrw / grandTotal * 100);
@@ -1298,15 +1502,19 @@ function updateMainChart(records) {
   const filtered = records.filter(r => r.date >= cutoffStr);
   if (!filtered.length) return;
 
-  // ── 날짜별 운전자금·운용자금 집계 ──────────────────────────
+  // ── 날짜별 운전자금 집계 ──────────────────────────────────
   const map = {};
   filtered.forEach(r => {
-    if (!map[r.date]) map[r.date] = { date: r.date, op_k:0, op_f:0, inv_k:0, inv_f:0 };
+    if (!map[r.date]) map[r.date] = { date: r.date, op_k:0, op_f:0 };
     map[r.date].op_k += (r.krw_demand + r.krw_govt + r.krw_mmda);
     map[r.date].op_f += (r.fx_krw || 0);
-    map[r.date].inv_k += (r.inv_krw || 0);
-    map[r.date].inv_f += (r.inv_fx  || 0);
   });
+
+  // ── 운용자금: investments 테이블에서 직접 읽기 (차입금과 동일 방식) ──
+  const activeInv = getFiltered('investments').filter(i => i.active);
+  const invKrwTotal = activeInv.filter(i => i.currency === 'KRW').reduce((s,i) => s+(i.amount||0), 0);
+  const invFxTotal  = activeInv.filter(i => i.currency !== 'KRW').reduce((s,i) => s+calcKRW(i.amount, i.currency), 0);
+  const invTotal = invKrwTotal + invFxTotal;
 
   // ── 차입금: loans 테이블에서 직접 읽기 (현재 선택 회사 기준) ─
   // getFiltered()가 currentCompany 필터를 자동 적용
@@ -1339,10 +1547,11 @@ function updateMainChart(records) {
       stack: 'main',
     });
 
-  if (selectedChartMetrics.includes('inv'))
+  // 운용자금: investments 테이블 현재값 (0이면 표시 안 함)
+  if (selectedChartMetrics.includes('inv') && invTotal > 0)
     datasets.push({
       label: '운용자금',
-      data: agg.map(r => r.inv_k + r.inv_f),
+      data: agg.map(() => invTotal),
       backgroundColor: '#10b981',
       borderRadius: 3,
       stack: 'main',
@@ -1362,7 +1571,7 @@ function updateMainChart(records) {
     datasets.push({
       label: '순현금',
       type: 'line',
-      data: agg.map(r => (r.op_k + r.op_f + r.inv_k + r.inv_f) - loanTotal),
+      data: agg.map(r => (r.op_k + r.op_f) + invTotal - loanTotal),
       borderColor: '#8b5cf6',
       backgroundColor: 'rgba(139,92,246,0.08)',
       borderWidth: 2,
@@ -1492,6 +1701,9 @@ function onInvestProductChange() {
 
 // ── 국공채 종목 검색 드롭다운 ──────────────────────────────
 const BOND_LIST = [
+  // ── 실제 보유 채권 (최우선 표시) ──────────────────────────
+  {name:'보유 국고채', code:'KR103502GF39', market:'KRX', owned: true},
+  // ── 참고용 채권 목록 ──────────────────────────────────────
   {name:'국고채 1년', code:'KR1030023K93', market:'KRX'},
   {name:'국고채 2년', code:'KR1030025E80', market:'KRX'},
   {name:'국고채 3년', code:'KR103501GCC6', market:'KRX'},
@@ -1519,7 +1731,7 @@ function searchBond(query) {
       <div onclick="selectBond('${b.name}','${b.code}')"
         style="padding:9px 14px;cursor:pointer;display:flex;justify-content:space-between;border-bottom:0.5px solid var(--border);"
         onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background=''">
-        <span style="font-size:13px;color:var(--text);">${b.name}</span>
+        <span style="font-size:13px;color:var(--text);">${b.name}${b.owned ? ' <span style="font-size:10px;background:rgba(16,185,129,0.15);color:#10b981;padding:1px 6px;border-radius:4px;">보유</span>' : ''}</span>
         <span style="font-size:11px;color:var(--text3);">${b.code}</span>
       </div>`).join('');
   }
@@ -1853,6 +2065,92 @@ function deleteDaily(date, company) {
   renderDailyHistory(currentDailyPage);
   renderDashboard();
   showToast('삭제 완료', 'success');
+}
+
+
+// ── 운용자금 카드 클릭 시 목록 토글 ─────────────────────────
+function toggleInvDetail(event) {
+  const card = document.getElementById('inv-detail-card');
+  const tbody = document.getElementById('dash-inv-tbody');
+  if (!card) return;
+  const isVisible = card.style.display !== 'none';
+  card.style.display = isVisible ? 'none' : '';
+  if (!isVisible && tbody) {
+    const items = getFiltered('investments').filter(x => x.active);
+    const today = new Date();
+    if (!items.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text3);text-align:center;padding:16px;">등록된 운용자금이 없습니다</td></tr>';
+    } else {
+      tbody.innerHTML = items.map(x => {
+        const days = x.maturity ? Math.ceil((new Date(x.maturity)-today)/86400000) : null;
+        const dday = days !== null ? (days < 0 ? '<span style="color:var(--red)">만기경과</span>' : 'D-'+days) : '—';
+        return '<tr><td style="font-size:12px;">'+x.company+'</td><td>'+x.bank+'</td><td>'+x.product+'</td><td style="font-size:12px;">'+(x.maturity||'—')+'</td><td>'+dday+'</td><td class="td-num" style="color:var(--green);font-weight:600;">'+fmtKRW(calcKRW(x.amount,x.currency))+'</td></tr>';
+      }).join('');
+    }
+  }
+}
+
+
+// ── 전체 평가금액 일괄 업데이트 (환율+주가 새로고침 후 호출) ──
+async function updateAllEvaluation() {
+  showToast('전체 평가금액 업데이트 중...');
+  const equities = DB.get('equities');
+  let updated = 0;
+  for (const eq of equities) {
+    if (!eq.ticker || eq.market === '비상장') continue;
+    const suffix = eq.market === 'KOSDAQ' ? '.KQ' : '.KS';
+    const result = await _fetchStockParallel(eq.ticker + suffix);
+    if (result) {
+      eq.price = result.price;
+      eq.total_value = eq.shares * result.price;
+      eq.date = result.date;
+      updated++;
+    }
+  }
+  DB.set('equities', equities);
+
+  // 환율 현황 페이지 외화보유 현황 업데이트
+  renderFXEquivTable();
+  renderDashboard();
+
+  // 환율 업데이트 시각 표시
+  const el = document.getElementById('fx-last-update');
+  if (el) el.textContent = '업데이트: ' + new Date().toLocaleTimeString('ko-KR');
+
+  showToast('전체 업데이트 완료 — 주가 ' + updated + '종목 반영', 'success');
+}
+
+// ── 환율 현황 페이지 외화 보유 현황 테이블 ─────────────────────
+function renderFXEquivTable() {
+  const records = DB.get('daily').sort((a,b) => b.date.localeCompare(a.date));
+  const latest = getFiltered('daily').sort((a,b) => b.date.localeCompare(a.date))[0];
+  const tbody = document.getElementById('fx-equiv-tbody');
+  if (!tbody) return;
+  if (!latest) {
+    tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text3);text-align:center;padding:20px;">자금 입력 후 표시됩니다</td></tr>';
+    return;
+  }
+  const rows = [
+    {cur:'USD', sym:'$', amt: latest.fx_usd, rate: FX.USD},
+    {cur:'EUR', sym:'€', amt: latest.fx_eur, rate: FX.EUR},
+    {cur:'JPY', sym:'¥', amt: latest.fx_jpy, rate: FX.JPY},
+  ].filter(r => r.amt > 0);
+
+  // 사이드바 + 환율페이지 보유분 업데이트
+  ['usd','eur','jpy'].forEach(c => {
+    const amtEl = document.getElementById('p-'+c+'-amt');
+    const krwEl = document.getElementById('p-'+c+'-krw');
+    const val   = latest['fx_'+c] || 0;
+    const rate  = FX[c.toUpperCase()] || 0;
+    if (amtEl) amtEl.textContent = val > 0 ? val.toLocaleString() + (c==='usd'?'$':c==='eur'?'€':'¥') : '—';
+    if (krwEl) krwEl.textContent = val > 0 ? fmtKRW(val * rate) : '—';
+  });
+
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text3);text-align:center;padding:20px;">외화 보유 없음</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => '<tr><td>'+r.cur+'</td><td class="td-num">'+r.amt.toLocaleString()+' '+r.sym+'</td><td class="td-num">'+(r.rate?r.rate.toFixed(4):'—')+' 원/'+r.cur+'</td><td class="td-num" style="color:var(--green);font-weight:600;">'+fmtKRW(r.amt*(r.rate||0))+'</td></tr>').join('');
 }
 
 function filterHistory() {
