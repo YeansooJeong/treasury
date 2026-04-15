@@ -765,20 +765,29 @@ function applyAccessControl(user) {
   const today = new Date().toISOString().slice(0,10).replace(/-/g,'.');
   if (badge) badge.textContent = today;
 
-  // 역할에 따른 UI 제어
-  // tab-total(통합현황 3사)은 향후 활성화 예정 — 현재 숨김 유지
-  if (false) {
-    // 비활성화
-  } else {
-    // 법인 담당자 — 해당 법인 탭만 활성, 나머지 숨김
+  // ── 역할에 따른 UI 제어 ──────────────────────────────────
+  if (user.role === 'master' || user.role === 'ceo') {
+    // Master / CEO: 모든 탭 표시, currentCompany는 첫 번째 탭으로 시작
+    // tab-total(통합현황)은 향후 활성화 예정 — 현재 숨김 유지
     document.querySelectorAll('.ci-tab').forEach(tab => {
-      if (tab.title !== user.company) {
-        tab.style.display = 'none';
-      }
+      tab.style.display = '';  // 모든 탭 표시
     });
-    // 법인 고정
+    currentCompany = '셀바스에이아이';  // 기본값: 첫 번째 법인
+    // 입력 폼 드롭박스 — 모든 옵션 활성화
+    ['i-company','v-company','l-company','e-company'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      Array.from(el.options).forEach(opt => { opt.disabled = false; });
+      el.value = '셀바스에이아이';
+    });
+  } else {
+    // 법인 담당자 — 해당 법인 탭만 표시, 나머지 숨김
+    document.querySelectorAll('.ci-tab').forEach(tab => {
+      tab.style.display = tab.title !== user.company ? 'none' : '';
+    });
+    // currentCompany를 해당 법인으로 고정
     currentCompany = user.company;
-    // 입력 폼 드롭박스 고정
+    // 입력 폼 드롭박스 — 해당 법인만 활성화
     ['i-company','v-company','l-company','e-company'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
@@ -792,7 +801,10 @@ function applyAccessControl(user) {
   // 초기화
   refreshFX();
   const firstTab = document.querySelector('.ci-tab:not([style*="none"])');
-  setCompany(user.company || '셀바스에이아이', firstTab);
+  const initCompany = (user.role === 'master' || user.role === 'ceo')
+    ? '셀바스에이아이'
+    : user.company;
+  setCompany(initCompany, firstTab);
 }
 
 function doLogout() {
@@ -861,7 +873,10 @@ function setCompany(comp, btnEl) {
 
 function getFiltered(table) {
   const all = DB.get(table);
-  return currentCompany === 'TOTAL' ? all : all.filter(r => r.company === currentCompany);
+  // currentCompany가 null/undefined이면 빈 배열 반환 (방어 코드)
+  if (!currentCompany) return [];
+  if (currentCompany === 'TOTAL') return all;
+  return all.filter(r => r.company === currentCompany);
 }
 
 // 메뉴 이동 충돌 방지 로직 고도화
