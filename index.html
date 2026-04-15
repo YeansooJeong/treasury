@@ -67,6 +67,17 @@
   
   .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
   .metric { background: var(--card); border: 2px solid var(--border); border-radius: 12px; padding: 18px 20px; cursor: pointer; transition: all 0.2s; position: relative; }
+  .metric::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; border-radius:12px 12px 0 0; background:transparent; transition:background .2s; }
+  .metric[data-key="op"]::before { background: rgba(59,130,246,0.5); }
+  .metric[data-key="inv"]::before { background: rgba(16,185,129,0.5); }
+  .metric[data-key="loan"]::before { background: rgba(245,158,11,0.5); }
+  .metric[data-key="net"]::before { background: rgba(139,92,246,0.5); }
+  .metric.selected[data-key="op"]::before { background: #3b82f6; }
+  .metric.selected[data-key="inv"]::before { background: #10b981; }
+  .metric.selected[data-key="loan"]::before { background: #f59e0b; }
+  .metric.selected[data-key="net"]::before { background: #8b5cf6; }
+  .metric-click-hint { font-size:9px; color:var(--text3); position:absolute; bottom:8px; right:10px; opacity:0; transition:opacity .15s; }
+  .metric:hover .metric-click-hint { opacity:1; }
   .metric:hover { border-color: var(--border2); background: var(--bg3); }
   .metric.selected { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,0.2); background: var(--bg3); }
   .metric-label { font-size: 12px; color: var(--text2); font-weight: 600; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
@@ -301,45 +312,78 @@
         <!-- 미입력/누락 알림 배너 -->
         <div id="dash-alert-banner" style="display:none;margin-bottom:12px;"></div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:20px;">
-          <div class="card" style="margin-bottom:0;padding:16px 20px;border-color:rgba(59,130,246,0.3);grid-column:1/3;">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-              <div>
-                <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">운전자금 + 운용자금 합계</div>
-                <div style="font-size:26px;font-weight:700;color:var(--accent2);" id="s-op-inv-total">—</div>
-                <div style="font-size:11px;color:var(--text3);margin-top:6px;">
-                  운전 <span style="color:var(--accent2);" id="s-op-sub">—</span> &nbsp;+&nbsp; 운용 <span style="color:var(--green);" id="s-inv-sub">—</span>
-                </div>
+        <!-- 요약 카드 4개: 합계 / 원화 / 외화 / 비율 -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
+
+          <!-- 운전+운용 합계 -->
+          <div class="card" style="margin-bottom:0;padding:14px 18px;border-color:rgba(59,130,246,0.25);">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+              <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">운전 + 운용 합계</div>
+              <button onclick="goto('input')" style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.25);color:var(--accent2);padding:3px 8px;border-radius:6px;font-size:10px;cursor:pointer;font-family:inherit;">+ 입력</button>
+            </div>
+            <div style="font-size:22px;font-weight:700;color:var(--accent2);" id="s-op-inv-total">—</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:5px;">
+              운전 <span style="color:var(--accent2);" id="s-op-sub">—</span>&nbsp; 운용 <span style="color:var(--green);" id="s-inv-sub">—</span>
+            </div>
+          </div>
+
+          <!-- 원화 자금 합계 -->
+          <div class="card" style="margin-bottom:0;padding:14px 18px;">
+            <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">원화 자금 합계</div>
+            <div style="font-size:22px;font-weight:700;color:var(--accent2);" id="s-krw-total">—</div>
+            <div style="display:flex;justify-content:space-between;margin-top:6px;">
+              <span style="font-size:11px;color:var(--text3);">가용</span>
+              <span style="font-size:11px;color:var(--green);font-weight:600;" id="s-krw-avail">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+              <span style="font-size:11px;color:var(--text3);">불가용</span>
+              <span style="font-size:11px;color:var(--red);font-weight:600;" id="s-krw-unavail">—</span>
+            </div>
+          </div>
+
+          <!-- 외화 원화환산 합계 -->
+          <div class="card" style="margin-bottom:0;padding:14px 18px;">
+            <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">외화 원화환산액</div>
+            <div style="font-size:22px;font-weight:700;color:var(--green);" id="s-fx-total">—</div>
+            <div style="display:flex;justify-content:space-between;margin-top:6px;">
+              <span style="font-size:11px;color:var(--text3);">가용</span>
+              <span style="font-size:11px;color:var(--green);font-weight:600;" id="s-fx-avail">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+              <span style="font-size:11px;color:var(--text3);">불가용</span>
+              <span style="font-size:11px;color:var(--red);font-weight:600;" id="s-fx-unavail">—</span>
+            </div>
+          </div>
+
+          <!-- 원화/외화 비율 -->
+          <div class="card" style="margin-bottom:0;padding:14px 18px;">
+            <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">원화 / 외화 비율</div>
+            <div style="display:flex;height:14px;border-radius:7px;overflow:hidden;margin-bottom:8px;">
+              <div style="height:14px;background:var(--accent);transition:flex .4s;flex:70;display:flex;align-items:center;justify-content:center;" id="s-ratio-krw-bar">
+                <span style="font-size:9px;color:#fff;font-weight:600;" id="s-ratio-krw-pct"></span>
               </div>
-              <button onclick="goto('input')" style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);color:var(--accent2);padding:5px 12px;border-radius:8px;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap;">+ 입력</button>
+              <div style="height:14px;background:var(--green);transition:flex .4s;flex:30;display:flex;align-items:center;justify-content:center;" id="s-ratio-fx-bar">
+                <span style="font-size:9px;color:#fff;font-weight:600;" id="s-ratio-fx-pct"></span>
+              </div>
             </div>
-          </div>
-          <div class="card" style="margin-bottom:0;padding:16px 20px;">
-            <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">원화 자금 합계</div>
-            <div style="font-size:20px;font-weight:700;color:var(--accent2);" id="s-krw-total">—</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:4px;">보통예금+MMDA+CMA+국책</div>
-          </div>
-          <div class="card" style="margin-bottom:0;padding:16px 20px;">
-            <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">외화 원화환산</div>
-            <div style="font-size:20px;font-weight:700;color:var(--green);" id="s-fx-total">—</div>
-            <div style="display:flex;height:6px;border-radius:3px;overflow:hidden;margin:8px 0;gap:2px;">
-              <div style="height:6px;border-radius:2px;background:var(--accent);transition:flex .4s;flex:70;" id="s-ratio-krw-bar"></div>
-              <div style="height:6px;border-radius:2px;background:var(--green);transition:flex .4s;flex:30;" id="s-ratio-fx-bar"></div>
+            <div style="display:flex;justify-content:space-between;">
+              <div style="display:flex;align-items:center;gap:4px;"><div style="width:8px;height:8px;border-radius:50%;background:var(--accent);"></div><span style="font-size:11px;color:var(--text2);">원화</span></div>
+              <div style="display:flex;align-items:center;gap:4px;"><div style="width:8px;height:8px;border-radius:50%;background:var(--green);"></div><span style="font-size:11px;color:var(--text2);">외화</span></div>
             </div>
-            <div style="font-size:11px;color:var(--text2);" id="s-ratio-text">—</div>
+            <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:4px;" id="s-ratio-text">—</div>
           </div>
         </div>
         <div class="metrics">
           <div class="metric selected" data-key="op" onclick="toggleMetric('op', event)">
-            <div class="metric-label">운전자금 <span class="color-op">●</span></div>
+            <span class="metric-click-hint">그래프 선택</span><div class="metric-label">운전자금 <span class="color-op">●</span></div>
             <div class="metric-total" id="d-op-total">0원</div>
             <div class="metric-details">
-              <div class="m-row"><span class="lbl">원화 (보통/국책 등)</span><span class="val" id="d-op-krw">0</span></div>
+              <div class="m-row"><span class="lbl">원화 (보통예금/MMDA·국책 등)</span><span class="val" id="d-op-krw">0</span></div>
               <div class="m-row"><span class="lbl">외화환산액</span><span class="val" id="d-op-fx">0</span></div>
             </div>
           </div>
           <div class="metric" data-key="inv" onclick="toggleMetric('inv', event); toggleInvDetail(event)">
-            <div class="metric-label">운용자금 (단기투자) <span class="color-inv">●</span> <span style="font-size:10px;color:var(--text3);" id="inv-detail-hint">클릭 시 목록</span></div>
+            <span class="metric-click-hint">그래프 선택</span><div class="metric-label">운용자금 (단기투자) <span class="color-inv">●</span> <span style="font-size:10px;color:var(--text3);" id="inv-detail-hint">클릭 시 목록</span></div>
             <div class="metric-total" id="d-inv-total">0원</div>
             <div class="metric-details">
               <div class="m-row"><span class="lbl">원화 자금</span><span class="val" id="d-inv-krw">0</span></div>
@@ -347,7 +391,7 @@
             </div>
           </div>
           <div class="metric" data-key="loan" onclick="toggleMetric('loan', event)">
-            <div class="metric-label">차입금 (대출) <span class="color-loan">●</span></div>
+            <span class="metric-click-hint">그래프 선택</span><div class="metric-label">차입금 (대출) <span class="color-loan">●</span></div>
             <div class="metric-total" id="d-loan-total">0원</div>
             <div class="metric-details">
               <div class="m-row"><span class="lbl">원화 차입금</span><span class="val" id="d-loan-krw">0</span></div>
@@ -355,7 +399,7 @@
             </div>
           </div>
           <div class="metric" data-key="net" onclick="toggleMetric('net', event)">
-            <div class="metric-label">순현금 (Net Cash) <span class="color-net">●</span></div>
+            <span class="metric-click-hint">그래프 선택</span><div class="metric-label">순현금 (Net Cash) <span class="color-net">●</span></div>
             <div class="metric-total" id="d-net-total">0원</div>
             <div class="metric-details">
               <div class="m-row"><span class="lbl" style="color:var(--text3);">운전 + 운용 - 차입금</span></div>
@@ -427,7 +471,7 @@
           <div class="form-grid-3">
             <div class="form-group"><label>보통예금/MMDA</label><div class="input-with-unit"><input type="text" id="i-krw-demand" placeholder="0" oninput="formatNumericInput(this)"><span class="unit">원</span></div></div>
             <div class="form-group"><label>국책자금</label><div class="input-with-unit"><input type="text" id="i-krw-govt" placeholder="0" oninput="formatNumericInput(this)"><span class="unit">원</span></div></div>
-            <div class="form-group"><label>증권(CMA) 예수금</label><div class="input-with-unit"><input type="text" id="i-krw-mmda" placeholder="0" oninput="formatNumericInput(this)"><span class="unit">원</span></div></div>
+            <div class="form-group"><label>증권(CMA) 예수금 등</label><div class="input-with-unit"><input type="text" id="i-krw-mmda" placeholder="0" oninput="formatNumericInput(this)"><span class="unit">원</span></div></div>
           </div>
           <div class="section-divider">외화 운전자금</div>
           <div class="form-grid-3">
@@ -450,7 +494,7 @@
               <thead>
                 <tr>
                   <th>일자</th><th>법인</th>
-                  <th class="td-num">보통예금/MMDA</th><th class="td-num">국책</th><th class="td-num">MMDA</th>
+                  <th class="td-num">보통예금</th><th class="td-num">국책</th><th class="td-num">MMDA</th>
                   <th class="td-num">USD</th><th class="td-num">EUR</th><th class="td-num">JPY</th>
                   <th class="td-num">외화환산</th><th>비고</th><th></th>
                 </tr>
@@ -474,7 +518,7 @@
                 <option value="메디아나">메디아나</option>
               </select>
             </div>
-            <div class="form-group"><label>금융기관/발행처</label><input type="text" id="v-bank" placeholder="예: 산업은행"></div>
+            <div class="form-group"><label>금융기관/발행처</label><input type="text" id="v-bank" placeholder="예: 산업은행, 기획재정부"></div>
             <div class="form-group">
               <label>운용상품</label>
               <select id="v-product" onchange="onInvestProductChange()">
@@ -549,7 +593,7 @@
         <div class="card"><div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
               <span>운용자금 목록</span>
               <button onclick="fixInvestmentCompany()" style="font-size:11px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:var(--red);padding:3px 10px;border-radius:6px;cursor:pointer;font-family:inherit;">데이터 정리</button>
-            </div><div class="table-wrap"><table><thead><tr><th>법인</th><th>금융기관/발행처</th><th>상품</th><th>통화</th><th class="td-num">운용금액/좌수</th><th class="td-num">기준가/수익률</th><th>만기일</th><th>D-Day</th><th class="td-num">평가금액</th><th></th></tr></thead><tbody id="invest-tbody"></tbody></table></div></div>
+            </div><div class="table-wrap"><table><thead><tr><th>법인</th><th>금융기관/발행처</th><th>상품</th><th>통화</th><th class="td-num">운용금액/좌수</th><th class="td-num">기준가/수익률</th><th>만기일</th><th>D-Day</th><th class="td-num">평가금액</th><th>가용</th><th></th></tr></thead><tbody id="invest-tbody"></tbody></table></div></div>
       </div>
 
       <div class="page" id="page-loans">
@@ -629,6 +673,13 @@
               </select>
             </div>
             <div class="form-group">
+              <label>가용여부</label>
+              <select id="e-available">
+                <option value="가용">가용 (처분 가능)</option>
+                <option value="불가용">불가용 (처분 제한)</option>
+              </select>
+            </div>
+            <div class="form-group">
               <label>보유 주식수</label>
               <div class="input-with-unit">
                 <input type="text" id="e-shares" placeholder="0" oninput="formatNumericInput(this); calcEquityValue();">
@@ -658,7 +709,7 @@
             <button class="btn btn-primary" style="background:var(--pink);" onclick="saveEquity()">지분 기록 및 저장</button>
           </div>
         </div>
-        <div class="card"><div class="card-title">보유 지분투자 현황</div><div class="table-wrap"><table><thead><tr><th>기준일</th><th>보유법인</th><th>종목명</th><th>투자목적</th><th>상장여부</th><th class="td-num">보유주식수</th><th class="td-num">1주당 단가</th><th class="td-num">총 평가금액</th><th></th></tr></thead><tbody id="equity-tbody"></tbody></table></div></div>
+        <div class="card"><div class="card-title">보유 지분투자 현황</div><div class="table-wrap"><table><thead><tr><th>기준일</th><th>보유법인</th><th>종목명</th><th>투자목적</th><th>상장여부</th><th>가용</th><th class="td-num">보유주식수</th><th class="td-num">1주당 단가</th><th class="td-num">총 평가금액</th><th></th></tr></thead><tbody id="equity-tbody"></tbody></table></div></div>
       </div>
 
       <div class="page" id="page-history">
@@ -1650,6 +1701,8 @@ function loadEquityToForm(id) {
   if (purposeEl) purposeEl.value = eq.purpose;
   const marketEl = document.getElementById('e-market');
   if (marketEl) marketEl.value = eq.market;
+  const eqAvailLoad = document.getElementById('e-available');
+  if (eqAvailLoad) eqAvailLoad.value = eq.available || '가용';
 
   calcEquityValue();
 
@@ -1682,6 +1735,7 @@ function saveEquity() {
     return;
   }
 
+  const eqAvailEl = document.getElementById('e-available');
   const eq = {
     id: Date.now(),
     date,
@@ -1690,6 +1744,7 @@ function saveEquity() {
     ticker: document.getElementById('e-ticker').value.trim(),
     purpose: document.getElementById('e-purpose').value,
     market: document.getElementById('e-market').value,
+    available: eqAvailEl ? eqAvailEl.value : '가용',
     shares,
     price,
     total_value
@@ -1738,6 +1793,7 @@ function renderEquity() {
       <td style="font-weight:600; color:var(--text);">${e.name}${e.ticker ? ` <span style="font-size:11px;color:var(--text3);">(${e.ticker})</span>` : ''}</td>
       <td>${e.purpose}</td>
       <td>${e.market}</td>
+      <td><span style="font-size:10px;padding:2px 6px;border-radius:4px;font-weight:500;background:${(e.available||'가용')==='불가용'?'rgba(239,68,68,0.12)':'rgba(16,185,129,0.12)'};color:${(e.available||'가용')==='불가용'?'var(--red)':'var(--green)'};">${e.available||'가용'}</span></td>
       <td class="td-num">${e.shares.toLocaleString()} 주</td>
       <td class="td-num">${e.price.toLocaleString()} 원</td>
       <td class="td-num" style="color:var(--pink); font-weight:700;">${fmtKRW(e.total_value)}</td>
@@ -1934,7 +1990,7 @@ function renderDetailCard() {
       html += '<div style="font-size:11px;font-weight:600;color:#3b82f6;margin-bottom:6px;">● 운전자금 (' + (r ? r.date : '데이터 없음') + ')</div>';
       if (r) {
         const rows = [
-          ['보통예금/MMDA', r.krw_demand],
+          ['보통예금', r.krw_demand],
           ['국책자금', r.krw_govt],
           ['MMDA', r.krw_mmda],
           ['외화환산', r.fx_krw || 0],
@@ -2073,12 +2129,47 @@ function renderDashboard() {
   if (soSub)    soSub.textContent    = fmtKRW(opTotal);
   if (siSub)    siSub.textContent    = fmtKRW(invTotal);
 
+  // ── 가용/불가용 분리 계산 ──────────────────────────────────
+  // 운용자금 가용/불가용 분리
+  const invAvail   = invs.filter(i => (i.available || '가용') === '가용');
+  const invUnavail = invs.filter(i => (i.available || '가용') === '불가용');
+  const invAvailKrw   = invAvail.filter(i=>i.currency==='KRW').reduce((s,i)=>s+i.amount,0)
+                      + invAvail.filter(i=>i.currency!=='KRW').reduce((s,i)=>s+calcKRW(i.amount,i.currency),0);
+  const invUnavailKrw = invUnavail.filter(i=>i.currency==='KRW').reduce((s,i)=>s+i.amount,0)
+                      + invUnavail.filter(i=>i.currency!=='KRW').reduce((s,i)=>s+calcKRW(i.amount,i.currency),0);
+
+  // 원화: 운전자금 전체는 가용, 운용자금 가용 합산
+  const krwAvail   = totalKrw + invAvailKrw   - invKrw; // 운전원화 + 운용가용원화
+  // (totalKrw = opKrw+invKrw이므로 opKrw + invAvailKrw)
+  const krwAvailAmt   = opKrw + invAvailKrw;
+  const krwUnavailAmt = invUnavailKrw;
+
+  // 외화: 운전자금 외화는 가용, 운용자금 외화 가용/불가용 분리
+  const invAvailFx   = invAvail.filter(i=>i.currency!=='KRW').reduce((s,i)=>s+calcKRW(i.amount,i.currency),0);
+  const invUnavailFx = invUnavail.filter(i=>i.currency!=='KRW').reduce((s,i)=>s+calcKRW(i.amount,i.currency),0);
+  const fxAvailAmt   = opFx + invAvailFx;
+  const fxUnavailAmt = invUnavailFx;
+
+  // 원화/외화 카드 업데이트
+  const skrwAvail   = document.getElementById('s-krw-avail');
+  const skrwUnavail = document.getElementById('s-krw-unavail');
+  const sfxAvail    = document.getElementById('s-fx-avail');
+  const sfxUnavail  = document.getElementById('s-fx-unavail');
+  if (skrwAvail)   skrwAvail.textContent   = fmtKRW(krwAvailAmt);
+  if (skrwUnavail) skrwUnavail.textContent = fmtKRW(krwUnavailAmt);
+  if (sfxAvail)    sfxAvail.textContent    = fmtKRW(fxAvailAmt);
+  if (sfxUnavail)  sfxUnavail.textContent  = fmtKRW(fxUnavailAmt);
+
   // 원화/외화 비율 — 총자금(운전+운용) 기준
   if (grandTotal > 0 && srkb && sfxb) {
     const krwPct = Math.round(totalKrw / grandTotal * 100);
     const fxPct  = 100 - krwPct;
     srkb.style.flex = krwPct.toString();
     sfxb.style.flex = fxPct.toString();
+    const krwPctEl = document.getElementById('s-ratio-krw-pct');
+    const fxPctEl  = document.getElementById('s-ratio-fx-pct');
+    if (krwPctEl) krwPctEl.textContent = krwPct > 10 ? krwPct + '%' : '';
+    if (fxPctEl)  fxPctEl.textContent  = fxPct  > 10 ? fxPct  + '%' : '';
     if (srat) srat.textContent = `원화 ${krwPct}% · 외화 ${fxPct}%`;
   } else if (srat) {
     srat.textContent = '데이터 없음';
@@ -2536,6 +2627,7 @@ function loadInvestmentToForm(id) {
   // 기본 필드
   const set = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val || ''; };
   set('v-bank', item.bank);
+  set('v-available', item.available || '가용');
   set('v-rate', item.rate);
   set('v-start', item.start);
   set('v-maturity', item.maturity);
@@ -2578,11 +2670,13 @@ function saveInvestment() {
   const isBond  = product === '국공채';
   const bank    = document.getElementById('v-bank').value;
 
+  const availEl = document.getElementById('v-available');
   let item = {
     id: Date.now(), active: true,
     company: iCompany, bank,
     product,
     currency: 'KRW',
+    available: availEl ? availEl.value : '가용',
     rate: parseNum(document.getElementById('v-rate').value),
     start: document.getElementById('v-start').value,
     maturity: document.getElementById('v-maturity').value,
@@ -2591,7 +2685,7 @@ function saveInvestment() {
   if (isBond) {
     const qty   = parseNum(document.getElementById('v-bond-qty').value);
     const price = parseNum(document.getElementById('v-bond-price').value);
-    if (!bank || !qty || !price) return showToast('금융기관/발행처, 좌수, 기준가를 입력하세요', 'error');
+    if (!bank || !qty || !price) return showToast('금융기관, 좌수, 기준가를 입력하세요', 'error');
     item.bondName   = document.getElementById('v-bond-name').value;
     item.bondTicker = document.getElementById('v-bond-ticker').value;
     item.bondQty    = qty;
@@ -2601,7 +2695,7 @@ function saveInvestment() {
   } else {
     const amount = parseNum(document.getElementById('v-amount').value);
     item.currency = document.getElementById('v-currency').value;
-    if (!bank || !amount) return showToast('금융기관/발행처과 금액을 입력하세요', 'error');
+    if (!bank || !amount) return showToast('금융기관과 금액을 입력하세요', 'error');
     item.amount = amount;
   }
 
@@ -2715,6 +2809,7 @@ function renderInvestments() {
       <td style="font-size:12px;">${x.maturity||'—'}</td>
       <td>${dday}</td>
       <td class="td-num" style="color:var(--green);font-weight:600;">${fmtKRW(evalAmt)}</td>
+      <td><span style="font-size:10px;padding:2px 6px;border-radius:4px;font-weight:500;background:${x.available==='불가용'?'rgba(239,68,68,0.12)':'rgba(16,185,129,0.12)'};color:${x.available==='불가용'?'var(--red)':'var(--green)'};">${x.available||'가용'}</span></td>
       <td onclick="event.stopPropagation()">
         ${refreshBtn}
         <button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;" onclick="deleteInvest(${x.id})">해지</button>
