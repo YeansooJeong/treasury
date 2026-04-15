@@ -500,7 +500,10 @@
           </div>
           <div class="form-actions"><button class="btn btn-primary" onclick="saveInvestment()">운용상품 추가</button></div>
         </div>
-        <div class="card"><div class="card-title">운용자금 목록</div><div class="table-wrap"><table><thead><tr><th>법인</th><th>금융기관</th><th>상품</th><th>통화</th><th class="td-num">운용금액/좌수</th><th class="td-num">기준가/수익률</th><th>만기일</th><th>D-Day</th><th class="td-num">평가금액</th><th></th></tr></thead><tbody id="invest-tbody"></tbody></table></div></div>
+        <div class="card"><div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+              <span>운용자금 목록</span>
+              <button onclick="fixInvestmentCompany()" style="font-size:11px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:var(--red);padding:3px 10px;border-radius:6px;cursor:pointer;font-family:inherit;">데이터 정리</button>
+            </div><div class="table-wrap"><table><thead><tr><th>법인</th><th>금융기관</th><th>상품</th><th>통화</th><th class="td-num">운용금액/좌수</th><th class="td-num">기준가/수익률</th><th>만기일</th><th>D-Day</th><th class="td-num">평가금액</th><th></th></tr></thead><tbody id="invest-tbody"></tbody></table></div></div>
       </div>
 
       <div class="page" id="page-loans">
@@ -1946,6 +1949,45 @@ function saveInvestment() {
   onInvestProductChange();
   renderInvestments();
   renderDashboard();
+}
+
+// ── 운용자금 해지 ─────────────────────────────────────────
+function deleteInvest(id) {
+  if (!confirm('해지하시겠습니까?')) return;
+  // String() 변환으로 숫자/문자열 타입 불일치 방지
+  const items = DB.get('investments').filter(v => String(v.id) !== String(id));
+  DB.set('investments', items);
+  renderInvestments();
+  renderDashboard();
+  showToast('해지 완료', 'success');
+}
+
+
+// ── 운용자금 company 불일치 데이터 정리 ───────────────────────
+// 잘못 저장된 국공채 등 company가 맞지 않는 데이터를 확인/수정
+function fixInvestmentCompany() {
+  const all = DB.get('investments');
+  const companies = ['셀바스에이아이', '셀바스헬스케어', '메디아나'];
+
+  const summary = all.map(function(i) {
+    var status = companies.includes(i.company) ? '정상' : '⚠ company 오류';
+    return '[' + (i.company || '없음') + '] ' + i.product + '/' + i.bank + ' → ' + status;
+  }).join(String.fromCharCode(10));
+
+  var invalid = all.filter(function(i) { return !companies.includes(i.company); });
+
+  if (invalid.length === 0) {
+    alert('저장된 운용자금 현황:\n\n' + summary + '\n\n모든 데이터 정상입니다.');
+    return;
+  }
+
+  if (!confirm('저장된 운용자금 현황:\n\n' + summary + '\n\n⚠ 오류 ' + invalid.length + '건 삭제?')) return;
+
+  var cleaned = all.filter(function(i) { return companies.includes(i.company); });
+  DB.set('investments', cleaned);
+  renderInvestments();
+  renderDashboard();
+  showToast(invalid.length + '건 정리 완료', 'success');
 }
 
 function renderInvestments() {
