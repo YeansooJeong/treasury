@@ -146,11 +146,7 @@
   </div>
 </div>
 
-<div id="logout-btn" style="display:none;position:fixed;top:14px;right:70px;z-index:1000;">
-  <button onclick="doLogout()" style="background:#1e2535;border:1px solid rgba(255,255,255,0.1);color:#94a3b8;padding:5px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">
-    로그아웃
-  </button>
-</div>
+
 
 <div class="layout">
   <aside class="sidebar">
@@ -240,7 +236,9 @@
       <div class="topbar-title" id="page-title">통합 상황판</div>
       <div class="topbar-right">
         <div class="date-badge" id="today-badge">—</div>
-        <button class="btn btn-ghost" onclick="refreshFX()">환율 새로고침</button>
+        <div id="user-info" style="display:none;font-size:12px;color:#94a3b8;padding:4px 10px;background:#1e2535;border-radius:8px;border:1px solid rgba(255,255,255,0.08);"></div>
+        <button class="btn btn-ghost" onclick="refreshFX()" style="font-size:12px;padding:6px 12px;">↻ 환율</button>
+        <button id="logout-btn" onclick="doLogout()" style="display:none;background:#1e2535;border:1px solid rgba(255,255,255,0.1);color:#94a3b8;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">로그아웃</button>
       </div>
     </div>
 
@@ -754,7 +752,13 @@ function doLogin() {
 function applyAccessControl(user) {
   // 오버레이 숨김
   document.getElementById('login-overlay').style.display = 'none';
-  document.getElementById('logout-btn').style.display = 'block';
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) logoutBtn.style.display = 'block';
+  const userInfo = document.getElementById('user-info');
+  if (userInfo) {
+    userInfo.style.display = 'block';
+    userInfo.textContent = user.label || user.role;
+  }
 
   // 사용자 이름 topbar에 표시
   const badge = document.getElementById('today-badge');
@@ -762,10 +766,9 @@ function applyAccessControl(user) {
   if (badge) badge.textContent = today;
 
   // 역할에 따른 UI 제어
-  if (user.role === 'master' || user.role === 'ceo') {
-    // 전체 접근 — 통합현황 버튼 노출
-    const totalBtn = document.getElementById('tab-total');
-    if (totalBtn) totalBtn.style.display = '';
+  // tab-total(통합현황 3사)은 향후 활성화 예정 — 현재 숨김 유지
+  if (false) {
+    // 비활성화
   } else {
     // 법인 담당자 — 해당 법인 탭만 활성, 나머지 숨김
     document.querySelectorAll('.ci-tab').forEach(tab => {
@@ -797,7 +800,10 @@ function doLogout() {
   sessionStorage.removeItem('treasury_user');
   currentUser = null;
   document.getElementById('login-overlay').style.display = 'flex';
-  document.getElementById('logout-btn').style.display = 'none';
+  const logoutBtn2 = document.getElementById('logout-btn');
+  if (logoutBtn2) logoutBtn2.style.display = 'none';
+  const userInfo2 = document.getElementById('user-info');
+  if (userInfo2) userInfo2.style.display = 'none';
   document.getElementById('login-code').value = '';
   document.getElementById('login-error').style.display = 'none';
 }
@@ -1407,29 +1413,37 @@ function renderDashboard() {
   document.getElementById('d-net-total').style.color = netTotal >= 0 ? 'var(--green)' : 'var(--red)';
 
   // ── 원화/외화 요약 카드 업데이트 ──────────────────────────
+  // 운전자금 + 운용자금 합산 기준
+  // 차입금은 자금조달 수단이므로 총자금 합산에서 제외
+  const totalKrw = opKrw + invKrw;   // 원화 합계 (운전+운용)
+  const totalFx  = opFx  + invFx;    // 외화환산 합계 (운전+운용)
+  const grandTotal = totalKrw + totalFx; // 총자금 (운전+운용, 차입금 제외)
+
   const skrw = document.getElementById('s-krw-total');
   const sfx  = document.getElementById('s-fx-total');
   const srat = document.getElementById('s-ratio-text');
   const srkb = document.getElementById('s-ratio-krw-bar');
   const sfxb = document.getElementById('s-ratio-fx-bar');
-  if (skrw) skrw.textContent = fmtKRW(opKrw);
-  if (sfx)  sfx.textContent  = fmtKRW(opFx);
+
+  // 원화 카드 = 운전+운용 원화 합계
+  if (skrw) skrw.textContent = fmtKRW(totalKrw);
+  // 외화 카드 = 운전+운용 외화환산 합계
+  if (sfx)  sfx.textContent  = fmtKRW(totalFx);
 
   // 운전+운용 합계 카드
   const soiTotal = document.getElementById('s-op-inv-total');
   const soSub    = document.getElementById('s-op-sub');
   const siSub    = document.getElementById('s-inv-sub');
-  if (soiTotal) soiTotal.textContent = fmtKRW(opTotal + invTotal);
+  if (soiTotal) soiTotal.textContent = fmtKRW(grandTotal);
   if (soSub)    soSub.textContent    = fmtKRW(opTotal);
   if (siSub)    siSub.textContent    = fmtKRW(invTotal);
-  const grandTotal = opKrw + opFx;
+
+  // 원화/외화 비율 — 총자금(운전+운용) 기준
   if (grandTotal > 0 && srkb && sfxb) {
-    const krwPct = Math.round(opKrw / grandTotal * 100);
+    const krwPct = Math.round(totalKrw / grandTotal * 100);
     const fxPct  = 100 - krwPct;
-    srkb.style.width = krwPct + '%';
-    sfxb.style.width = fxPct  + '%';
-    srkb.style.flex  = krwPct.toString();
-    sfxb.style.flex  = fxPct.toString();
+    srkb.style.flex = krwPct.toString();
+    sfxb.style.flex = fxPct.toString();
     if (srat) srat.textContent = `원화 ${krwPct}% · 외화 ${fxPct}%`;
   } else if (srat) {
     srat.textContent = '데이터 없음';
