@@ -317,30 +317,29 @@
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
-            <span>현금흐름 자금 추이 <span style="font-weight:400;color:var(--text3);">(선택된 카드 반영)</span></span>
-            <div style="display:flex;gap:4px;">
-              <button class="btn btn-ghost chart-period-btn active" onclick="setChartPeriod(7, this)" style="padding:4px 10px;font-size:11px;">7일</button>
-              <button class="btn btn-ghost chart-period-btn" onclick="setChartPeriod(30, this)" style="padding:4px 10px;font-size:11px;">30일</button>
-              <button class="btn btn-ghost chart-period-btn" onclick="setChartPeriod(90, this)" style="padding:4px 10px;font-size:11px;">90일</button>
-              <button class="btn btn-ghost chart-period-btn" onclick="setChartPeriod(365, this)" style="padding:4px 10px;font-size:11px;">1년</button>
+        <!-- 차트 + 상세카드 2단 레이아웃 -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+          <!-- 좌: 차트 -->
+          <div class="card" style="margin-bottom:0;">
+            <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:12px;">현금흐름 추이</span>
+              <div style="display:flex;gap:3px;">
+                <button class="btn btn-ghost chart-period-btn active" onclick="setChartPeriod(7, this)" style="padding:3px 8px;font-size:10px;">7일</button>
+                <button class="btn btn-ghost chart-period-btn" onclick="setChartPeriod(30, this)" style="padding:3px 8px;font-size:10px;">30일</button>
+                <button class="btn btn-ghost chart-period-btn" onclick="setChartPeriod(90, this)" style="padding:3px 8px;font-size:10px;">90일</button>
+                <button class="btn btn-ghost chart-period-btn" onclick="setChartPeriod(365, this)" style="padding:3px 8px;font-size:10px;">1년</button>
+              </div>
             </div>
+            <div class="chart-area" id="chart-area" style="height:240px;"><canvas id="mainChart"></canvas></div>
           </div>
-          <div class="chart-area" id="chart-area"><canvas id="mainChart"></canvas></div>
-        </div>
 
-        <div id="inv-detail-card" style="display:none;margin-bottom:16px;">
-          <div class="card" style="border-color:rgba(16,185,129,0.3);">
-            <div class="card-title" style="display:flex;justify-content:space-between;">
-              <span>운용자금 목록</span>
-              <button onclick="goto('invest')" style="font-size:11px;background:transparent;border:none;color:var(--green);cursor:pointer;font-family:inherit;">전체 보기 →</button>
+          <!-- 우: 선택 카드별 상세 목록 -->
+          <div class="card" style="margin-bottom:0;padding:16px 18px;">
+            <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);">
+              선택 카드 상세내역
             </div>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>법인</th><th>금융기관</th><th>상품</th><th>만기일</th><th>D-Day</th><th class="td-num">평가금액</th></tr></thead>
-                <tbody id="dash-inv-tbody"></tbody>
-              </table>
+            <div id="dash-detail-list" style="display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:240px;">
+              <div style="font-size:12px;color:var(--text3);text-align:center;padding:20px 0;">카드를 선택하면 상세내역이 표시됩니다</div>
             </div>
           </div>
         </div>
@@ -399,6 +398,7 @@
             <span>운전자금 입력 이력</span>
             <span id="daily-page-info" style="font-size:11px;color:var(--text3);font-weight:400;"></span>
           </div>
+          <div id="daily-missing-alert" style="display:none;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;"></div>
           <div class="table-wrap">
             <table>
               <thead>
@@ -1277,6 +1277,41 @@ function clearEquityForm() {
   if(sourceEl) sourceEl.textContent = '';
 }
 
+
+// ── 지분투자 목록 클릭 → 폼에 로드 (수정 모드) ──────────────
+let editingEquityKey = null; // company_name 키
+
+function loadEquityToForm(id) {
+  const all = DB.get('equities');
+  const eq = all.find(x => String(x.id) === String(id));
+  if (!eq) return;
+  editingEquityKey = eq.company + '_' + eq.name;
+
+  const compEl = document.getElementById('e-company');
+  if (compEl) compEl.value = eq.company;
+
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('e-date').value = today; // 오늘 날짜로 업데이트
+  document.getElementById('e-name').value = eq.name;
+  document.getElementById('e-ticker').value = eq.ticker || '';
+  document.getElementById('e-shares').value = eq.shares ? eq.shares.toLocaleString() : '';
+  document.getElementById('e-price').value = eq.price ? eq.price.toLocaleString() : '';
+
+  const purposeEl = document.getElementById('e-purpose');
+  if (purposeEl) purposeEl.value = eq.purpose;
+  const marketEl = document.getElementById('e-market');
+  if (marketEl) marketEl.value = eq.market;
+
+  calcEquityValue();
+
+  const saveBtn = document.querySelector('#page-equity .form-actions button.btn-primary');
+  if (saveBtn) { saveBtn.textContent = '평가금액 업데이트'; saveBtn.style.background = 'var(--amber)'; }
+
+  const formCard = document.querySelector('#page-equity .card');
+  if (formCard) formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  showToast(eq.name + ' — 수정 후 저장하세요', '');
+}
+
 function saveEquity() {
   // 보유법인: 드롭박스 선택값 우선, 없으면 현재 탭
   const companyEl = document.getElementById('e-company');
@@ -1311,8 +1346,15 @@ function saveEquity() {
     total_value
   };
 
-  DB.append('equities', eq);
-  showToast(`[${company}] ${name} 지분 저장 완료`, 'success');
+  DB.append('equities', eq); // 항상 신규 기록으로 추가 (히스토리 유지)
+  showToast('[' + company + '] ' + name + ' ' + (editingEquityKey ? '업데이트' : '저장') + ' 완료', 'success');
+
+  // 평가금액 히스토리 기록
+  recordPriceHistory('equity', company + '_' + name, eq.date, eq.total_value);
+
+  editingEquityKey = null;
+  const saveBtn = document.querySelector('#page-equity .form-actions button.btn-primary');
+  if (saveBtn) { saveBtn.textContent = '지분 기록 및 저장'; saveBtn.style.background = 'var(--pink)'; }
   clearEquityForm();
   renderEquity();
   renderDashboard();
@@ -1341,7 +1383,7 @@ function renderEquity() {
   }
 
   tbody.innerHTML = latestEq.map(e => `
-    <tr>
+    <tr style="cursor:pointer;" onclick="loadEquityToForm('${e.id}')" title="클릭하면 위 폼에 불러옵니다">
       <td>${e.date}</td>
       <td>${e.company}</td>
       <td style="font-weight:600; color:var(--text);">${e.name}${e.ticker ? ` <span style="font-size:11px;color:var(--text3);">(${e.ticker})</span>` : ''}</td>
@@ -1350,7 +1392,7 @@ function renderEquity() {
       <td class="td-num">${e.shares.toLocaleString()} 주</td>
       <td class="td-num">${e.price.toLocaleString()} 원</td>
       <td class="td-num" style="color:var(--pink); font-weight:700;">${fmtKRW(e.total_value)}</td>
-      <td>
+      <td onclick="event.stopPropagation()">
         ${e.ticker && e.market !== '비상장' ? `<button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;margin-bottom:3px;border-color:rgba(236,72,153,0.3);color:var(--pink);" onclick="refreshEquityPrice('${e.id}','${e.ticker}','${e.market}')">시세↑</button><br>` : ''}
         <button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;" onclick="deleteEquity(${e.id})">삭제</button>
       </td>
@@ -1391,8 +1433,105 @@ function toggleMetric(key, event) {
     if(selectedChartMetrics.includes(key)) selectedChartMetrics = selectedChartMetrics.filter(k=>k!==key);
     else selectedChartMetrics.push(key);
   } else { selectedChartMetrics = [key]; }
-  if(selectedChartMetrics.length === 0) selectedChartMetrics = ['op', 'inv', 'loan']; 
+  if(selectedChartMetrics.length === 0) selectedChartMetrics = ['op', 'inv', 'loan'];
   renderDashboard();
+  renderDetailCard();
+}
+
+
+// ── 카드 선택 시 우측 상세내역 목록 렌더링 ──────────────────────
+function renderDetailCard() {
+  const el = document.getElementById('dash-detail-list');
+  if (!el) return;
+
+  const today = new Date();
+  let html = '';
+
+  selectedChartMetrics.forEach(key => {
+    if (key === 'op') {
+      // 운전자금 — 최신 daily 레코드 원화/외화 상세
+      const records = getFiltered('daily').sort((a,b) => b.date.localeCompare(a.date));
+      const r = records[0];
+      html += '<div style="margin-bottom:10px;">';
+      html += '<div style="font-size:11px;font-weight:600;color:#3b82f6;margin-bottom:6px;">● 운전자금 (' + (r ? r.date : '데이터 없음') + ')</div>';
+      if (r) {
+        const rows = [
+          ['보통예금', r.krw_demand],
+          ['국책자금', r.krw_govt],
+          ['MMDA', r.krw_mmda],
+          ['외화환산', r.fx_krw || 0],
+        ].filter(x => x[1] > 0);
+        rows.forEach(([lbl, val]) => {
+          html += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:0.5px solid var(--border);">' +
+            '<span style="color:var(--text3);">' + lbl + '</span>' +
+            '<span style="color:var(--text);font-weight:500;">' + fmtKRW(val) + '</span></div>';
+        });
+      }
+      html += '</div>';
+    }
+
+    if (key === 'inv') {
+      // 운용자금 — 활성 상품 목록
+      const items = getFiltered('investments').filter(x => x.active);
+      html += '<div style="margin-bottom:10px;">';
+      html += '<div style="font-size:11px;font-weight:600;color:#10b981;margin-bottom:6px;">● 운용자금 (' + items.length + '건)</div>';
+      if (!items.length) {
+        html += '<div style="font-size:12px;color:var(--text3);">없음</div>';
+      } else {
+        items.forEach(x => {
+          const dday = x.maturity ? Math.ceil((new Date(x.maturity)-today)/86400000) : null;
+          const ddayStr = dday !== null ? (dday < 0 ? '만기경과' : 'D-' + dday) : '—';
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:3px 0;border-bottom:0.5px solid var(--border);">' +
+            '<div><span style="color:var(--text);">' + x.bank + '</span>' +
+            '<span style="font-size:10px;color:var(--text3);margin-left:4px;">' + x.product + ' · ' + ddayStr + '</span></div>' +
+            '<span style="color:var(--green);font-weight:500;">' + fmtKRW(calcKRW(x.amount, x.currency)) + '</span></div>';
+        });
+      }
+      html += '</div>';
+    }
+
+    if (key === 'loan') {
+      // 차입금 — 활성 항목 목록
+      const loans = getFiltered('loans').filter(x => x.active);
+      html += '<div style="margin-bottom:10px;">';
+      html += '<div style="font-size:11px;font-weight:600;color:#f59e0b;margin-bottom:6px;">● 차입금 (' + loans.length + '건)</div>';
+      if (!loans.length) {
+        html += '<div style="font-size:12px;color:var(--text3);">없음</div>';
+      } else {
+        loans.forEach(x => {
+          const dday = x.maturity ? Math.ceil((new Date(x.maturity)-today)/86400000) : null;
+          const ddayStr = dday !== null ? (dday < 0 ? '만기경과' : 'D-' + dday) : '—';
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:3px 0;border-bottom:0.5px solid var(--border);">' +
+            '<div><span style="color:var(--text);">' + x.lender + '</span>' +
+            '<span style="font-size:10px;color:var(--text3);margin-left:4px;">' + x.type + ' · ' + ddayStr + '</span></div>' +
+            '<span style="color:var(--amber);font-weight:500;">' + fmtKRW(calcKRW(x.amount, x.currency)) + '</span></div>';
+        });
+      }
+      html += '</div>';
+    }
+
+    if (key === 'net') {
+      // 순현금 — 요약
+      const records = getFiltered('daily').sort((a,b) => b.date.localeCompare(a.date));
+      const r = records[0];
+      const invs = getFiltered('investments').filter(i => i.active);
+      const loans = getFiltered('loans').filter(l => l.active);
+      const opTotal = r ? (r.krw_demand+r.krw_govt+r.krw_mmda+(r.fx_krw||0)) : 0;
+      const invTotal = invs.reduce((s,i) => s + calcKRW(i.amount, i.currency), 0);
+      const loanTotal = loans.reduce((s,l) => s + calcKRW(l.amount, l.currency), 0);
+      const net = opTotal + invTotal - loanTotal;
+      html += '<div style="margin-bottom:10px;">';
+      html += '<div style="font-size:11px;font-weight:600;color:#8b5cf6;margin-bottom:6px;">● 순현금</div>';
+      [['운전자금', opTotal, '#3b82f6'],['운용자금', invTotal, '#10b981'],['차입금(-)' , -loanTotal, '#f59e0b'],['순현금', net, '#8b5cf6']].forEach(([lbl,val,clr]) => {
+        html += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:0.5px solid var(--border);">' +
+          '<span style="color:var(--text3);">' + lbl + '</span>' +
+          '<span style="color:' + clr + ';font-weight:600;">' + fmtKRW(val) + '</span></div>';
+      });
+      html += '</div>';
+    }
+  });
+
+  el.innerHTML = html || '<div style="font-size:12px;color:var(--text3);text-align:center;padding:20px 0;">카드를 선택하면 상세내역이 표시됩니다</div>';
 }
 
 function renderDashboard() {
@@ -1501,6 +1640,7 @@ function renderDashboard() {
 
   updateMainChart(dailyRecords);
   updateEquityChart(allEq);
+  renderDetailCard();
 }
 
 // ── 차트 기간 설정 ─────────────────────────────────────────
@@ -1901,6 +2041,55 @@ async function refreshBondPrice(id, bondName) {
   showToast('조회 실패 — 직접 수정하세요', 'error');
 }
 
+
+// ── 운용자금 목록 클릭 → 폼에 로드 (수정 모드) ──────────────
+let editingInvestId = null;
+
+function loadInvestmentToForm(id) {
+  const item = DB.get('investments').find(x => String(x.id) === String(id));
+  if (!item) return;
+  editingInvestId = id;
+
+  // 법인 선택
+  const compEl = document.getElementById('v-company');
+  if (compEl) compEl.value = item.company;
+
+  // 기본 필드
+  const set = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val || ''; };
+  set('v-bank', item.bank);
+  set('v-rate', item.rate);
+  set('v-start', item.start);
+  set('v-maturity', item.maturity);
+
+  // 상품 구분
+  const prodEl = document.getElementById('v-product');
+  if (prodEl) { prodEl.value = item.product; onInvestProductChange(); }
+
+  if (item.product === '국공채') {
+    set('v-bond-name', item.bondName);
+    set('v-bond-ticker', item.bondTicker);
+    set('v-bond-qty', item.bondQty ? item.bondQty.toLocaleString() : '');
+    set('v-bond-price', item.bondPrice ? item.bondPrice.toLocaleString() : '');
+    calcBondValue();
+  } else {
+    const curEl = document.getElementById('v-currency');
+    if (curEl) curEl.value = item.currency || 'KRW';
+    set('v-amount', item.amount ? item.amount.toLocaleString() : '');
+  }
+
+  // 저장 버튼 텍스트 변경
+  const saveBtn = document.querySelector('#page-invest .form-actions button');
+  if (saveBtn) {
+    saveBtn.textContent = '수정 저장';
+    saveBtn.style.background = 'var(--amber)';
+  }
+
+  // 폼 상단으로 스크롤
+  const formCard = document.querySelector('#page-invest .card');
+  if (formCard) formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  showToast('수정할 내용을 변경 후 저장하세요', '');
+}
+
 function saveInvestment() {
   const compEl = document.getElementById('v-company');
   const iCompany = compEl ? compEl.value : currentCompany;
@@ -1937,8 +2126,23 @@ function saveInvestment() {
     item.amount = amount;
   }
 
-  DB.append('investments', item);
-  showToast(`[${iCompany}] ${product} 등록 완료`, 'success');
+  if (editingInvestId !== null) {
+    // 수정 모드 — 기존 항목 업데이트
+    const all = DB.get('investments');
+    const idx = all.findIndex(x => String(x.id) === String(editingInvestId));
+    if (idx >= 0) {
+      item.id = all[idx].id; // 기존 id 유지
+      all[idx] = item;
+      DB.set('investments', all);
+      showToast('[' + iCompany + '] ' + product + ' 수정 완료', 'success');
+    }
+    editingInvestId = null;
+    const saveBtn = document.querySelector('#page-invest .form-actions button');
+    if (saveBtn) { saveBtn.textContent = '운용상품 추가'; saveBtn.style.background = ''; }
+  } else {
+    DB.append('investments', item);
+    showToast('[' + iCompany + '] ' + product + ' 등록 완료', 'success');
+  }
 
   // 폼 초기화
   ['v-bank','v-amount','v-rate','v-start','v-maturity',
@@ -2020,7 +2224,7 @@ function renderInvestments() {
       ? `<button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;color:var(--green);border-color:rgba(16,185,129,0.3);margin-bottom:3px;" onclick="refreshBondPrice(${x.id},'${x.bondName||''}')">시세↑</button><br>`
       : '';
 
-    return `<tr>
+    return `<tr style="cursor:pointer;" onclick="loadInvestmentToForm(${x.id})" title="클릭하면 위 폼에 불러옵니다">
       <td style="font-size:12px;">${x.company}</td>
       <td>${x.bank}</td>
       <td>
@@ -2032,7 +2236,7 @@ function renderInvestments() {
       <td style="font-size:12px;">${x.maturity||'—'}</td>
       <td>${dday}</td>
       <td class="td-num" style="color:var(--green);font-weight:600;">${fmtKRW(evalAmt)}</td>
-      <td>
+      <td onclick="event.stopPropagation()">
         ${refreshBtn}
         <button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;" onclick="deleteInvest(${x.id})">해지</button>
       </td>
@@ -2066,6 +2270,32 @@ function renderLoans() {
 let currentDailyPage = 1;
 const DAILY_PAGE_SIZE = 10;
 
+
+// ── 영업일 헬퍼 ──────────────────────────────────────────
+function getBusinessDays(startDate, endDate) {
+  const days = [];
+  const cur = new Date(startDate);
+  const end = new Date(endDate);
+  while (cur <= end) {
+    const dow = cur.getDay();
+    if (dow !== 0 && dow !== 6) {
+      days.push(cur.toISOString().slice(0, 10));
+    }
+    cur.setDate(cur.getDate() + 1);
+  }
+  return days;
+}
+
+function getMissingBusinessDays(company) {
+  const records = DB.get('daily').filter(r => r.company === company);
+  if (!records.length) return [];
+  const dates = new Set(records.map(r => r.date));
+  const minDate = records.reduce((a, b) => a.date < b.date ? a : b).date;
+  const today = new Date().toISOString().slice(0, 10);
+  const allBizDays = getBusinessDays(minDate, today);
+  return allBizDays.filter(d => !dates.has(d) && d < today);
+}
+
 function renderDailyHistory(page) {
   currentDailyPage = page || 1;
   const all = DB.get('daily').sort((a,b) => b.date.localeCompare(a.date));
@@ -2082,6 +2312,20 @@ function renderDailyHistory(page) {
   if (!tbody) return;
 
   if (info) info.textContent = total > 0 ? `전체 ${total}건 · ${currentDailyPage}/${totalPages} 페이지` : '';
+
+  // 누락 영업일 알림 배너
+  const missingEl = document.getElementById('daily-missing-alert');
+  if (missingEl) {
+    const company = (document.getElementById('i-company') || {}).value || currentCompany;
+    const missing = company ? getMissingBusinessDays(company) : [];
+    if (missing.length > 0) {
+      missingEl.style.display = '';
+      missingEl.innerHTML = '<span style="color:var(--amber);font-weight:600;">⚠ 누락 영업일 ' + missing.length + '일:</span> ' +
+        missing.slice(0, 5).join(', ') + (missing.length > 5 ? ' 외 ' + (missing.length - 5) + '일' : '');
+    } else {
+      missingEl.style.display = 'none';
+    }
+  }
 
   if (!pageData.length) {
     tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--text3);">입력된 데이터가 없습니다</td></tr>';
@@ -2222,6 +2466,30 @@ function renderFXEquivTable() {
     return;
   }
   tbody.innerHTML = rows.map(r => '<tr><td>'+r.cur+'</td><td class="td-num">'+r.amt.toLocaleString()+' '+r.sym+'</td><td class="td-num">'+(r.rate?r.rate.toFixed(4):'—')+' 원/'+r.cur+'</td><td class="td-num" style="color:var(--green);font-weight:600;">'+fmtKRW(r.amt*(r.rate||0))+'</td></tr>').join('');
+}
+
+
+// ══════════════════════════════════════════════════════
+// 평가금액 변동 히스토리 (price_history)
+// key 형식: 'equity:company_name' 또는 'bond:company_bank'
+// ══════════════════════════════════════════════════════
+function recordPriceHistory(type, key, date, value) {
+  const histKey = type + ':' + key;
+  const all = DB.get('price_history');
+  // 같은 날짜+키 중복 제거 후 추가
+  const filtered = all.filter(h => !(h.key === histKey && h.date === date));
+  filtered.push({ key: histKey, date, value });
+  DB.set('price_history', filtered);
+}
+
+function getPriceHistory(type, key, days) {
+  const histKey = type + ':' + key;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - (days || 30));
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  return DB.get('price_history')
+    .filter(h => h.key === histKey && h.date >= cutoffStr)
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 function filterHistory() {
