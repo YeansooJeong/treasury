@@ -2777,7 +2777,13 @@ function getMissingBusinessDays(company) {
 
 function renderDailyHistory(page) {
   currentDailyPage = page || 1;
-  const all = DB.get('daily').sort((a,b) => b.date.localeCompare(a.date));
+
+  // Master/CEO는 전체, 담당자는 자사 데이터만
+  const isMasterOrCeo = currentUser && (currentUser.role === 'master' || currentUser.role === 'ceo');
+  const all = isMasterOrCeo
+    ? DB.get('daily').sort((a,b) => b.date.localeCompare(a.date))
+    : DB.get('daily').filter(r => r.company === currentCompany).sort((a,b) => b.date.localeCompare(a.date));
+
   const total = all.length;
   const totalPages = Math.max(1, Math.ceil(total / DAILY_PAGE_SIZE));
   currentDailyPage = Math.min(currentDailyPage, totalPages);
@@ -2795,7 +2801,11 @@ function renderDailyHistory(page) {
   // 누락 영업일 알림 배너
   const missingEl = document.getElementById('daily-missing-alert');
   if (missingEl) {
-    const company = (document.getElementById('i-company') || {}).value || currentCompany;
+    // Master/CEO는 현재 탭 법인, 담당자는 자사 기준
+    const isMCEO = currentUser && (currentUser.role === 'master' || currentUser.role === 'ceo');
+    const company = isMCEO
+      ? ((document.getElementById('i-company') || {}).value || currentCompany)
+      : (currentUser ? currentUser.company : currentCompany);
     const missing = company ? getMissingBusinessDays(company) : [];
     if (missing.length > 0) {
       missingEl.style.display = '';
