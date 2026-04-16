@@ -1214,27 +1214,6 @@ function saveCurrentCodes(codesObj) {
   localStorage.setItem('treasury_access_codes', JSON.stringify(codesObj));
 }
 
-// doLogin 함수가 동적 코드를 사용하도록 오버라이드
-function doLogin() {
-  const inputCode = document.getElementById('login-code').value.trim();
-  const codes = loadCurrentCodes();
-
-  let matchedUser = null;
-  Object.values(codes).forEach(u => {
-    if (u.code === inputCode) matchedUser = u;
-  });
-
-  if (!matchedUser) {
-    document.getElementById('login-error').style.display = 'block';
-    document.getElementById('login-code').value = '';
-    return;
-  }
-
-  currentUser = matchedUser;
-  sessionStorage.setItem('treasury_user', JSON.stringify(matchedUser));
-  applyAccessControl(matchedUser);
-}
-
 // ── 모달 열기/닫기 ─────────────────────────────────────────────
 function openCodeModal() {
   const modal = document.getElementById('code-change-modal');
@@ -1276,8 +1255,11 @@ function closeCodeModal() {
 }
 
 // 모달 외부 클릭 시 닫기
-document.getElementById('code-change-modal').addEventListener('click', function(e) {
-  if (e.target === this) closeCodeModal();
+document.addEventListener('DOMContentLoaded', function() {
+  var codeModal = document.getElementById('code-change-modal');
+  if (codeModal) codeModal.addEventListener('click', function(e) {
+    if (e.target === this) closeCodeModal();
+  });
 });
 
 // ── 코드 강도 표시 ─────────────────────────────────────────────
@@ -1433,6 +1415,9 @@ function applyAccessControl(user) {
       Array.from(el.options).forEach(opt => { opt.disabled = false; });
       el.value = '셀바스에이아이';
     });
+    // CEO는 관리 메뉴 숨김
+    const adminNavCeo = document.getElementById('admin-nav-section');
+    if (adminNavCeo) adminNavCeo.style.display = 'none';
     // CEO는 열람만 — 모든 저장/추가/삭제 버튼 비활성화
     if (user.role === 'ceo') {
       setTimeout(() => {
@@ -1456,7 +1441,10 @@ function applyAccessControl(user) {
       }, 300);
     }
   } else {
-    // 법인 담당자 — 해당 법인 탭만 표시, 나머지 숨김
+    // 법인 담당자 — 관리 메뉴 숨김
+    const adminNavComp = document.getElementById('admin-nav-section');
+    if (adminNavComp) adminNavComp.style.display = 'none';
+    // 해당 법인 탭만 표시, 나머지 숨김
     document.querySelectorAll('.ci-tab').forEach(tab => {
       tab.style.display = tab.title !== user.company ? 'none' : '';
     });
@@ -3866,9 +3854,12 @@ async function saveUserCode() {
   }
 }
 
-// 모달 외부 클릭 닫기
-document.getElementById('add-user-modal').addEventListener('click', function(e) {
-  if (e.target === this) closeAddUserModal();
+// 모달 외부 클릭 닫기 — DOMContentLoaded 후 등록
+document.addEventListener('DOMContentLoaded', function() {
+  var addModal = document.getElementById('add-user-modal');
+  if (addModal) addModal.addEventListener('click', function(e) {
+    if (e.target === this) closeAddUserModal();
+  });
 });
 
 // ── 관리 페이지 3: 연결 상태 확인 ──────────────────────────
