@@ -1325,30 +1325,50 @@ const DB = {
     return _cache[table] || [];
   },
 
-  // 캐시 + Supabase 동기화 저장
+  // ── 캐시 업데이트 + Supabase 단건 UPSERT ─────────────────
+  // arr 전체를 교체하되 Supabase에는 변경된 항목만 처리
   set: async (table, arr) => {
+    // 이전 캐시와 비교해 변경/삭제 항목 파악
+    const prev = (_cache[table] || []);
+    const prevIds = new Set(prev.map(r => String(r.id)));
+    const newIds  = new Set(arr.map(r  => String(r.id)));
+
     _cache[table] = arr;
     const sbTable = TABLE_MAP[table];
     if (!sbTable) return;
-    // 전체 삭제: created_at 컬럼 기준으로 전체 삭제 (UUID/legacy id 모두 처리)
-    await sbFetch('/rest/v1/' + sbTable + '?id=not.is.null', { method: 'DELETE' });
-    if (arr.length > 0) {
-      const rows = arr.map(r => normalizeRow(table, r));
-      // 50건씩 배치 INSERT (대량 데이터 대응)
-      let setOk = true;
-      for (let i = 0; i < rows.length; i += 50) {
-        const res = await sbFetch('/rest/v1/' + sbTable, {
-          method: 'POST',
-          body: JSON.stringify(rows.slice(i, i+50)),
-          headers: { ...SB_HEADERS, 'Prefer': 'resolution=merge-duplicates,return=representation' },
-        });
-        if (res === null) setOk = false;
-      }
-      showSaveStatus(setOk);
+
+    let setOk = true;
+
+    // 추가/수정된 항목 → UPSERT
+    const toUpsert = arr.filter(r => {
+      const sid = String(r.id);
+      if (!prevIds.has(sid)) return true; // 신규
+      const prev_item = prev.find(p => String(p.id) === sid);
+      return JSON.stringify(prev_item) !== JSON.stringify(r); // 변경됨
+    });
+    for (const item of toUpsert) {
+      const row = normalizeRow(table, item);
+      if (!row.id) continue;
+      const res = await sbFetch('/rest/v1/' + sbTable, {
+        method: 'POST',
+        body: JSON.stringify(row),
+        headers: { ...SB_HEADERS, 'Prefer': 'resolution=merge-duplicates,return=representation' },
+      });
+      if (res === null) setOk = false;
     }
+
+    // 제거된 항목 → 단건 DELETE
+    const toDelete = prev.filter(r => !newIds.has(String(r.id)));
+    for (const item of toDelete) {
+      const sid = String(item.id);
+      if (!sid || sid === 'undefined') continue;
+      await sbFetch('/rest/v1/' + sbTable + '?id=eq.' + encodeURIComponent(sid), { method: 'DELETE' });
+    }
+
+    showSaveStatus(setOk);
   },
 
-  // 단건 추가
+  // ── 단건 추가 (INSERT) ──────────────────────────────────
   append: async (table, item) => {
     const arr = DB.get(table);
     const newItem = { ...item, id: item.id || crypto.randomUUID() };
@@ -2482,10 +2502,12 @@ async function saveEquity() {
 }
 
 async function deleteEquity(id) {
-  if(!confirm('삭제하시겠습니까?')) return;
-  await DB.set('equities', DB.get('equities').filter(e => e.id !== id));
+  if (!confirm('삭제하시겠습니까?')) return;
+  const sid = String(id);
+  await DB.set('equities', DB.get('equities').filter(e => String(e.id) !== sid));
   renderEquity();
   renderDashboard();
+  showToast('삭제 완료', 'success');
 }
 
 function renderEquity() {
@@ -2537,7 +2559,15 @@ async function refreshEquityPrice(id, ticker, market) {
       eq.price = result.price;
       eq.total_value = eq.shares * result.price;
       eq.date = result.date;
-      DB.set('equities', equities);
+      // 해당 항목만 PATCH (전체 배열 교체 없이)
+      const patchRow = normalizeRow('equities', { ...eq });
+      const patchResult = await sbFetch('/rest/v1/equities?id=eq.' + encodeURIComponent(String(eq.id)), {
+        method: 'PATCH',
+        body: JSON.stringify(patchRow),
+      });
+      if (patchResult !== null) {
+        _cache['equities'] = equities; // 캐시 업데이트
+      }
       renderEquity();
       renderDashboard();
       showToast(`${eq.name} ${result.price.toLocaleString()}원 (${result.date})`, 'success');
@@ -3290,8 +3320,16 @@ async function saveDaily() {
 
   let rs = DB.get('daily');
   const idx = rs.findIndex(x=>x.date===d&&x.company===company);
-  if(idx>=0) { if(!confirm('덮어쓰시겠습니까?')) return; rs[idx]=r; await DB.set('daily',rs); }
-  else await DB.append('daily', r);
+  if (idx >= 0) {
+    if (!confirm('덮어쓰시겠습니까?')) return;
+    r.id = rs[idx].id; // 기존 id 보존 (없으면 새 UUID)
+    if (!r.id) r.id = crypto.randomUUID();
+    rs[idx] = r;
+    await DB.set('daily', rs);
+  } else {
+    r.id = crypto.randomUUID(); // 신규 레코드 id 사전 부여
+    await DB.append('daily', r);
+  }
 
   showToast('[' + company + '] ' + d + ' 운전자금 저장 완료', 'success');
   ['i-krw-demand','i-krw-govt','i-krw-mmda','i-fx-usd','i-fx-eur','i-fx-jpy','i-memo'].forEach(function(id) {
@@ -3481,7 +3519,15 @@ async function refreshBondPrice(id, bondName) {
             item.bondPrice = newPrice;
             item.amount = item.bondQty * newPrice;
             item.priceDate = new Date().toISOString().slice(0,10);
-            await DB.set('investments', inv);
+            // 해당 항목만 PATCH
+            const patchRow = normalizeRow('investments', { ...item });
+            const bondPatch = await sbFetch('/rest/v1/investments?id=eq.' + encodeURIComponent(String(item.id)), {
+              method: 'PATCH',
+              body: JSON.stringify(patchRow),
+            });
+            if (bondPatch !== null) {
+              _cache['investments'] = inv;
+            }
             renderInvestments();
             renderDashboard();
             showToast(`${bondName} 기준가 업데이트: ${newPrice.toLocaleString()}원`, 'success');
@@ -3613,7 +3659,7 @@ async function saveInvestment() {
   });
   onInvestProductChange();
   renderInvestments();
-  renderDashboard();
+  renderDashboard(); // 한 번만 호출
 }
 
 // ── 운용자금 해지 ─────────────────────────────────────────
@@ -3931,10 +3977,10 @@ function renderDailyHistory(page) {
   }
 }
 
-function deleteDaily(date, company) {
+async function deleteDaily(date, company) {
   if (!confirm(`${date} [${company}] 데이터를 삭제하시겠습니까?`)) return;
   const rs = DB.get('daily').filter(r => !(r.date===date && r.company===company));
-  DB.set('daily', rs);
+  await DB.set('daily', rs);
   renderDailyHistory(currentDailyPage);
   renderDashboard();
   showToast('삭제 완료', 'success');
@@ -4035,9 +4081,21 @@ async function recordPriceHistory(type, key, date, value) {
   const histKey = type + ':' + key;
   const all = DB.get('price_history');
   // 같은 날짜+키 중복 제거 후 추가
-  const filtered = all.filter(h => !(h.key === histKey && h.date === date));
-  filtered.push({ key: histKey, date, value });
-  await DB.set('price_history', filtered);
+  // price_history: 같은 key+date 있으면 PATCH, 없으면 INSERT
+  const existing = all.find(h => h.key === histKey && h.date === date);
+  if (existing) {
+    // 캐시 업데이트
+    existing.value = value;
+    _cache['price_history'] = all;
+    // Supabase PATCH
+    await sbFetch('/rest/v1/price_history?id=eq.' + encodeURIComponent(String(existing.id)), {
+      method: 'PATCH',
+      body: JSON.stringify({ value }),
+    });
+  } else {
+    // 신규 추가
+    await DB.append('price_history', { key: histKey, date, value });
+  }
 }
 
 function getPriceHistory(type, key, days) {
