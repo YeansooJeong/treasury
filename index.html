@@ -138,6 +138,198 @@
   
   #toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg2); border: 1px solid var(--border2); padding: 12px 20px; border-radius: 10px; opacity: 0; transition: all .3s; z-index: 999; transform: translateY(80px); }
   #toast.show { opacity: 1; transform: translateY(0); }
+
+  /* ── 2. CI 배지 — 다크 배경과 조화로운 스타일 ───────────── */
+  #sidebar-badge-area {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 8px 14px;
+    height: 50px;
+    backdrop-filter: blur(4px);
+    transition: background .2s;
+  }
+  #sidebar-badge-area:hover { background: rgba(255,255,255,0.1); }
+  #sidebar-badge-area img {
+    max-width: 100%; max-height: 100%;
+    object-fit: contain;
+    filter: brightness(1) drop-shadow(0 0 2px rgba(255,255,255,0.15));
+    opacity: 0.92;
+  }
+
+  /* ci-tab — 다크 테마와 조화 */
+  .ci-tab {
+    background: rgba(255,255,255,0.05);
+    border: 1.5px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 6px 14px;
+    cursor: pointer;
+    height: 44px;
+    min-width: 110px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .2s;
+  }
+  .ci-tab:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+  .ci-tab.active {
+    background: rgba(59,130,246,0.12);
+    border-color: rgba(59,130,246,0.5);
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+  }
+  .ci-tab img {
+    max-height: 100%; width: auto; max-width: 100px;
+    object-fit: contain;
+    filter: brightness(1.05) drop-shadow(0 0 3px rgba(255,255,255,0.1));
+    opacity: 0.9;
+  }
+
+  /* ── 3. 스크롤바 디자인 개선 ────────────────────────────── */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.12);
+    border-radius: 10px;
+    transition: background .2s;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+  ::-webkit-scrollbar-corner { background: transparent; }
+  /* Firefox */
+  * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.12) transparent; }
+
+  /* ── 1. 모바일 반응형 ─────────────────────────────────── */
+
+  /* 모바일 하단 탭바 (초기 숨김) */
+  #mobile-tabbar {
+    display: none;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    z-index: 200;
+    padding: 6px 0 env(safe-area-inset-bottom, 6px);
+    justify-content: space-around;
+    align-items: center;
+  }
+  .mob-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 8px;
+    cursor: pointer;
+    color: var(--text3);
+    font-size: 10px;
+    transition: color .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mob-tab svg { width: 22px; height: 22px; opacity: .7; }
+  .mob-tab.active { color: var(--accent2); }
+  .mob-tab.active svg { opacity: 1; }
+
+  /* 모바일 회사 선택 바 */
+  #mobile-company-bar {
+    display: none;
+    padding: 8px 14px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  #mobile-company-bar::-webkit-scrollbar { display: none; }
+  .mob-ci {
+    flex-shrink: 0;
+    background: rgba(255,255,255,0.05);
+    border: 1.5px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 4px 10px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .mob-ci.active {
+    background: rgba(59,130,246,0.15);
+    border-color: rgba(59,130,246,0.5);
+  }
+  .mob-ci img { height: 22px; width: auto; max-width: 80px; object-fit: contain; opacity: 0.9; }
+
+  @media (max-width: 768px) {
+    /* 사이드바 숨김 */
+    .sidebar { display: none !important; }
+
+    /* topbar 간소화 */
+    .topbar { padding: 0 14px; height: 50px; }
+    .topbar-title { font-size: 14px; }
+    .topbar-right { gap: 6px; }
+    /* 불필요 버튼 숨김 */
+    #code-mgr-btn, #sb-save-indicator { display: none !important; }
+    .btn-ghost[onclick*="refreshFX"] { padding: 5px 8px; font-size: 11px; }
+
+    /* 모바일 전용 UI 표시 */
+    #mobile-tabbar { display: flex; }
+    #mobile-company-bar { display: flex; }
+
+    /* content 하단 탭바 높이만큼 패딩 */
+    .content { padding: 14px 12px 80px; }
+
+    /* 로딩 배너 */
+    #sb-loading-banner { font-size: 11px; padding: 6px 14px; }
+
+    /* 요약 카드 2열 */
+    .content > div[style*="grid-template-columns:1fr 1fr 1fr 1fr"] {
+      grid-template-columns: 1fr 1fr !important;
+    }
+
+    /* metric 카드 2열 */
+    .metrics { grid-template-columns: 1fr 1fr !important; gap: 10px; }
+
+    /* 차트+상세 — 세로 배치 */
+    .content > div[style*="grid-template-columns:1fr 1fr"] {
+      grid-template-columns: 1fr !important;
+    }
+
+    /* 알림 배너 폰트 */
+    #dash-alert-banner { font-size: 11px; }
+
+    /* 카드 패딩 축소 */
+    .card { padding: 14px 14px; }
+    .card-title { font-size: 14px; }
+
+    /* 테이블 가로 스크롤 */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { min-width: 500px; font-size: 12px; }
+    th, td { padding: 8px 8px; }
+
+    /* 입력 폼 전체 폭 */
+    .form-grid { grid-template-columns: 1fr !important; }
+    .form-group { grid-column: 1 / -1 !important; }
+
+    /* 대시보드 요약 카드 — 첫 카드 전체 폭 */
+    .card[style*="grid-column:1/3"] { grid-column: 1 / -1 !important; }
+
+    /* ci-tab 영역 숨김 (모바일 탭바로 대체) */
+    .page > div > .ci-tab { display: none !important; }
+
+    /* 로그인 오버레이 */
+    #login-overlay > div { width: 92vw; padding: 28px 22px; }
+
+    /* 지분투자 차트 높이 조정 */
+    .chart-area { height: 200px !important; }
+  }
+
+  @media (max-width: 480px) {
+    /* 소형 폰: 카드 1열 */
+    .content > div[style*="grid-template-columns:1fr 1fr 1fr 1fr"] {
+      grid-template-columns: 1fr !important;
+    }
+    .metrics { grid-template-columns: 1fr 1fr !important; }
+    .topbar-right .date-badge { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -4177,6 +4369,68 @@ async function adminCheckStatus() {
   }
 }
 
+
+// ══════════════════════════════════════════════════════
+// 모바일 전용 함수
+// ══════════════════════════════════════════════════════
+function mobileGoto(page, tabEl) {
+  // 탭바 활성 표시
+  document.querySelectorAll('.mob-tab').forEach(t => t.classList.remove('active'));
+  if (tabEl) tabEl.classList.add('active');
+  // 페이지 이동
+  goto(page);
+  // 모바일: 대시보드 외엔 회사 선택 바 숨김
+  const compBar = document.getElementById('mobile-company-bar');
+  if (compBar) {
+    const showBar = page === 'dashboard' &&
+      currentUser && (currentUser.role === 'master' || currentUser.role === 'ceo');
+    compBar.style.display = showBar ? 'flex' : 'none';
+  }
+}
+
+function mobileSwitchCompany(company, el) {
+  // 모바일 회사 선택 바에서 회사 전환
+  document.querySelectorAll('.mob-ci').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+  // 대시보드 탭도 동기화
+  const tab = document.querySelector('.ci-tab[title="' + company + '"]');
+  setCompany(company, tab);
+}
+
+// applyAccessControl 후 모바일 UI 동기화
+const _origApply = applyAccessControl;
+applyAccessControl = function(user) {
+  _origApply(user);
+  // 모바일 회사 선택 바 — Master/CEO만 표시
+  const compBar = document.getElementById('mobile-company-bar');
+  if (compBar) {
+    const isMasterCeo = user && (user.role === 'master' || user.role === 'ceo');
+    // 현재 활성 페이지가 대시보드일 때만
+    const activePage = document.querySelector('.page.active');
+    const isDash = activePage && activePage.id === 'page-dashboard';
+    compBar.style.display = (isMasterCeo && isDash && window.innerWidth <= 768) ? 'flex' : 'none';
+
+    // 담당자는 해당 법인 탭만 표시
+    if (!isMasterCeo && user && user.company) {
+      document.querySelectorAll('.mob-ci').forEach(c => {
+        c.style.display = c.title === user.company ? 'flex' : 'none';
+      });
+    }
+  }
+};
+
+// 리사이즈 시 모바일 바 상태 갱신
+window.addEventListener('resize', function() {
+  const compBar = document.getElementById('mobile-company-bar');
+  if (!compBar) return;
+  if (window.innerWidth > 768) {
+    compBar.style.display = 'none';
+  } else if (currentUser && (currentUser.role === 'master' || currentUser.role === 'ceo')) {
+    const activePage = document.querySelector('.page.active');
+    if (activePage && activePage.id === 'page-dashboard') compBar.style.display = 'flex';
+  }
+});
+
 function filterHistory() {
   const from = document.getElementById('h-from').value, to = document.getElementById('h-to').value;
   const records = getFiltered('daily').filter(r => (!from||r.date>=from)&&(!to||r.date<=to)).sort((a,b)=>b.date.localeCompare(a.date));
@@ -4231,5 +4485,53 @@ function filterHistory() {
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- 모바일 회사 선택 바 (Master/CEO용 — JS로 제어) -->
+<div id="mobile-company-bar">
+  <div class="mob-ci active" onclick="mobileSwitchCompany('셀바스에이아이', this)" title="셀바스에이아이">
+    <img src="selvasai.png" alt="Selvas AI" onerror="this.parentElement.innerHTML='<span style=\'font-size:11px;color:var(--text);\'>Selvas AI</span>'">
+  </div>
+  <div class="mob-ci" onclick="mobileSwitchCompany('셀바스헬스케어', this)" title="셀바스헬스케어">
+    <img src="selvashealthcare.png" alt="Selvas HC" onerror="this.parentElement.innerHTML='<span style=\'font-size:11px;color:var(--text);\'>Selvas HC</span>'">
+  </div>
+  <div class="mob-ci" onclick="mobileSwitchCompany('메디아나', this)" title="메디아나">
+    <img src="mediana.png" alt="Mediana" onerror="this.parentElement.innerHTML='<span style=\'font-size:11px;color:var(--text);\'>Mediana</span>'">
+  </div>
+</div>
+
+<!-- 모바일 하단 탭바 -->
+<div id="mobile-tabbar">
+  <div class="mob-tab active" onclick="mobileGoto('dashboard', this)">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/>
+      <rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/>
+    </svg>
+    대시보드
+  </div>
+  <div class="mob-tab" onclick="mobileGoto('input', this)">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M8 1v14M1 8h14"/>
+    </svg>
+    운전자금
+  </div>
+  <div class="mob-tab" onclick="mobileGoto('invest', this)">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M1 14h14M1 10l5-5 4 4 5-5"/>
+    </svg>
+    운용자금
+  </div>
+  <div class="mob-tab" onclick="mobileGoto('history', this)">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+      <circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/>
+    </svg>
+    이력
+  </div>
+  <div class="mob-tab" onclick="mobileGoto('fx', this)">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+      <circle cx="8" cy="8" r="6"/><path d="M5 8h6M8 5v6"/>
+    </svg>
+    환율
+  </div>
+</div>
 </body>
 </html>
