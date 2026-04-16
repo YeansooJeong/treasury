@@ -1291,8 +1291,9 @@ let _supabaseReady = false;
 
 // ── Supabase REST API 헬퍼 ────────────────────────────────
 async function sbFetch(path, options = {}) {
+  const method = options.method || 'GET';
+  const isWrite = method !== 'GET';
   try {
-    // options.headers가 있으면 SB_HEADERS를 덮어씀
     const { headers: customHeaders, ...restOptions } = options;
     const res = await fetch(SUPABASE_URL + path, {
       headers: { ...SB_HEADERS, ...(customHeaders || {}) },
@@ -1300,28 +1301,19 @@ async function sbFetch(path, options = {}) {
     });
     if (!res.ok) {
       const err = await res.text();
-      console.error('Supabase error:', res.status, err);
-      // POST/PATCH/DELETE 실패 시 사용자에게 알림
-      if (options.method && options.method !== 'GET') {
-        showToast('⚠ 서버 저장 실패 (' + res.status + ') — 새로고침 후 다시 시도하세요', 'error');
-      }
+      // 상세 에러를 화면에 표시 (디버깅용)
+      const errMsg = `Supabase ${method} 오류 ${res.status}: ${err.slice(0,200)}`;
+      console.error('[sbFetch]', errMsg);
+      if (isWrite) showToast('⚠ 저장 실패 ' + res.status + ' — F12→Console 확인', 'error');
       return null;
     }
     const text = await res.text();
-    if (!text || text.trim() === '') {
-      // 빈 응답 = 성공 (Supabase가 Prefer 헤더 없으면 빈 응답 반환)
-      return [];
-    }
-    try {
-      return JSON.parse(text);
-    } catch(e) {
-      return [];
-    }
+    if (!text || text.trim() === '') return [];
+    try { return JSON.parse(text); } catch(e) { return []; }
   } catch(e) {
-    console.error('Supabase 통신 오류:', e);
-    if (options.method && options.method !== 'GET') {
-      showToast('⚠ 네트워크 오류 — 인터넷 연결을 확인하세요', 'error');
-    }
+    const errMsg = e.message || String(e);
+    console.error('[sbFetch] 통신 오류:', errMsg);
+    if (isWrite) showToast('⚠ 통신 오류: ' + errMsg.slice(0,50), 'error');
     return null;
   }
 }
@@ -2286,43 +2278,128 @@ async function _fetchViaProxy(proxyUrl, timeout = 3000) {
   }
 }
 
-// ── 병렬 조회: 3개 프록시를 동시에 쏘고 가장 빠른 성공 결과 사용
-async function _fetchStockParallel(symbol, rangeDays) {
-  const range = rangeDays || '10d';
-  const yahooUrl = 'https://query2.finance.yahoo.com/v8/finance/chart/' + symbol + '?interval=1d&range=' + range + '&includePrePost=false';
+// ══════════════════════════════════════════════════════════
+// 주가 조회 엔진 — 다중 소스 병렬 시도
+// ══════════════════════════════════════════════════════════
 
-  // 3개 프록시를 동시 요청 — 먼저 성공한 것 채택
+// 소스 1: 네이버 증권 (allorigins 경유 크롤링)
+async function _fetchNaverPrice(code6) {
+  try {
+    const naverUrl = 'https://finance.naver.com/item/main.nhn?code=' + code6;
+    const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(naverUrl);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+    const resp = await fetch(proxyUrl, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!resp.ok) return null;
+    const json = await resp.json();
+    const html = json.contents || '';
+    // 현재가 파싱: <dd class="no_today"> ... <span class="blind">현재가</span>숫자
+    const m1 = html.match(/<span class="no_today">\s*<span[^>]*>.*?<\/span>\s*([\d,]+)/);
+    if (m1) {
+      const price = parseInt(m1[1].replace(/,/g, ''), 10);
+      if (price > 0) {
+        const today = new Date().toISOString().slice(0,10);
+        return { price, date: today, source: 'naver' };
+      }
+    }
+    // 대체 패턴
+    const m2 = html.match(/id="_nowVal"[^>]*>([\d,]+)</);
+    if (m2) {
+      const price = parseInt(m2[1].replace(/,/g, ''), 10);
+      if (price > 0) return { price, date: new Date().toISOString().slice(0,10), source: 'naver2' };
+    }
+    return null;
+  } catch(e) { return null; }
+}
+
+// 소스 2: Yahoo Finance (allorigins + corsproxy 경유)
+async function _fetchYahooPrice(symbol, range) {
+  const yahooUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/' + symbol +
+    '?interval=1d&range=' + (range || '5d') + '&includePrePost=false';
   const proxies = [
-    // 직접 호출 (최신 브라우저 일부에서 CORS 허용)
-    yahooUrl,
-    // 1순위: allorigins
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`,
-    // 2순위: corsproxy.io
-    `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`,
-    // 3순위: cors-anywhere (heroku)
-    `https://cors-anywhere.herokuapp.com/${yahooUrl}`,
-    // 4순위: thingproxy
-    `https://thingproxy.freeboard.io/fetch/${yahooUrl}`,
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(yahooUrl),
+    'https://corsproxy.io/?' + encodeURIComponent(yahooUrl),
   ];
+  for (const proxyUrl of proxies) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5000);
+      const resp = await fetch(proxyUrl, { signal: controller.signal });
+      clearTimeout(timer);
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      const result = _extractYahooPrice(data);
+      if (result) return { ...result, source: 'yahoo' };
+    } catch(e) { continue; }
+  }
+  return null;
+}
+
+// 소스 3: KRX (한국거래소 공식 API — CORS 허용)
+async function _fetchKrxPrice(code6) {
+  try {
+    const today = new Date();
+    // 어제 날짜 (주말이면 금요일)
+    const d = new Date(today);
+    if (d.getDay() === 0) d.setDate(d.getDate() - 2);
+    else if (d.getDay() === 1) d.setDate(d.getDate() - 3);
+    else d.setDate(d.getDate() - 1);
+    const trdDd = d.getFullYear().toString() +
+      String(d.getMonth()+1).padStart(2,'0') +
+      String(d.getDate()).padStart(2,'0');
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    const resp = await fetch(
+      'https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'bld=dbms/MDC/STAT/standard/MDCSTAT01901&isuCd=' + code6 +
+              '&isuCd2=&strtDd=' + trdDd + '&endDd=' + trdDd + '&adjStkPrc=1',
+        signal: controller.signal,
+      }
+    );
+    clearTimeout(timer);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const rows = data?.output || [];
+    if (rows.length > 0) {
+      const price = parseInt((rows[0].TDD_CLSPRC || '0').replace(/,/g, ''), 10);
+      if (price > 0) {
+        const dateStr = trdDd.slice(0,4) + '-' + trdDd.slice(4,6) + '-' + trdDd.slice(6,8);
+        return { price, date: dateStr, source: 'krx' };
+      }
+    }
+    return null;
+  } catch(e) { return null; }
+}
+
+// 통합 병렬 조회 — 세 소스를 동시에 시도, 가장 빠른 성공 채택
+async function _fetchStockParallel(symbol, rangeDays) {
+  // symbol 형식: '108860.KQ' or '005930.KS'
+  const parts = symbol.split('.');
+  const code6 = parts[0];
 
   return new Promise((resolve) => {
     let settled = false;
-    const done = (result, label) => {
-      if (!settled && result) {
+    const done = (result) => {
+      if (!settled && result && result.price > 0) {
         settled = true;
-        resolve({ ...result, source: label });
+        resolve(result);
       }
     };
 
-    const labels = ['direct', 'allorigins', 'corsproxy', 'cors-anywhere', 'thingproxy'];
-    proxies.forEach((url, i) => {
-      _fetchViaProxy(url, 5000).then(r => done(r, labels[i]));
-    });
+    // 세 소스 병렬 시도
+    _fetchNaverPrice(code6).then(done);
+    _fetchYahooPrice(symbol, rangeDays || '5d').then(done);
+    _fetchKrxPrice(code6).then(done);
 
-    // 6초 후에도 성공 없으면 null
+    // 8초 후 결과 없으면 null
     setTimeout(() => {
       if (!settled) { settled = true; resolve(null); }
-    }, 6000);
+    }, 8000);
   });
 }
 
@@ -4446,25 +4523,51 @@ async function resetAllSupabaseData() {
 async function adminCheckStatus() {
   const el = document.getElementById('sb-status-detail');
   if (!el) return;
-  el.textContent = '확인 중...';
-  try {
-    const start = Date.now();
-    const data = await sbFetch('/rest/v1/access_codes?limit=1');
-    const ms = Date.now() - start;
-    const counts = {};
-    for (const t of ['daily','investments','loans','equities']) {
-      const d = DB.get(t);
-      counts[t] = d.length;
-    }
-    el.innerHTML =
-      '<div style="color:var(--green);font-weight:600;margin-bottom:8px;">✅ 연결됨 (' + ms + 'ms)</div>' +
-      '<div>운전자금 레코드: <b>' + counts.daily + '건</b></div>' +
-      '<div>운용자금: <b>' + counts.investments + '건</b></div>' +
-      '<div>차입금: <b>' + counts.loans + '건</b></div>' +
-      '<div>지분투자: <b>' + counts.equities + '건</b></div>';
-  } catch(e) {
-    el.innerHTML = '<div style="color:var(--red);">❌ 연결 실패 — ' + e.message + '</div>';
+  el.innerHTML = '확인 중...';
+
+  // 1. 기본 연결 테스트
+  const t0 = Date.now();
+  const connData = await sbFetch('/rest/v1/access_codes?limit=1');
+  const connMs = Date.now() - t0;
+
+  if (connData === null) {
+    el.innerHTML = '<div style="color:var(--red);font-weight:600;">❌ Supabase 연결 실패</div>' +
+      '<div style="font-size:12px;color:var(--text3);margin-top:8px;">브라우저 F12 → Console 탭에서 오류 내용 확인</div>';
+    return;
   }
+
+  // 2. INSERT 테스트 (실제 저장 가능 여부)
+  const testId = crypto.randomUUID();
+  const insertTest = await sbFetch('/rest/v1/daily', {
+    method: 'POST',
+    body: JSON.stringify({
+      id: testId, company: '__test__', date: '1900-01-01',
+      krw_demand: 0, krw_govt: 0, krw_mmda: 0,
+      fx_usd: 0, fx_eur: 0, fx_jpy: 0, fx_krw: 0, memo: 'test'
+    }),
+    headers: { ...SB_HEADERS, 'Prefer': 'resolution=merge-duplicates,return=representation' },
+  });
+  const canWrite = insertTest !== null;
+
+  // 3. 테스트 데이터 삭제
+  if (canWrite) {
+    await sbFetch('/rest/v1/daily?id=eq.' + testId, { method: 'DELETE' });
+  }
+
+  // 4. 캐시 건수
+  const counts = {};
+  for (const t of ['daily','investments','loans','equities']) {
+    counts[t] = DB.get(t).length;
+  }
+
+  el.innerHTML =
+    '<div style="color:var(--green);font-weight:600;margin-bottom:8px;">✅ 연결됨 (' + connMs + 'ms)</div>' +
+    '<div style="margin-bottom:6px;">쓰기 권한: <b style="color:' + (canWrite ? 'var(--green)' : 'var(--red)') + '">' + (canWrite ? '✅ 가능' : '❌ 불가 — Supabase RLS 정책 확인 필요') + '</b></div>' +
+    '<div>운전자금: <b>' + counts.daily + '건</b></div>' +
+    '<div>운용자금: <b>' + counts.investments + '건</b></div>' +
+    '<div>차입금: <b>' + counts.loans + '건</b></div>' +
+    '<div>지분투자: <b>' + counts.equities + '건</b></div>' +
+    (!canWrite ? '<div style="margin-top:12px;padding:10px;background:rgba(239,68,68,0.1);border-radius:8px;font-size:12px;color:var(--red);">Supabase 대시보드 → Table Editor → 각 테이블 → RLS 정책에서<br>anon 역할의 INSERT/UPDATE/DELETE 권한을 허용하세요</div>' : '');
 }
 
 
