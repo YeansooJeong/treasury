@@ -348,6 +348,7 @@
       <div class="topbar-title" id="page-title">통합 상황판</div>
       <div class="topbar-right">
         <div class="date-badge" id="today-badge">—</div>
+        <div id="sb-save-indicator" style="display:none;font-size:11px;padding:4px 10px;border-radius:6px;font-weight:500;transition:all .3s;"></div>
         <div id="user-info" style="display:none;font-size:12px;color:#94a3b8;padding:4px 10px;background:#1e2535;border-radius:8px;border:1px solid rgba(255,255,255,0.08);"></div>
         <button class="btn btn-ghost" onclick="refreshFX()" style="font-size:12px;padding:6px 12px;">↻ 환율</button>
         <button id="code-mgr-btn" onclick="goto('admin-mycode')" style="display:none;background:#1e2535;border:1px solid rgba(255,255,255,0.1);color:#94a3b8;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">⚙ 코드 관리</button>
@@ -979,6 +980,22 @@
             <div id="sb-status-detail" style="font-size:13px;color:var(--text3);line-height:1.8;">확인 중...</div>
             <button class="btn btn-ghost" onclick="adminCheckStatus()" style="margin-top:12px;width:100%;font-size:12px;">연결 재확인</button>
           </div>
+          <div class="card" style="border-color:rgba(239,68,68,0.35);grid-column:1/-1;">
+            <div class="card-title" style="color:var(--red);">⚠ Supabase 데이터 전체 초기화</div>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:16px;line-height:1.6;">
+              Supabase에 저장된 <b>모든 자금 데이터</b>(운전자금·운용자금·차입금·지분투자)를 영구 삭제합니다.<br>
+              삭제 후 복구는 불가능합니다. 마스터 접속 코드를 입력해야 실행됩니다.
+            </p>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <input type="password" id="reset-confirm-code" placeholder="마스터 접속 코드 입력"
+                style="flex:1;background:var(--bg3);border:1px solid rgba(239,68,68,0.3);color:var(--text);padding:9px 12px;border-radius:8px;font-size:13px;outline:none;font-family:inherit;">
+              <button class="btn" onclick="resetAllSupabaseData()"
+                style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:var(--red);padding:9px 20px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;font-family:inherit;">
+                전체 데이터 초기화
+              </button>
+            </div>
+            <div id="reset-status" style="font-size:12px;margin-top:8px;min-height:16px;"></div>
+          </div>
         </div>
       </div>
 
@@ -1032,17 +1049,29 @@ let _supabaseReady = false;
 
 // ── Supabase REST API 헬퍼 ────────────────────────────────
 async function sbFetch(path, options = {}) {
-  const res = await fetch(SUPABASE_URL + path, {
-    headers: SB_HEADERS,
-    ...options,
-  });
-  if (!res.ok) {
-    const err = await res.text();
-    console.error('Supabase error:', res.status, err);
+  try {
+    const res = await fetch(SUPABASE_URL + path, {
+      headers: SB_HEADERS,
+      ...options,
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      console.error('Supabase error:', res.status, err);
+      // POST/PATCH/DELETE 실패 시 사용자에게 알림
+      if (options.method && options.method !== 'GET') {
+        showToast('⚠ 서버 저장 실패 (' + res.status + ') — 새로고침 후 다시 시도하세요', 'error');
+      }
+      return null;
+    }
+    const text = await res.text();
+    return text ? JSON.parse(text) : [];
+  } catch(e) {
+    console.error('Supabase 통신 오류:', e);
+    if (options.method && options.method !== 'GET') {
+      showToast('⚠ 네트워크 오류 — 인터넷 연결을 확인하세요', 'error');
+    }
     return null;
   }
-  const text = await res.text();
-  return text ? JSON.parse(text) : [];
 }
 
 // ── DB 클래스 (Supabase + 메모리 캐시 이중화) ─────────────
@@ -1057,11 +1086,17 @@ const DB = {
     _cache[table] = arr;
     const sbTable = TABLE_MAP[table];
     if (!sbTable) return;
-    // 전체 삭제 후 재삽입
-    await sbFetch('/rest/v1/' + sbTable + '?id=neq.00000000-0000-0000-0000-000000000000', { method: 'DELETE' });
+    // 전체 삭제: created_at 컬럼 기준으로 전체 삭제 (UUID/legacy id 모두 처리)
+    await sbFetch('/rest/v1/' + sbTable + '?created_at=gte.2000-01-01', { method: 'DELETE' });
     if (arr.length > 0) {
       const rows = arr.map(r => normalizeRow(table, r));
-      await sbFetch('/rest/v1/' + sbTable, { method: 'POST', body: JSON.stringify(rows) });
+      // 50건씩 배치 INSERT (대량 데이터 대응)
+      let setOk = true;
+      for (let i = 0; i < rows.length; i += 50) {
+        const res = await sbFetch('/rest/v1/' + sbTable, { method: 'POST', body: JSON.stringify(rows.slice(i, i+50)) });
+        if (res === null) setOk = false;
+      }
+      showSaveStatus(setOk);
     }
   },
 
@@ -1074,7 +1109,8 @@ const DB = {
     const sbTable = TABLE_MAP[table];
     if (!sbTable) return;
     const row = normalizeRow(table, newItem);
-    await sbFetch('/rest/v1/' + sbTable, { method: 'POST', body: JSON.stringify(row) });
+    const result = await sbFetch('/rest/v1/' + sbTable, { method: 'POST', body: JSON.stringify(row) });
+    showSaveStatus(result !== null);
   },
 
   // Supabase에서 전체 로드 (앱 시작 시 1회)
@@ -1088,6 +1124,27 @@ const DB = {
     return normalized;
   },
 };
+
+
+// ── Supabase 저장 상태 표시 ─────────────────────────────
+function showSaveStatus(success, message) {
+  const el = document.getElementById('sb-save-indicator');
+  if (!el) return;
+  el.style.display = 'block';
+  if (success) {
+    el.textContent = '☁ 저장됨';
+    el.style.background = 'rgba(16,185,129,0.15)';
+    el.style.color = '#10b981';
+    el.style.border = '1px solid rgba(16,185,129,0.3)';
+  } else {
+    el.textContent = '⚠ 저장 실패';
+    el.style.background = 'rgba(239,68,68,0.12)';
+    el.style.color = '#ef4444';
+    el.style.border = '1px solid rgba(239,68,68,0.3)';
+  }
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => { el.style.display = 'none'; }, 3000);
+}
 
 // ── 컬럼명 정규화 (JS camelCase → DB snake_case) ──────────
 function normalizeRow(table, r) {
@@ -3989,6 +4046,79 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ── 관리 페이지 3: 연결 상태 확인 ──────────────────────────
+
+// ── Supabase 전체 데이터 초기화 (마스터 코드 확인 후) ────────
+async function resetAllSupabaseData() {
+  const inputCode = document.getElementById('reset-confirm-code').value.trim();
+  const statusEl  = document.getElementById('reset-status');
+  const btn       = document.querySelector('[onclick="resetAllSupabaseData()"]');
+
+  // 마스터 코드 검증
+  const codes = loadCurrentCodes();
+  const masterEntry = Object.values(codes).find(u => u.role === 'master');
+  const masterCode  = masterEntry ? masterEntry.code : null;
+
+  // Supabase access_codes에서도 확인
+  let verified = masterCode && inputCode === masterCode;
+  if (!verified) {
+    // Supabase 직접 조회로 2차 확인
+    try {
+      const data = await sbFetch('/rest/v1/access_codes?role=eq.master&is_active=eq.true&limit=1');
+      if (data && data.length > 0 && data[0].access_code === inputCode) verified = true;
+    } catch(e) {}
+  }
+
+  if (!inputCode) {
+    statusEl.textContent = '마스터 접속 코드를 입력하세요.';
+    statusEl.style.color = 'var(--red)';
+    return;
+  }
+  if (!verified) {
+    statusEl.textContent = '마스터 접속 코드가 올바르지 않습니다.';
+    statusEl.style.color = 'var(--red)';
+    return;
+  }
+
+  if (!confirm(
+    '⚠ 경고: Supabase의 모든 자금 데이터가 영구 삭제됩니다.\n\n' +
+    '· 운전자금 입력 이력 전체\n' +
+    '· 운용자금(단기투자) 전체\n' +
+    '· 차입금 전체\n' +
+    '· 지분투자 전체\n\n' +
+    '삭제 후 복구 불가능합니다. 계속하시겠습니까?'
+  )) return;
+
+  if (btn) { btn.disabled = true; btn.textContent = '초기화 중...'; }
+  statusEl.textContent = '진행 중...';
+  statusEl.style.color = 'var(--amber)';
+
+  const tables = ['daily', 'investments', 'loans', 'equities', 'price_history'];
+  const sbTables = { daily:'daily', investments:'investments', loans:'loans', equities:'equities', price_history:'price_history' };
+  let success = true;
+
+  for (const table of tables) {
+    const sbTable = sbTables[table];
+    const result = await sbFetch('/rest/v1/' + sbTable + '?created_at=gte.2000-01-01', { method: 'DELETE' });
+    if (result === null) { success = false; }
+    // 메모리 캐시도 초기화
+    _cache[table] = [];
+  }
+
+  document.getElementById('reset-confirm-code').value = '';
+
+  if (success) {
+    statusEl.textContent = '✅ 초기화 완료 — 모든 자금 데이터가 삭제되었습니다.';
+    statusEl.style.color = 'var(--green)';
+    showToast('Supabase 데이터 초기화 완료', 'success');
+    renderDashboard();
+  } else {
+    statusEl.textContent = '⚠ 일부 테이블 삭제 실패 — 연결 상태를 확인하세요.';
+    statusEl.style.color = 'var(--red)';
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = '전체 데이터 초기화'; }
+}
+
 async function adminCheckStatus() {
   const el = document.getElementById('sb-status-detail');
   if (!el) return;
