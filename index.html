@@ -333,7 +333,7 @@
     </nav>
     
     <div class="sidebar-bottom">
-      <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">실시간 환율</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">실시간 환율 <span id="sidebar-fx-source" style="font-size:9px;opacity:0.6;">(ExchangeRate-API)</span></div>
       <div class="fx-mini" id="sidebar-fx">
         <div class="fx-row"><span class="fx-label">USD</span><span class="fx-val" id="sf-usd">—</span></div>
         <div class="fx-row"><span class="fx-label">EUR</span><span class="fx-val" id="sf-eur">—</span></div>
@@ -1161,6 +1161,7 @@ async function initSupabase() {
 }
 
 let FX = { KRW: 1, USD: 1380, EUR: 1500, JPY: 9.2, GBP: 1750 }; 
+let FX_SOURCE = 'ExchangeRate-API';
 let currentCompany = '셀바스에이아이';
 let mainChartObj = null;
 let equityChartObj = null;
@@ -1667,6 +1668,7 @@ async function refreshFX() {
             GBP: 1 / r.GBP
           };
           success = true;
+          FX_SOURCE = 'ExchangeRate-API';
           console.log('환율 조회 성공 (v6.exchangerate-api)', FX);
         }
       }
@@ -1689,6 +1691,7 @@ async function refreshFX() {
             GBP: k / data.rates.GBP
           };
           success = true;
+          FX_SOURCE = 'ExchangeRate-API';
           console.log('환율 조회 성공 (open.er-api)', FX);
         }
       }
@@ -1707,6 +1710,7 @@ async function refreshFX() {
   if (!success) {
     console.warn('모든 환율 API 실패 — 기본값 적용 (실제 환율과 다를 수 있음)');
     FX = { KRW: 1, USD: 1378, EUR: 1492, JPY: 9.21, GBP: 1748 };
+    FX_SOURCE = '기본값(오프라인)';
   }
 
   updateFXDisplay();
@@ -1721,9 +1725,12 @@ function updateFXDisplay() {
     const pf = document.getElementById('p-fx-'+c);
     if(pf) pf.textContent = val ? val.toFixed(2)+'원' : '—';
   });
-  // 환율 업데이트 시각
+  // 환율 업데이트 시각 + 출처
   const el = document.getElementById('fx-last-update');
   if (el) el.textContent = '업데이트: ' + new Date().toLocaleTimeString('ko-KR');
+  // 사이드바 출처 업데이트
+  const srcEl = document.getElementById('sidebar-fx-source');
+  if (srcEl) srcEl.textContent = '(' + (typeof FX_SOURCE !== 'undefined' ? FX_SOURCE : 'ExchangeRate-API') + ')';
   renderFXEquivTable();
 }
 function calcKRW(amount, currency) { return amount * (FX[currency] || 1); }
@@ -2143,7 +2150,7 @@ async function saveEquity() {
 
 async function deleteEquity(id) {
   if(!confirm('삭제하시겠습니까?')) return;
-  DB.set('equities', DB.get('equities').filter(e => e.id !== id));
+  await DB.set('equities', DB.get('equities').filter(e => e.id !== id));
   renderEquity();
   renderDashboard();
 }
@@ -3141,7 +3148,7 @@ async function refreshBondPrice(id, bondName) {
             item.bondPrice = newPrice;
             item.amount = item.bondQty * newPrice;
             item.priceDate = new Date().toISOString().slice(0,10);
-            DB.set('investments', inv);
+            await DB.set('investments', inv);
             renderInvestments();
             renderDashboard();
             showToast(`${bondName} 기준가 업데이트: ${newPrice.toLocaleString()}원`, 'success');
@@ -3369,6 +3376,17 @@ function renderInvestments() {
 
 // ── 차입금 목록 클릭 → 폼에 로드 (수정 모드) ──────────────
 let editingLoanId = null;
+
+
+// ── 차입금 상환 처리 ─────────────────────────────────────
+async function deleteLoan(id) {
+  if (!confirm('상환 처리하시겠습니까?\n목록에서 삭제됩니다.')) return;
+  const items = DB.get('loans').filter(v => String(v.id) !== String(id));
+  await DB.set('loans', items);
+  renderLoans();
+  renderDashboard();
+  showToast('상환 처리 완료', 'success');
+}
 
 function loadLoanToForm(id) {
   const item = DB.get('loans').find(x => String(x.id) === String(id));
@@ -3620,7 +3638,7 @@ async function updateAllEvaluation() {
       updated++;
     }
   }
-  DB.set('equities', equities);
+  await DB.set('equities', equities);
 
   // 환율 현황 페이지 외화보유 현황 업데이트
   renderFXEquivTable();
