@@ -1382,6 +1382,14 @@ function resetUserCode(userKey) {
 // doLogin은 access_codes 섹션으로 이동됨
 
 function applyAccessControl(user) {
+  // ── 로그인 시 모든 버튼 상태 완전 초기화 (이전 세션 잔재 제거) ──
+  document.querySelectorAll('button').forEach(function(btn) {
+    btn.disabled = false;
+    btn.style.opacity = '';
+    btn.style.cursor = '';
+    btn.title = '';
+  });
+
   // ── 오버레이 숨기고 topbar 표시 ──────────────────────────
   document.getElementById('login-overlay').style.display = 'none';
 
@@ -1425,16 +1433,25 @@ function applyAccessControl(user) {
       Array.from(el.options).forEach(opt => { opt.disabled = false; });
       el.value = '셀바스에이아이';
     });
-    setTimeout(() => {
-      document.querySelectorAll('.btn-primary, .btn-success').forEach(btn => {
-        if (!btn.id || !btn.id.includes('logout')) {
-          btn.disabled = true; btn.style.opacity = '0.4';
-          btn.style.cursor = 'not-allowed'; btn.title = 'CEO 계정은 열람만 가능합니다';
-        }
+    // CEO는 입력/수정 버튼에 data-ceo-disabled 마킹 후 비활성화
+    // (로그아웃 시 applyAccessControl 초기화로 복원됨)
+    setTimeout(function() {
+      // 저장/추가 버튼 — 각 페이지 form-actions 내 버튼만 타겟
+      document.querySelectorAll('.form-actions .btn-primary, .form-actions .btn-success').forEach(function(btn) {
+        btn.disabled = true;
+        btn.style.opacity = '0.4';
+        btn.style.cursor = 'not-allowed';
+        btn.title = 'CEO 계정은 열람만 가능합니다';
+        btn.setAttribute('data-ceo-disabled', 'true');
       });
-      document.querySelectorAll('.btn-ghost').forEach(btn => {
-        if (['삭제','해지','상환','저장','추가','초기화'].includes(btn.textContent.trim())) {
-          btn.disabled = true; btn.style.opacity = '0.4'; btn.style.cursor = 'not-allowed';
+      // 행별 삭제/해지/상환 버튼
+      document.querySelectorAll('td button.btn-ghost').forEach(function(btn) {
+        var txt = btn.textContent.trim();
+        if (['삭제','해지','상환'].includes(txt)) {
+          btn.disabled = true;
+          btn.style.opacity = '0.4';
+          btn.style.cursor = 'not-allowed';
+          btn.setAttribute('data-ceo-disabled', 'true');
         }
       });
     }, 300);
@@ -1464,6 +1481,14 @@ function doLogout() {
   if (!confirm('로그아웃 하시겠습니까?')) return;
   sessionStorage.removeItem('treasury_user');
   currentUser = null;
+  // 버튼 상태 완전 초기화
+  document.querySelectorAll('[data-ceo-disabled]').forEach(function(btn) {
+    btn.disabled = false;
+    btn.style.opacity = '';
+    btn.style.cursor = '';
+    btn.title = '';
+    btn.removeAttribute('data-ceo-disabled');
+  });
   document.getElementById('login-overlay').style.display = 'flex';
   const logoutBtn2 = document.getElementById('logout-btn');
   if (logoutBtn2) logoutBtn2.style.display = 'none';
@@ -2053,7 +2078,13 @@ function loadEquityToForm(id) {
   calcEquityValue();
 
   const saveBtn = document.querySelector('#page-equity .form-actions button.btn-primary');
-  if (saveBtn) { saveBtn.textContent = '평가금액 업데이트'; saveBtn.style.background = 'var(--amber)'; }
+  if (saveBtn) {
+    saveBtn.disabled = false;
+    saveBtn.style.opacity = '';
+    saveBtn.style.cursor = '';
+    saveBtn.textContent = '평가금액 업데이트';
+    saveBtn.style.background = 'var(--amber)';
+  }
 
   const formCard = document.querySelector('#page-equity .card');
   if (formCard) formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2837,6 +2868,57 @@ function updateEquityChart(allEqRecords) {
 // ══════════════════════════════════════════════════════
 // 일반 자금 입력 로직 (운전, 운용, 차입)
 // ══════════════════════════════════════════════════════
+
+// ── 운전자금 이력 클릭 → 폼에 로드 (수정 모드) ──────────────
+function loadDailyToForm(date, company) {
+  const records = DB.get('daily');
+  const r = records.find(x => x.date === date && x.company === company);
+  if (!r) return;
+
+  // 법인 선택
+  const compEl = document.getElementById('i-company');
+  if (compEl) compEl.value = r.company;
+
+  // 날짜
+  document.getElementById('i-date').value = r.date;
+
+  // 작성자
+  const writerEl = document.getElementById('i-writer');
+  if (writerEl) writerEl.value = r.writer || '';
+
+  // 원화 운전자금
+  const setFmt = function(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.value = val > 0 ? val.toLocaleString() : '';
+  };
+  setFmt('i-krw-demand', r.krw_demand);
+  setFmt('i-krw-govt',   r.krw_govt);
+  setFmt('i-krw-mmda',   r.krw_mmda);
+  setFmt('i-fx-usd',     r.fx_usd);
+  setFmt('i-fx-eur',     r.fx_eur);
+  setFmt('i-fx-jpy',     r.fx_jpy);
+
+  // 메모
+  const memoEl = document.getElementById('i-memo');
+  if (memoEl) memoEl.value = r.memo || '';
+
+  // 저장 버튼 상태 변경
+  const saveBtn = document.querySelector('#page-input .form-actions button');
+  if (saveBtn) {
+    saveBtn.disabled = false;
+    saveBtn.style.opacity = '';
+    saveBtn.style.cursor = '';
+    saveBtn.textContent = '운전자금 수정 저장';
+    saveBtn.style.background = 'var(--amber)';
+  }
+
+  // 폼 상단으로 스크롤
+  const formCard = document.querySelector('#page-input .card');
+  if (formCard) formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  showToast(r.date + ' 데이터를 불러왔습니다. 수정 후 저장하세요.', '');
+}
+
 async function saveDaily() {
   // 드롭박스에서 법인 읽기
   const compEl = document.getElementById('i-company');
@@ -2871,8 +2953,17 @@ async function saveDaily() {
   if(idx>=0) { if(!confirm('덮어쓰시겠습니까?')) return; rs[idx]=r; await DB.set('daily',rs); }
   else await DB.append('daily', r);
 
-  showToast(`[${company}] ${d} 운전자금 저장 완료`, 'success');
-  ['i-krw-demand','i-krw-govt','i-krw-mmda','i-fx-usd','i-fx-eur','i-fx-jpy','i-memo'].forEach(id=>document.getElementById(id).value='');
+  showToast('[' + company + '] ' + d + ' 운전자금 저장 완료', 'success');
+  ['i-krw-demand','i-krw-govt','i-krw-mmda','i-fx-usd','i-fx-eur','i-fx-jpy','i-memo'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  // 저장 버튼 원래대로 복원
+  var saveBtn = document.querySelector('#page-input .form-actions button');
+  if (saveBtn) {
+    saveBtn.textContent = '운전자금 저장';
+    saveBtn.style.background = '';
+  }
   renderDashboard();
   renderDailyHistory(1);
 }
@@ -3103,6 +3194,9 @@ function loadInvestmentToForm(id) {
   // 저장 버튼 텍스트 변경
   const saveBtn = document.querySelector('#page-invest .form-actions button');
   if (saveBtn) {
+    saveBtn.disabled = false;
+    saveBtn.style.opacity = '';
+    saveBtn.style.cursor = '';
     saveBtn.textContent = '수정 저장';
     saveBtn.style.background = 'var(--amber)';
   }
@@ -3297,7 +3391,13 @@ function loadLoanToForm(id) {
   if (curEl) curEl.value = item.currency || 'KRW';
 
   const saveBtn = document.querySelector('#page-loans .form-actions button');
-  if (saveBtn) { saveBtn.textContent = '차입금 수정 저장'; saveBtn.style.background = 'var(--amber)'; }
+  if (saveBtn) {
+    saveBtn.disabled = false;
+    saveBtn.style.opacity = '';
+    saveBtn.style.cursor = '';
+    saveBtn.textContent = '차입금 수정 저장';
+    saveBtn.style.background = 'var(--amber)';
+  }
 
   const formCard = document.querySelector('#page-loans .card');
   if (formCard) formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -3432,7 +3532,7 @@ function renderDailyHistory(page) {
   }
 
   tbody.innerHTML = pageData.map(r => `
-    <tr>
+    <tr style="cursor:pointer;" onclick="loadDailyToForm('${r.date}','${r.company}')" title="클릭하면 위 폼에 불러옵니다">
       <td>${r.date}</td>
       <td style="font-size:11px;color:var(--text3);">${r.company}</td>
       <td class="td-num">${fmtKRW(r.krw_demand)}</td>
@@ -3445,7 +3545,7 @@ function renderDailyHistory(page) {
       <td style="font-size:11px;color:var(--text3);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.memo||''}</td>
       <td>
         <button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;color:var(--red);border-color:rgba(239,68,68,0.3);"
-          onclick="deleteDaily('${r.date}','${r.company}')">삭제</button>
+          onclick="event.stopPropagation(); deleteDaily('${r.date}','${r.company}')">삭제</button>
       </td>
     </tr>
   `).join('');
