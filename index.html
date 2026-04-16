@@ -2516,7 +2516,7 @@ function renderEquity() {
       <td class="td-num" style="color:var(--pink); font-weight:700;">${fmtKRW(e.total_value)}</td>
       <td onclick="event.stopPropagation()">
         ${e.ticker && e.market !== '비상장' ? `<button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;margin-bottom:3px;border-color:rgba(236,72,153,0.3);color:var(--pink);" onclick="refreshEquityPrice('${e.id}','${e.ticker}','${e.market}')">시세↑</button><br>` : ''}
-        <button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;" onclick="deleteEquity(${e.id})">삭제</button>
+        <button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;" onclick="deleteEquity('${e.id}')">삭제</button>
       </td>
     </tr>
   `).join('');
@@ -3617,11 +3617,11 @@ async function saveInvestment() {
 }
 
 // ── 운용자금 해지 ─────────────────────────────────────────
-function deleteInvest(id) {
+async function deleteInvest(id) {
   if (!confirm('해지하시겠습니까?')) return;
-  // String() 변환으로 숫자/문자열 타입 불일치 방지
-  const items = DB.get('investments').filter(v => String(v.id) !== String(id));
-  DB.set('investments', items);
+  const sid = String(id);
+  const items = DB.get('investments').filter(v => String(v.id) !== sid);
+  await DB.set('investments', items);
   renderInvestments();
   renderDashboard();
   showToast('해지 완료', 'success');
@@ -3685,7 +3685,7 @@ function renderInvestments() {
       ? `<button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;color:var(--green);border-color:rgba(16,185,129,0.3);margin-bottom:3px;" onclick="refreshBondPrice(${x.id},'${x.bondName||''}')">시세↑</button><br>`
       : '';
 
-    return `<tr style="cursor:pointer;" onclick="loadInvestmentToForm(${x.id})" title="클릭하면 위 폼에 불러옵니다">
+    return `<tr style="cursor:pointer;" onclick="loadInvestmentToForm('${x.id}')" title="클릭하면 위 폼에 불러옵니다">
       <td style="font-size:12px;">${x.company}</td>
       <td>${x.bank}</td>
       <td>
@@ -3700,7 +3700,7 @@ function renderInvestments() {
       <td><span style="font-size:10px;padding:2px 6px;border-radius:4px;font-weight:500;background:${x.available==='불가용'?'rgba(239,68,68,0.12)':'rgba(16,185,129,0.12)'};color:${x.available==='불가용'?'var(--red)':'var(--green)'};">${x.available||'가용'}</span></td>
       <td onclick="event.stopPropagation()">
         ${refreshBtn}
-        <button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;" onclick="deleteInvest(${x.id})">해지</button>
+        <button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;" onclick="deleteInvest('${x.id}')">해지</button>
       </td>
     </tr>`;
   }).join('');
