@@ -1381,95 +1381,84 @@ function resetUserCode(userKey) {
 // doLogin은 access_codes 섹션으로 이동됨
 
 function applyAccessControl(user) {
-  // 오버레이 숨김
+  // ── 오버레이 숨기고 topbar 표시 ──────────────────────────
   document.getElementById('login-overlay').style.display = 'none';
-  const logoutBtn = document.getElementById('logout-btn');
-  if (logoutBtn) logoutBtn.style.display = 'block';
+
+  const logoutBtn  = document.getElementById('logout-btn');
   const codeMgrBtn = document.getElementById('code-mgr-btn');
+  const userInfo   = document.getElementById('user-info');
+  const adminNav   = document.getElementById('admin-nav-section');
+
+  if (logoutBtn)  logoutBtn.style.display  = 'block';
   if (codeMgrBtn) codeMgrBtn.style.display = 'block';
-  const userInfo = document.getElementById('user-info');
-  if (userInfo) {
-    userInfo.style.display = 'block';
-    userInfo.textContent = user.label || user.role;
-  }
+  if (userInfo)   { userInfo.style.display = 'block'; userInfo.textContent = user.label || user.role; }
 
-  // 사용자 이름 topbar에 표시
   const badge = document.getElementById('today-badge');
-  const today = new Date().toISOString().slice(0,10).replace(/-/g,'.');
-  if (badge) badge.textContent = today;
+  if (badge) badge.textContent = new Date().toISOString().slice(0,10).replace(/-/g,'.');
 
-  // ── 역할에 따른 UI 제어 ──────────────────────────────────
-  if (user.role === 'master' || user.role === 'ceo') {
-    // Master / CEO: 모든 탭 표시, currentCompany는 첫 번째 탭으로 시작
-    // tab-total(통합현황)은 향후 활성화 예정 — 현재 숨김 유지
-    document.querySelectorAll('.ci-tab').forEach(tab => {
-      tab.style.display = '';
-    });
+  // ── 역할별 UI 제어 ───────────────────────────────────────
+  if (user.role === 'master') {
+    // Master: 전체 탭 + 관리 메뉴 표시
+    document.querySelectorAll('.ci-tab').forEach(t => t.style.display = '');
+    // 관리 메뉴 표시 — display:block 명시
+    if (adminNav) {
+      adminNav.style.display = 'block';
+      adminNav.removeAttribute('hidden');
+    }
     currentCompany = '셀바스에이아이';
-    // 관리 메뉴 표시 (마스터 전용)
-    const adminNav = document.getElementById('admin-nav-section');
-    if (adminNav) adminNav.style.display = '';
     ['i-company','v-company','l-company','e-company'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
       Array.from(el.options).forEach(opt => { opt.disabled = false; });
       el.value = '셀바스에이아이';
     });
-    // CEO는 관리 메뉴 숨김
-    const adminNavCeo = document.getElementById('admin-nav-section');
-    if (adminNavCeo) adminNavCeo.style.display = 'none';
-    // CEO는 열람만 — 모든 저장/추가/삭제 버튼 비활성화
-    if (user.role === 'ceo') {
-      setTimeout(() => {
-        document.querySelectorAll('.btn-primary, .btn-success, button[onclick*="save"], button[onclick*="delete"], button[onclick*="Delete"]').forEach(btn => {
-          if (!btn.id || !btn.id.includes('logout')) {
-            btn.disabled = true;
-            btn.style.opacity = '0.4';
-            btn.style.cursor = 'not-allowed';
-            btn.title = 'CEO 계정은 열람만 가능합니다';
-          }
-        });
-        // 삭제 버튼 포함
-        document.querySelectorAll('.btn-ghost').forEach(btn => {
-          const txt = btn.textContent.trim();
-          if (['삭제','해지','상환','저장','추가','초기화'].includes(txt)) {
-            btn.disabled = true;
-            btn.style.opacity = '0.4';
-            btn.style.cursor = 'not-allowed';
-          }
-        });
-      }, 300);
-    }
-  } else {
-    // 법인 담당자 — 관리 메뉴 숨김
-    const adminNavComp = document.getElementById('admin-nav-section');
-    if (adminNavComp) adminNavComp.style.display = 'none';
-    // 해당 법인 탭만 표시, 나머지 숨김
-    document.querySelectorAll('.ci-tab').forEach(tab => {
-      tab.style.display = tab.title !== user.company ? 'none' : '';
-    });
-    // currentCompany를 해당 법인으로 고정
-    currentCompany = user.company;
-    // 입력 폼 드롭박스 — 해당 법인만 활성화
+
+  } else if (user.role === 'ceo') {
+    // CEO: 전체 탭 열람, 관리 메뉴 숨김, 편집 버튼 비활성화
+    document.querySelectorAll('.ci-tab').forEach(t => t.style.display = '');
+    if (adminNav) adminNav.style.display = 'none';
+    currentCompany = '셀바스에이아이';
     ['i-company','v-company','l-company','e-company'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
-      Array.from(el.options).forEach(opt => {
-        opt.disabled = opt.value !== user.company;
+      Array.from(el.options).forEach(opt => { opt.disabled = false; });
+      el.value = '셀바스에이아이';
+    });
+    setTimeout(() => {
+      document.querySelectorAll('.btn-primary, .btn-success').forEach(btn => {
+        if (!btn.id || !btn.id.includes('logout')) {
+          btn.disabled = true; btn.style.opacity = '0.4';
+          btn.style.cursor = 'not-allowed'; btn.title = 'CEO 계정은 열람만 가능합니다';
+        }
       });
+      document.querySelectorAll('.btn-ghost').forEach(btn => {
+        if (['삭제','해지','상환','저장','추가','초기화'].includes(btn.textContent.trim())) {
+          btn.disabled = true; btn.style.opacity = '0.4'; btn.style.cursor = 'not-allowed';
+        }
+      });
+    }, 300);
+
+  } else {
+    // 법인 담당자: 자사 탭만 표시, 관리 메뉴 숨김
+    document.querySelectorAll('.ci-tab').forEach(t => {
+      t.style.display = t.title !== user.company ? 'none' : '';
+    });
+    if (adminNav) adminNav.style.display = 'none';
+    currentCompany = user.company;
+    ['i-company','v-company','l-company','e-company'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      Array.from(el.options).forEach(opt => { opt.disabled = opt.value !== user.company; });
       el.value = user.company;
     });
   }
 
-  // 초기화
+  // ── 초기화 ───────────────────────────────────────────────
   refreshFX();
-  const firstTab = document.querySelector('.ci-tab:not([style*="none"])');
-  const initCompany = (user.role === 'master' || user.role === 'ceo')
-    ? '셀바스에이아이'
-    : user.company;
+  const firstTab   = document.querySelector('.ci-tab:not([style*="none"])');
+  const initCompany = user.role === 'company' ? user.company : '셀바스에이아이';
   setCompany(initCompany, firstTab);
 }
-
 function doLogout() {
   if (!confirm('로그아웃 하시겠습니까?')) return;
   sessionStorage.removeItem('treasury_user');
@@ -1614,7 +1603,16 @@ function goto(page) {
   if(page === 'loans')        renderLoans();
   if(page === 'admin-users')  adminLoadUsers();
   if(page === 'admin-data')   adminCheckStatus();
-  if(page === 'admin-mycode') { document.getElementById('admin-current-code').value=''; document.getElementById('admin-new-code').value=''; document.getElementById('admin-new-code2').value=''; }
+  if(page === 'admin-mycode') {
+    ['admin-current-code','admin-new-code','admin-new-code2'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    var errEl = document.getElementById('admin-code-error');
+    if (errEl) errEl.style.display = 'none';
+    var strEl = document.getElementById('admin-code-strength');
+    if (strEl) strEl.textContent = '';
+  }
 }
 
 async function refreshFX() {
