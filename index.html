@@ -246,6 +246,20 @@
     scrollbar-width: none;
   }
   #mobile-company-bar::-webkit-scrollbar { display: none; }
+
+  @media (max-width: 768px) {
+    /* mobile-company-bar — topbar 바로 아래 고정 */
+    #mobile-company-bar {
+      position: fixed;
+      top: 50px;
+      left: 0; right: 0;
+      z-index: 190;
+    }
+    /* 회사 선택 바가 표시될 때 content 상단 여백 추가 */
+    body.has-company-bar .content {
+      padding-top: 68px !important;
+    }
+  }
   .mob-ci {
     flex-shrink: 0;
     background: rgba(255,255,255,0.88);
@@ -282,7 +296,7 @@
 
     /* 모바일 전용 UI 표시 */
     #mobile-tabbar { display: flex; }
-    #mobile-company-bar { display: flex; }
+    /* mobile-company-bar는 JS가 show/hide 제어 (기본 none 유지) */
 
     /* content — 하단 탭바 여백 */
     .content { padding: 12px 12px 84px; overflow-x: hidden !important; }
@@ -571,6 +585,18 @@
         <button id="logout-btn" onclick="doLogout()" style="display:none;background:#1e2535;border:1px solid rgba(255,255,255,0.1);color:#94a3b8;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">로그아웃</button>
       </div>
     </div>
+<!-- 모바일 회사 선택 바 — topbar 바로 아래 고정 -->
+<div id="mobile-company-bar">
+  <div class="mob-ci active" onclick="mobileSwitchCompany('셀바스에이아이', this)" title="셀바스에이아이">
+    <img src="selvasai.png" alt="Selvas AI" onerror="this.parentElement.innerHTML='<span style=\'font-size:11px;color:var(--text);\'>Selvas AI</span>'">
+  </div>
+  <div class="mob-ci" onclick="mobileSwitchCompany('셀바스헬스케어', this)" title="셀바스헬스케어">
+    <img src="selvashealthcare.png" alt="Selvas HC" onerror="this.parentElement.innerHTML='<span style=\'font-size:11px;color:var(--text);\'>Selvas HC</span>'">
+  </div>
+  <div class="mob-ci" onclick="mobileSwitchCompany('메디아나', this)" title="메디아나">
+    <img src="mediana.png" alt="Mediana" onerror="this.parentElement.innerHTML='<span style=\'font-size:11px;color:var(--text);\'>Mediana</span>'">
+  </div>
+</div>
 
     <div class="content">
 
@@ -4398,18 +4424,11 @@ async function adminCheckStatus() {
 // 모바일 전용 함수
 // ══════════════════════════════════════════════════════
 function mobileGoto(page, tabEl) {
-  // 탭바 활성 표시
   document.querySelectorAll('.mob-tab').forEach(t => t.classList.remove('active'));
   if (tabEl) tabEl.classList.add('active');
-  // 페이지 이동
   goto(page);
-  // 모바일: 대시보드 외엔 회사 선택 바 숨김
-  const compBar = document.getElementById('mobile-company-bar');
-  if (compBar) {
-    const showBar = page === 'dashboard' &&
-      currentUser && (currentUser.role === 'master' || currentUser.role === 'ceo');
-    compBar.style.display = showBar ? 'flex' : 'none';
-  }
+  // 회사 선택 바는 항상 유지 (updateMobileCompanyBar가 제어)
+  updateMobileCompanyBar(currentUser);
 }
 
 function mobileSwitchCompany(company, el) {
@@ -4425,34 +4444,38 @@ function mobileSwitchCompany(company, el) {
 const _origApply = applyAccessControl;
 applyAccessControl = function(user) {
   _origApply(user);
-  // 모바일 회사 선택 바 — Master/CEO만 표시
-  const compBar = document.getElementById('mobile-company-bar');
-  if (compBar) {
-    const isMasterCeo = user && (user.role === 'master' || user.role === 'ceo');
-    // 현재 활성 페이지가 대시보드일 때만
-    const activePage = document.querySelector('.page.active');
-    const isDash = activePage && activePage.id === 'page-dashboard';
-    compBar.style.display = (isMasterCeo && isDash && window.innerWidth <= 768) ? 'flex' : 'none';
-
-    // 담당자는 해당 법인 탭만 표시
-    if (!isMasterCeo && user && user.company) {
-      document.querySelectorAll('.mob-ci').forEach(c => {
-        c.style.display = c.title === user.company ? 'flex' : 'none';
-      });
-    }
-  }
+  updateMobileCompanyBar(user);
 };
+
+// 모바일 회사 선택 바 표시 제어 — 단독 함수로 분리
+function updateMobileCompanyBar(user) {
+  var compBar = document.getElementById('mobile-company-bar');
+  if (!compBar) return;
+
+  var isMasterCeo = user && (user.role === 'master' || user.role === 'ceo');
+  var isMobile = window.innerWidth <= 768;
+
+  if (isMasterCeo && isMobile) {
+    compBar.style.display = 'flex';
+    document.body.classList.add('has-company-bar');
+    document.querySelectorAll('.mob-ci').forEach(function(c) {
+      c.style.display = 'flex';
+    });
+  } else if (!isMasterCeo && user && user.company && isMobile) {
+    compBar.style.display = 'flex';
+    document.body.classList.add('has-company-bar');
+    document.querySelectorAll('.mob-ci').forEach(function(c) {
+      c.style.display = c.title === user.company ? 'flex' : 'none';
+    });
+  } else {
+    compBar.style.display = 'none';
+    document.body.classList.remove('has-company-bar');
+  }
+}
 
 // 리사이즈 시 모바일 바 상태 갱신
 window.addEventListener('resize', function() {
-  const compBar = document.getElementById('mobile-company-bar');
-  if (!compBar) return;
-  if (window.innerWidth > 768) {
-    compBar.style.display = 'none';
-  } else if (currentUser && (currentUser.role === 'master' || currentUser.role === 'ceo')) {
-    const activePage = document.querySelector('.page.active');
-    if (activePage && activePage.id === 'page-dashboard') compBar.style.display = 'flex';
-  }
+  updateMobileCompanyBar(currentUser);
 });
 
 function filterHistory() {
@@ -4510,18 +4533,7 @@ function filterHistory() {
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<!-- 모바일 회사 선택 바 (Master/CEO용 — JS로 제어) -->
-<div id="mobile-company-bar">
-  <div class="mob-ci active" onclick="mobileSwitchCompany('셀바스에이아이', this)" title="셀바스에이아이">
-    <img src="selvasai.png" alt="Selvas AI" onerror="this.parentElement.innerHTML='<span style=\'font-size:11px;color:var(--text);\'>Selvas AI</span>'">
-  </div>
-  <div class="mob-ci" onclick="mobileSwitchCompany('셀바스헬스케어', this)" title="셀바스헬스케어">
-    <img src="selvashealthcare.png" alt="Selvas HC" onerror="this.parentElement.innerHTML='<span style=\'font-size:11px;color:var(--text);\'>Selvas HC</span>'">
-  </div>
-  <div class="mob-ci" onclick="mobileSwitchCompany('메디아나', this)" title="메디아나">
-    <img src="mediana.png" alt="Mediana" onerror="this.parentElement.innerHTML='<span style=\'font-size:11px;color:var(--text);\'>Mediana</span>'">
-  </div>
-</div>
+
 
 <!-- 모바일 하단 탭바 -->
 <div id="mobile-tabbar">
