@@ -1249,6 +1249,13 @@
 
 <div id="toast"></div>
 
+function generateUUID() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return generateUUID();
+  }
+  return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 9);
+}
+  
 <script>
 // ══════════════════════════════════════════════════════
 // 공통 포맷터 및 DB 유틸
@@ -1371,7 +1378,7 @@ const DB = {
   // ── 단건 추가 (INSERT) ──────────────────────────────────
   append: async (table, item) => {
     const arr = DB.get(table);
-    const newItem = { ...item, id: item.id || crypto.randomUUID() };
+    const newItem = { ...item, id: item.id || generateUUID() };
     arr.push(newItem);
     _cache[table] = arr;
     const sbTable = TABLE_MAP[table];
@@ -1425,7 +1432,7 @@ function normalizeRow(table, r) {
 
   // id 정규화
   if (raw.id && typeof raw.id === 'number') raw.id = 'legacy-' + raw.id;
-  if (!raw.id) raw.id = crypto.randomUUID();
+  if (!raw.id) raw.id = generateUUID();
 
   // ── 테이블별 허용 컬럼 화이트리스트 (Supabase 스키마 기준) ──
   const COLUMNS = {
@@ -2262,15 +2269,20 @@ function _extractYahooPrice(data) {
   return null;
 }
 
-// ── 단일 프록시 호출 (타임아웃 3초) ───────────────────────────
-async function _fetchViaProxy(proxyUrl, timeout = 3000) {
+// ── 단일 프록시 호출 (타임아웃 3.5초) ───────────────────────────
+async function _fetchViaProxy(proxyUrl, timeout = 3500) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
   try {
     const resp = await fetch(proxyUrl, { signal: controller.signal });
     clearTimeout(timer);
     if (!resp.ok) return null;
-    const data = await resp.json();
+    let data = await resp.json();
+    
+    // allorigins /get 엔드포인트는 실제 JSON을 contents 키 안의 문자열로 반환하므로 파싱이 필요함
+    if (data && data.contents) {
+      try { data = JSON.parse(data.contents); } catch(e) {}
+    }
     return _extractYahooPrice(data);
   } catch(e) {
     clearTimeout(timer);
@@ -2281,16 +2293,14 @@ async function _fetchViaProxy(proxyUrl, timeout = 3000) {
 // ── 병렬 조회: 3개 프록시를 동시에 쏘고 가장 빠른 성공 결과 사용
 async function _fetchStockParallel(symbol, rangeDays) {
   const range = rangeDays || '10d';
-  const yahooUrl = 'https://query2.finance.yahoo.com/v8/finance/chart/' + symbol + '?interval=1d&range=' + range + '&includePrePost=false';
+  // 안정성이 높은 query1 서버로 변경
+  const yahooUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/' + symbol + '?interval=1d&range=' + range + '&includePrePost=false';
 
-  // 3개 프록시를 동시 요청 — 먼저 성공한 것 채택
+  // 우회 성공률이 높은 프록시 리스트로 교체
   const proxies = [
-    // 1순위: allorigins (빠름, 안정적)
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`,
-    // 2순위: corsproxy.io
-    `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`,
-    // 3순위: thingproxy
-    `https://thingproxy.freeboard.io/fetch/${yahooUrl}`,
+    `https://api.allorigins.win/get?url=${encodeURIComponent(yahooUrl)}`, // 1순위: JSON 래핑 방식
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(yahooUrl)}`, // 2순위: codetabs
+    `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`, // 3순위
   ];
 
   return new Promise((resolve) => {
@@ -2303,14 +2313,14 @@ async function _fetchStockParallel(symbol, rangeDays) {
     };
 
     proxies.forEach((url, i) => {
-      const labels = ['allorigins', 'corsproxy', 'thingproxy'];
-      _fetchViaProxy(url, 3000).then(r => done(r, labels[i]));
+      const labels = ['allorigins', 'codetabs', 'corsproxy'];
+      _fetchViaProxy(url, 3500).then(r => done(r, labels[i]));
     });
 
-    // 3초 후에도 성공 없으면 null
+    // 4초 후에도 성공 없으면 null 반환
     setTimeout(() => {
       if (!settled) { settled = true; resolve(null); }
-    }, 3500);
+    }, 4000);
   });
 }
 
@@ -3323,11 +3333,11 @@ async function saveDaily() {
   if (idx >= 0) {
     if (!confirm('덮어쓰시겠습니까?')) return;
     r.id = rs[idx].id; // 기존 id 보존 (없으면 새 UUID)
-    if (!r.id) r.id = crypto.randomUUID();
+    if (!r.id) r.id = generateUUID();
     rs[idx] = r;
     await DB.set('daily', rs);
   } else {
-    r.id = crypto.randomUUID(); // 신규 레코드 id 사전 부여
+    r.id = generateUUID(); // 신규 레코드 id 사전 부여
     await DB.append('daily', r);
   }
 
@@ -3420,6 +3430,7 @@ document.addEventListener('click', (e) => {
 // ── 국공채 기준가 조회 ──────────────────────────────────────
 // 국공채는 주식과 달리 거래소에서 기준가격(종가)을 고시함
 // Yahoo Finance에서 한국 국채 ETF/채권 가격도 조회 가능
+// 국공채 기준가 조회 함수 교체
 async function fetchBondPrice() {
   const ticker = document.getElementById('v-bond-ticker').value.trim();
   const statusEl = document.getElementById('v-bond-price-status');
@@ -3431,41 +3442,20 @@ async function fetchBondPrice() {
 
   let price = null, priceDate = null;
 
-  // 1순위: KRX 채권 기준가 (Yahoo Finance — 채권 심볼은 KR로 시작)
-  // 국내 채권은 Yahoo Finance에서 직접 지원하지 않으므로
-  // 채권 ETF 가격으로 대체 or 직접입력 안내
-  // 단기적 해결: 사용자가 직접 기준가를 입력하고 자동 평가금액 계산
-
-  // 국고채 3년물 ETF(KODEX 국채3년, 148070) 같은 관련 ETF 조회 시도
   const etfMap = {
-    '국고채 3년': '148070.KS',   // KODEX 국채3년
-    '국고채 10년': '148830.KS',  // KODEX 장기국채
-    '국고채 30년': '304660.KS',  // KODEX 국고채30년액티브
-    '통안채 1년': '157450.KS',   // KODEX 단기채권
+    '국고채 3년': '148070.KS',   '국고채 10년': '148830.KS',
+    '국고채 30년': '304660.KS',  '통안채 1년': '157450.KS',
   };
   const bondName = document.getElementById('v-bond-name').value.trim();
   const etfSymbol = etfMap[bondName];
 
   if (etfSymbol) {
-    try {
-      const url = `https://corsproxy.io/?https://query1.finance.yahoo.com/v8/finance/chart/${etfSymbol}?interval=1d&range=5d`;
-      const resp = await fetch(url);
-      if (resp.ok) {
-        const data = await resp.json();
-        const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
-        const timestamps = data?.chart?.result?.[0]?.timestamp;
-        if (closes) {
-          for (let i = closes.length-1; i >= 0; i--) {
-            if (closes[i] > 0) {
-              price = Math.round(closes[i]);
-              const d = new Date(timestamps[i]*1000);
-              priceDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-              break;
-            }
-          }
-        }
-      }
-    } catch(e) {}
+    // 개선된 병렬 조회 함수로 국공채 ETF 가격 조회
+    const result = await _fetchStockParallel(etfSymbol, '5d');
+    if (result) {
+      price = result.price;
+      priceDate = result.date;
+    }
   }
 
   btn.textContent = '시세조회'; btn.disabled = false;
@@ -3477,7 +3467,7 @@ async function fetchBondPrice() {
     statusEl.textContent = `✅ ${priceDate} 기준가: ${price.toLocaleString()}원 (ETF 기준)`;
     statusEl.style.color = 'var(--green)';
   } else {
-    statusEl.textContent = '⚠ 자동조회 불가 — 기준가를 직접 입력하세요 (채권 기준가는 증권사 HTS/MTS에서 확인)';
+    statusEl.textContent = '⚠ 자동조회 불가 — 기준가를 직접 입력하세요';
     statusEl.style.color = 'var(--amber)';
   }
 }
