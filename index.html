@@ -3389,7 +3389,13 @@ async function deleteLoan(id) {
 }
 
 function loadLoanToForm(id) {
-  const item = DB.get('loans').find(x => String(x.id) === String(id));
+  // id 매칭: 숫자, legacy-숫자, UUID 모두 처리
+  const allLoans = DB.get('loans');
+  const item = allLoans.find(x =>
+    String(x.id) === String(id) ||
+    String(x.id) === 'legacy-' + String(id) ||
+    x.id === id
+  );
   if (!item) return;
   editingLoanId = id;
 
@@ -3440,7 +3446,10 @@ async function saveLoan() {
 
   if (editingLoanId !== null) {
     const all = DB.get('loans');
-    const idx = all.findIndex(x => String(x.id) === String(editingLoanId));
+    const idx = all.findIndex(x =>
+      String(x.id) === String(editingLoanId) ||
+      String(x.id) === 'legacy-' + String(editingLoanId)
+    );
     if (idx >= 0) { l.id = all[idx].id; all[idx] = l; await DB.set('loans', all); showToast('차입금 수정 완료', 'success'); }
     editingLoanId = null;
     const saveBtn = document.querySelector('#page-loans .form-actions button');
@@ -3460,13 +3469,13 @@ function renderLoans() {
   tbody.innerHTML = l.map(x=>{
     const days = x.maturity ? Math.ceil((new Date(x.maturity)-today)/86400000) : null;
     const dday = days!==null ? (days<0 ? `<span style="color:var(--red)">만기경과</span>` : `D-${days}`) : '—';
-    return `<tr style="cursor:pointer;" onclick="loadLoanToForm(${x.id})" title="클릭하면 위 폼에 불러옵니다">
+    return `<tr style="cursor:pointer;" onclick="loadLoanToForm('${x.id}')" title="클릭하면 위 폼에 불러옵니다">
       <td>${x.company}</td><td>${x.lender}</td><td>${x.type}</td><td>${x.currency}</td>
       <td class="td-num">${x.amount.toLocaleString()}</td><td class="td-num">${x.rate}%</td>
       <td>${x.maturity||'—'}</td><td>${dday}</td>
       <td class="td-num" style="color:var(--amber)">${fmtKRW(calcKRW(x.amount, x.currency))}</td>
       <td onclick="event.stopPropagation()">
-        <button class="btn btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="deleteLoan(${x.id})">상환</button>
+        <button class="btn btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="deleteLoan('${x.id}')">상환</button>
       </td>
     </tr>`;
   }).join('');
