@@ -1050,9 +1050,11 @@ let _supabaseReady = false;
 // ── Supabase REST API 헬퍼 ────────────────────────────────
 async function sbFetch(path, options = {}) {
   try {
+    // options.headers가 있으면 SB_HEADERS를 덮어씀
+    const { headers: customHeaders, ...restOptions } = options;
     const res = await fetch(SUPABASE_URL + path, {
-      headers: SB_HEADERS,
-      ...options,
+      headers: { ...SB_HEADERS, ...(customHeaders || {}) },
+      ...restOptions,
     });
     if (!res.ok) {
       const err = await res.text();
@@ -1087,13 +1089,17 @@ const DB = {
     const sbTable = TABLE_MAP[table];
     if (!sbTable) return;
     // 전체 삭제: created_at 컬럼 기준으로 전체 삭제 (UUID/legacy id 모두 처리)
-    await sbFetch('/rest/v1/' + sbTable + '?created_at=gte.2000-01-01', { method: 'DELETE' });
+    await sbFetch('/rest/v1/' + sbTable + '?id=not.is.null', { method: 'DELETE' });
     if (arr.length > 0) {
       const rows = arr.map(r => normalizeRow(table, r));
       // 50건씩 배치 INSERT (대량 데이터 대응)
       let setOk = true;
       for (let i = 0; i < rows.length; i += 50) {
-        const res = await sbFetch('/rest/v1/' + sbTable, { method: 'POST', body: JSON.stringify(rows.slice(i, i+50)) });
+        const res = await sbFetch('/rest/v1/' + sbTable, {
+          method: 'POST',
+          body: JSON.stringify(rows.slice(i, i+50)),
+          headers: { ...SB_HEADERS, 'Prefer': 'resolution=merge-duplicates,return=representation' },
+        });
         if (res === null) setOk = false;
       }
       showSaveStatus(setOk);
@@ -1109,7 +1115,11 @@ const DB = {
     const sbTable = TABLE_MAP[table];
     if (!sbTable) return;
     const row = normalizeRow(table, newItem);
-    const result = await sbFetch('/rest/v1/' + sbTable, { method: 'POST', body: JSON.stringify(row) });
+    const result = await sbFetch('/rest/v1/' + sbTable, {
+      method: 'POST',
+      body: JSON.stringify(row),
+      headers: { ...SB_HEADERS, 'Prefer': 'resolution=merge-duplicates,return=representation' },
+    });
     showSaveStatus(result !== null);
   },
 
@@ -1149,25 +1159,45 @@ function showSaveStatus(success, message) {
 // ── 컬럼명 정규화 (JS camelCase → DB snake_case) ──────────
 function normalizeRow(table, r) {
   if (!r) return r;
-  const row = { ...r };
-  // id가 숫자(Date.now())면 UUID로 변환
-  if (row.id && typeof row.id === 'number') {
-    row.id = 'legacy-' + row.id;
-  }
-  if (!row.id) row.id = crypto.randomUUID();
+  const raw = { ...r };
 
+  // id 정규화
+  if (raw.id && typeof raw.id === 'number') raw.id = 'legacy-' + raw.id;
+  if (!raw.id) raw.id = crypto.randomUUID();
+
+  // ── 테이블별 허용 컬럼 화이트리스트 (Supabase 스키마 기준) ──
+  const COLUMNS = {
+    daily: ['id','company','date','writer','krw_demand','krw_govt','krw_mmda',
+            'fx_usd','fx_eur','fx_jpy','fx_krw','memo'],
+    investments: ['id','company','bank','product','currency','amount','available',
+                  'rate','start_date','maturity','active',
+                  'bond_name','bond_ticker','bond_qty','bond_price'],
+    loans: ['id','company','lender','type','currency','amount','rate',
+            'start_date','maturity','active'],
+    equities: ['id','company','name','ticker','market','purpose','available',
+               'shares','price','total_value','date'],
+    price_history: ['id','key','date','value'],
+  };
+
+  // camelCase → snake_case 변환
   if (table === 'investments') {
-    if (row.start !== undefined) { row.start_date = row.start; delete row.start; }
-    if (row.bondName !== undefined) { row.bond_name = row.bondName; delete row.bondName; }
-    if (row.bondTicker !== undefined) { row.bond_ticker = row.bondTicker; delete row.bondTicker; }
-    if (row.bondQty !== undefined) { row.bond_qty = row.bondQty; delete row.bondQty; }
-    if (row.bondPrice !== undefined) { row.bond_price = row.bondPrice; delete row.bondPrice; }
+    if (raw.start !== undefined)     raw.start_date  = raw.start;
+    if (raw.bondName !== undefined)  raw.bond_name   = raw.bondName;
+    if (raw.bondTicker !== undefined) raw.bond_ticker = raw.bondTicker;
+    if (raw.bondQty !== undefined)   raw.bond_qty    = raw.bondQty;
+    if (raw.bondPrice !== undefined) raw.bond_price  = raw.bondPrice;
   }
   if (table === 'loans') {
-    if (row.start !== undefined) { row.start_date = row.start; delete row.start; }
+    if (raw.start !== undefined) raw.start_date = raw.start;
   }
-  // created_at 제거 (DB 자동 생성)
-  delete row.created_at;
+
+  // 허용된 컬럼만 추출
+  const allowed = COLUMNS[table];
+  if (!allowed) return raw; // 알 수 없는 테이블은 그대로
+  const row = {};
+  allowed.forEach(col => {
+    if (raw[col] !== undefined) row[col] = raw[col];
+  });
   return row;
 }
 
@@ -1177,13 +1207,17 @@ function denormalizeRow(table, r) {
   const row = { ...r };
   if (table === 'investments') {
     if (row.start_date !== undefined) { row.start = row.start_date; delete row.start_date; }
-    if (row.bond_name !== undefined) { row.bondName = row.bond_name; delete row.bond_name; }
-    if (row.bond_ticker !== undefined) { row.bondTicker = row.bond_ticker; delete row.bond_ticker; }
-    if (row.bond_qty !== undefined) { row.bondQty = row.bond_qty; delete row.bond_qty; }
+    if (row.bond_name !== undefined)  { row.bondName = row.bond_name; delete row.bond_name; }
+    if (row.bond_ticker !== undefined){ row.bondTicker = row.bond_ticker; delete row.bond_ticker; }
+    if (row.bond_qty !== undefined)   { row.bondQty = row.bond_qty; delete row.bond_qty; }
     if (row.bond_price !== undefined) { row.bondPrice = row.bond_price; delete row.bond_price; }
   }
   if (table === 'loans') {
     if (row.start_date !== undefined) { row.start = row.start_date; delete row.start_date; }
+  }
+  // active 필드 기본값
+  if (table === 'investments' || table === 'loans') {
+    if (row.active === undefined) row.active = true;
   }
   return row;
 }
@@ -4098,7 +4132,7 @@ async function resetAllSupabaseData() {
 
   for (const table of tables) {
     const sbTable = sbTables[table];
-    const result = await sbFetch('/rest/v1/' + sbTable + '?created_at=gte.2000-01-01', { method: 'DELETE' });
+    const result = await sbFetch('/rest/v1/' + sbTable + '?id=not.is.null', { method: 'DELETE' });
     if (result === null) { success = false; }
     // 메모리 캐시도 초기화
     _cache[table] = [];
