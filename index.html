@@ -1273,7 +1273,7 @@ const SB_HEADERS = {
   'apikey': SUPABASE_KEY,
   'Authorization': 'Bearer ' + SUPABASE_KEY,
   'Content-Type': 'application/json',
-  'Prefer': 'return=representation',
+  // Prefer 헤더는 각 요청에서 명시적으로 지정 (GET/PATCH에 불필요)
 };
 
 // 테이블명 매핑 (localStorage key → Supabase table)
@@ -1308,7 +1308,15 @@ async function sbFetch(path, options = {}) {
       return null;
     }
     const text = await res.text();
-    return text ? JSON.parse(text) : [];
+    if (!text || text.trim() === '') {
+      // 빈 응답 = 성공 (Supabase가 Prefer 헤더 없으면 빈 응답 반환)
+      return [];
+    }
+    try {
+      return JSON.parse(text);
+    } catch(e) {
+      return [];
+    }
   } catch(e) {
     console.error('Supabase 통신 오류:', e);
     if (options.method && options.method !== 'GET') {
@@ -1325,7 +1333,7 @@ const DB = {
   load: async (table) => {
     const sbTable = TABLE_MAP[table];
     if (!sbTable) return [];
-    const data = await sbFetch('/rest/v1/' + sbTable + '?order=created_at.asc');
+    const data = await sbFetch('/rest/v1/' + sbTable + '?order=id.asc');
     if (!data) return _cache[table] || [];
     _cache[table] = (data || []).map(r => denormalizeRow(table, r));
     return _cache[table];
@@ -1339,10 +1347,11 @@ const DB = {
     const sbTable = TABLE_MAP[table];
     if (!sbTable) { showSaveStatus(true); return newItem; }
     const row = normalizeRow(table, newItem);
+    // resolution=merge-duplicates: id 충돌 시 기존 레코드 업데이트 (upsert)
     const res = await sbFetch('/rest/v1/' + sbTable, {
       method: 'POST',
       body: JSON.stringify(row),
-      headers: { ...SB_HEADERS, 'Prefer': 'return=representation' },
+      headers: { ...SB_HEADERS, 'Prefer': 'resolution=merge-duplicates,return=representation' },
     });
     showSaveStatus(res !== null);
     return newItem;
@@ -1360,11 +1369,25 @@ const DB = {
     const sbTable = TABLE_MAP[table];
     if (!sbTable) { showSaveStatus(true); return; }
     const row = normalizeRow(table, item);
-    const res = await sbFetch('/rest/v1/' + sbTable + '?id=eq.' + encodeURIComponent(sid), {
+    // PATCH 시도: 해당 id 레코드가 없으면 빈 배열 반환 (null 아님)
+    const patchRes = await sbFetch('/rest/v1/' + sbTable + '?id=eq.' + encodeURIComponent(sid), {
       method: 'PATCH',
       body: JSON.stringify(row),
     });
-    showSaveStatus(res !== null);
+    if (patchRes === null) {
+      // PATCH 자체 오류 → 저장 실패 알림
+      showSaveStatus(false);
+    } else if (Array.isArray(patchRes) && patchRes.length === 0) {
+      // PATCH 성공했지만 해당 id 레코드 없음 → INSERT 시도
+      const insertRes = await sbFetch('/rest/v1/' + sbTable, {
+        method: 'POST',
+        body: JSON.stringify(row),
+        headers: { ...SB_HEADERS, 'Prefer': 'resolution=merge-duplicates,return=representation' },
+      });
+      showSaveStatus(insertRes !== null);
+    } else {
+      showSaveStatus(true);
+    }
   },
 
   // 단건 DELETE (삭제)
@@ -1470,16 +1493,20 @@ async function initSupabase() {
   const banner = document.getElementById('sb-loading-banner');
   if (banner) banner.style.display = '';
   try {
-    await Promise.all([
-      DB.load('daily'),
-      DB.load('investments'),
-      DB.load('loans'),
-      DB.load('equities'),
-      DB.load('price_history'),
-    ]);
+    // 순차 로드 — 하나 실패해도 나머지 계속 (Promise.all 대신 개별 처리)
+    const tables = ['daily', 'investments', 'loans', 'equities', 'price_history'];
+    let loadedCount = 0;
+    for (const t of tables) {
+      try {
+        await DB.load(t);
+        loadedCount++;
+      } catch(e) {
+        console.warn(`DB.load(${t}) 실패:`, e.message);
+      }
+    }
     _supabaseReady = true;
     if (banner) banner.style.display = 'none';
-    console.log('✅ Supabase 연결 완료');
+    console.log(`✅ Supabase 연결 완료 (${loadedCount}/${tables.length} 테이블 로드)`);
   } catch(e) {
     console.error('Supabase 연결 실패, localStorage 폴백:', e);
     // 폴백: localStorage에서 로드
@@ -1955,13 +1982,13 @@ function goto(page) {
     if (el && currentCompany && currentCompany !== 'TOTAL') el.value = currentCompany;
   });
 
-  if(page === 'dashboard')    { Promise.all([DB.load('daily'),DB.load('investments'),DB.load('loans'),DB.load('equities')]).then(() => renderDashboard()); }
-  if(page === 'input')        { DB.load('daily').then(() => renderDailyHistory(1)); }
-  if(page === 'equity')       { DB.load('equities').then(() => renderEquity()); }
-  if(page === 'history')      { Promise.all([DB.load('daily'),DB.load('investments'),DB.load('loans'),DB.load('equities')]).then(() => filterHistory()); }
-  if(page === 'invest')       { DB.load('investments').then(() => renderInvestments()); }
+  if(page === 'dashboard')    { Promise.allSettled([DB.load('daily'),DB.load('investments'),DB.load('loans'),DB.load('equities')]).then(() => renderDashboard()); }
+  if(page === 'input')        { DB.load('daily').catch(()=>{}).then(() => renderDailyHistory(1)); }
+  if(page === 'equity')       { DB.load('equities').catch(()=>{}).then(() => renderEquity()); }
+  if(page === 'history')      { Promise.allSettled([DB.load('daily'),DB.load('investments'),DB.load('loans'),DB.load('equities')]).then(() => filterHistory()); }
+  if(page === 'invest')       { DB.load('investments').catch(()=>{}).then(() => renderInvestments()); }
   if(page === 'fx')           renderFXEquivTable();
-  if(page === 'loans')        { DB.load('loans').then(() => renderLoans()); }
+  if(page === 'loans')        { DB.load('loans').catch(()=>{}).then(() => renderLoans()); }
   if(page === 'admin-users')  adminLoadUsers();
   if(page === 'admin-data')   adminCheckStatus();
   if(page === 'admin-mycode') {
@@ -2266,11 +2293,15 @@ async function _fetchStockParallel(symbol, rangeDays) {
 
   // 3개 프록시를 동시 요청 — 먼저 성공한 것 채택
   const proxies = [
-    // 1순위: allorigins (빠름, 안정적)
+    // 직접 호출 (최신 브라우저 일부에서 CORS 허용)
+    yahooUrl,
+    // 1순위: allorigins
     `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`,
     // 2순위: corsproxy.io
     `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`,
-    // 3순위: thingproxy
+    // 3순위: cors-anywhere (heroku)
+    `https://cors-anywhere.herokuapp.com/${yahooUrl}`,
+    // 4순위: thingproxy
     `https://thingproxy.freeboard.io/fetch/${yahooUrl}`,
   ];
 
@@ -2283,15 +2314,15 @@ async function _fetchStockParallel(symbol, rangeDays) {
       }
     };
 
+    const labels = ['direct', 'allorigins', 'corsproxy', 'cors-anywhere', 'thingproxy'];
     proxies.forEach((url, i) => {
-      const labels = ['allorigins', 'corsproxy', 'thingproxy'];
-      _fetchViaProxy(url, 3000).then(r => done(r, labels[i]));
+      _fetchViaProxy(url, 5000).then(r => done(r, labels[i]));
     });
 
-    // 3초 후에도 성공 없으면 null
+    // 6초 후에도 성공 없으면 null
     setTimeout(() => {
       if (!settled) { settled = true; resolve(null); }
-    }, 3500);
+    }, 6000);
   });
 }
 
