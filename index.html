@@ -140,27 +140,30 @@
   #toast.show { opacity: 1; transform: translateY(0); }
 
   /* ── 2. CI 배지 — 다크 배경과 조화로운 스타일 ───────────── */
+  /* CI 배지 — 밝은 반투명 배경으로 로고 선명하게 */
   #sidebar-badge-area {
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.92);
+    border: 1px solid rgba(255,255,255,0.25);
     border-radius: 10px;
     padding: 8px 14px;
     height: 50px;
-    backdrop-filter: blur(4px);
-    transition: background .2s;
+    transition: background .2s, box-shadow .2s;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.25);
   }
-  #sidebar-badge-area:hover { background: rgba(255,255,255,0.1); }
+  #sidebar-badge-area:hover {
+    background: rgba(255,255,255,0.97);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  }
   #sidebar-badge-area img {
     max-width: 100%; max-height: 100%;
     object-fit: contain;
-    filter: brightness(1) drop-shadow(0 0 2px rgba(255,255,255,0.15));
-    opacity: 0.92;
+    opacity: 1;
   }
 
-  /* ci-tab — 다크 테마와 조화 */
+  /* ci-tab — 밝은 배경 + 다크 테마 조화 */
   .ci-tab {
-    background: rgba(255,255,255,0.05);
-    border: 1.5px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.88);
+    border: 1.5px solid rgba(255,255,255,0.3);
     border-radius: 10px;
     padding: 6px 14px;
     cursor: pointer;
@@ -170,18 +173,21 @@
     align-items: center;
     justify-content: center;
     transition: all .2s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
   }
-  .ci-tab:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+  .ci-tab:hover {
+    background: rgba(255,255,255,0.96);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  }
   .ci-tab.active {
-    background: rgba(59,130,246,0.12);
-    border-color: rgba(59,130,246,0.5);
-    box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+    background: rgba(255,255,255,0.98);
+    border-color: rgba(59,130,246,0.6);
+    box-shadow: 0 0 0 2.5px rgba(59,130,246,0.25), 0 2px 8px rgba(0,0,0,0.2);
   }
   .ci-tab img {
     max-height: 100%; width: auto; max-width: 100px;
     object-fit: contain;
-    filter: brightness(1.05) drop-shadow(0 0 3px rgba(255,255,255,0.1));
-    opacity: 0.9;
+    opacity: 1;
   }
 
   /* ── 3. 스크롤바 디자인 개선 ────────────────────────────── */
@@ -242,8 +248,8 @@
   #mobile-company-bar::-webkit-scrollbar { display: none; }
   .mob-ci {
     flex-shrink: 0;
-    background: rgba(255,255,255,0.05);
-    border: 1.5px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.88);
+    border: 1.5px solid rgba(255,255,255,0.3);
     border-radius: 8px;
     padding: 4px 10px;
     height: 36px;
@@ -251,75 +257,93 @@
     align-items: center;
     cursor: pointer;
     transition: all .15s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.18);
   }
   .mob-ci.active {
-    background: rgba(59,130,246,0.15);
-    border-color: rgba(59,130,246,0.5);
+    background: rgba(255,255,255,0.98);
+    border-color: rgba(59,130,246,0.55);
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
   }
-  .mob-ci img { height: 22px; width: auto; max-width: 80px; object-fit: contain; opacity: 0.9; }
+  .mob-ci img { height: 22px; width: auto; max-width: 80px; object-fit: contain; opacity: 1; }
 
   @media (max-width: 768px) {
     /* 사이드바 숨김 */
     .sidebar { display: none !important; }
 
+    /* 가로 오버플로 완전 차단 */
+    html, body { overflow-x: hidden !important; max-width: 100vw !important; }
+    .layout, .main { max-width: 100vw !important; overflow-x: hidden !important; }
+
     /* topbar 간소화 */
-    .topbar { padding: 0 14px; height: 50px; }
+    .topbar { padding: 0 12px; height: 50px; }
     .topbar-title { font-size: 14px; }
     .topbar-right { gap: 6px; }
-    /* 불필요 버튼 숨김 */
     #code-mgr-btn, #sb-save-indicator { display: none !important; }
-    .btn-ghost[onclick*="refreshFX"] { padding: 5px 8px; font-size: 11px; }
 
     /* 모바일 전용 UI 표시 */
     #mobile-tabbar { display: flex; }
     #mobile-company-bar { display: flex; }
 
-    /* content 하단 탭바 높이만큼 패딩 */
-    .content { padding: 14px 12px 80px; }
+    /* content — 하단 탭바 여백 */
+    .content { padding: 12px 12px 84px; overflow-x: hidden !important; }
 
     /* 로딩 배너 */
-    #sb-loading-banner { font-size: 11px; padding: 6px 14px; }
+    #sb-loading-banner { font-size: 11px; padding: 6px 12px; }
 
-    /* 요약 카드 2열 */
-    .content > div[style*="grid-template-columns:1fr 1fr 1fr 1fr"] {
+    /* 요약 카드 4개 → 2열 */
+    .content > div[style*="grid-template-columns:1fr 1fr 1fr 1fr"],
+    .content > div[style*="grid-template-columns: 1fr 1fr 1fr 1fr"] {
       grid-template-columns: 1fr 1fr !important;
+      gap: 8px !important;
     }
 
     /* metric 카드 2열 */
-    .metrics { grid-template-columns: 1fr 1fr !important; gap: 10px; }
+    .metrics { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
 
-    /* 차트+상세 — 세로 배치 */
-    .content > div[style*="grid-template-columns:1fr 1fr"] {
+    /* 차트 그리드 — 차트만 전체폭, 상세카드 숨김 */
+    #dash-chart-grid {
       grid-template-columns: 1fr !important;
+      gap: 0 !important;
     }
+    #dash-detail-card { display: none !important; }
+    .chart-area { height: 220px !important; }
 
-    /* 알림 배너 폰트 */
-    #dash-alert-banner { font-size: 11px; }
+    /* 카드 패딩 */
+    .card { padding: 12px 12px; }
+    .card-title { font-size: 13px; }
 
-    /* 카드 패딩 축소 */
-    .card { padding: 14px 14px; }
-    .card-title { font-size: 14px; }
+    /* 테이블 — 가로 스크롤 (오버플로 전파 차단) */
+    .table-wrap {
+      overflow-x: auto !important;
+      -webkit-overflow-scrolling: touch;
+      max-width: calc(100vw - 24px) !important;
+    }
+    table { font-size: 12px; }
+    th, td { padding: 7px 8px; white-space: nowrap; }
 
-    /* 테이블 가로 스크롤 */
-    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    table { min-width: 500px; font-size: 12px; }
-    th, td { padding: 8px 8px; }
-
-    /* 입력 폼 전체 폭 */
+    /* 입력 폼 1열 */
     .form-grid { grid-template-columns: 1fr !important; }
     .form-group { grid-column: 1 / -1 !important; }
 
-    /* 대시보드 요약 카드 — 첫 카드 전체 폭 */
+    /* 요약 카드 첫 카드 전체폭 */
     .card[style*="grid-column:1/3"] { grid-column: 1 / -1 !important; }
 
-    /* ci-tab 영역 숨김 (모바일 탭바로 대체) */
+    /* ci-tab 영역 숨김 */
     .page > div > .ci-tab { display: none !important; }
 
     /* 로그인 오버레이 */
-    #login-overlay > div { width: 92vw; padding: 28px 22px; }
+    #login-overlay > div { width: 92vw; padding: 24px 18px; }
 
-    /* 지분투자 차트 높이 조정 */
-    .chart-area { height: 200px !important; }
+    /* 알림 배너 */
+    #dash-alert-banner { font-size: 11px; }
+
+    /* 순현금 바 */
+    #d-net-bar { display: none !important; }
+
+    /* 모달 */
+    #add-user-modal > div, #code-change-modal > div {
+      width: 94vw !important; max-width: 94vw !important; padding: 20px 16px !important;
+    }
   }
 
   @media (max-width: 480px) {
@@ -667,7 +691,7 @@
         </div>
 
         <!-- 차트 + 상세카드 2단 레이아웃 -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+        <div id="dash-chart-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
           <!-- 좌: 차트 -->
           <div class="card" style="margin-bottom:0;">
             <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
@@ -683,7 +707,7 @@
           </div>
 
           <!-- 우: 선택 카드별 상세 목록 -->
-          <div class="card" style="margin-bottom:0;padding:16px 18px;">
+          <div class="card" id="dash-detail-card" style="margin-bottom:0;padding:16px 18px;">
             <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);">
               선택 카드 상세내역
             </div>
