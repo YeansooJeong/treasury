@@ -305,6 +305,31 @@
         </svg>
         자금일보 출력
       </div>
+      <!-- 관리 메뉴 — 마스터 로그인 시에만 표시 -->
+      <div id="admin-nav-section" style="display:none;">
+        <div class="nav-section" style="color:rgba(139,92,246,0.8);">관리</div>
+        <div class="nav-item" onclick="goto('admin-mycode')">
+          <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="8" cy="5" r="3"/><path d="M2 14c0-3 2.7-5 6-5s6 2 6 5"/>
+            <path d="M11 8l1 1-3 3-2-2 1-1 1 1z" fill="currentColor" stroke="none"/>
+          </svg>
+          내 코드 변경
+        </div>
+        <div class="nav-item" onclick="goto('admin-users')">
+          <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="6" cy="5" r="2.5"/><path d="M1 13c0-2.5 2.2-4 5-4s5 1.5 5 4"/>
+            <circle cx="12" cy="5" r="2"/><path d="M12 9c1.8 0 3 1 3 3"/>
+          </svg>
+          사용자 코드 관리
+        </div>
+        <div class="nav-item" onclick="goto('admin-data')">
+          <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <ellipse cx="8" cy="4" rx="5" ry="2"/><path d="M3 4v4c0 1.1 2.2 2 5 2s5-.9 5-2V4"/>
+            <path d="M3 8v4c0 1.1 2.2 2 5 2s5-.9 5-2V8"/>
+          </svg>
+          데이터 관리
+        </div>
+      </div>
     </nav>
     
     <div class="sidebar-bottom">
@@ -325,7 +350,7 @@
         <div class="date-badge" id="today-badge">—</div>
         <div id="user-info" style="display:none;font-size:12px;color:#94a3b8;padding:4px 10px;background:#1e2535;border-radius:8px;border:1px solid rgba(255,255,255,0.08);"></div>
         <button class="btn btn-ghost" onclick="refreshFX()" style="font-size:12px;padding:6px 12px;">↻ 환율</button>
-        <button id="code-mgr-btn" onclick="openCodeModal()" style="display:none;background:#1e2535;border:1px solid rgba(255,255,255,0.1);color:#94a3b8;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">⚙ 코드 관리</button>
+        <button id="code-mgr-btn" onclick="goto('admin-mycode')" style="display:none;background:#1e2535;border:1px solid rgba(255,255,255,0.1);color:#94a3b8;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">⚙ 코드 관리</button>
         <button id="logout-btn" onclick="doLogout()" style="display:none;background:#1e2535;border:1px solid rgba(255,255,255,0.1);color:#94a3b8;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">로그아웃</button>
       </div>
     </div>
@@ -851,6 +876,111 @@
       
       <div class="page" id="page-report">
         <div class="card"><div class="card-title">자금일보 출력 <span style="font-size:10px;color:var(--text3);">(개발예정)</span></div><div style="color:var(--text3);">리포트 출력 모듈은 다음 고도화 단계에서 진행 예정입니다.</div></div>
+
+      <!-- ══ 관리 페이지 1: 내 코드 변경 ══ -->
+      <div class="page" id="page-admin-mycode">
+        <div class="card" style="max-width:480px;">
+          <div class="card-title">내 접속 코드 변경 (Master)</div>
+          <div style="font-size:13px;color:var(--text3);margin-bottom:20px;">마스터 계정의 접속 코드를 변경합니다.</div>
+          <div class="form-grid">
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>현재 코드 확인</label>
+              <input type="password" id="admin-current-code" placeholder="현재 접속 코드 입력">
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>새 코드</label>
+              <input type="password" id="admin-new-code" placeholder="새 접속 코드 (6자 이상)" oninput="checkAdminCodeStrength(this.value)">
+              <div id="admin-code-strength" style="font-size:11px;margin-top:4px;"></div>
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>새 코드 확인</label>
+              <input type="password" id="admin-new-code2" placeholder="새 접속 코드 재입력">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button id="admin-save-code-btn" class="btn btn-primary" onclick="adminSaveMyCode()">코드 변경 저장</button>
+          </div>
+          <div id="admin-code-error" style="font-size:12px;color:var(--red);margin-top:10px;display:none;"></div>
+        </div>
+      </div>
+
+      <!-- ══ 관리 페이지 2: 사용자 코드 관리 ══ -->
+      <div class="page" id="page-admin-users">
+        <div class="card">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>사용자 접속 코드 관리</span>
+            <button class="btn btn-primary" style="font-size:12px;padding:6px 14px;" onclick="openAddUserModal()">+ 코드 추가</button>
+          </div>
+          <div id="admin-users-loading" style="text-align:center;padding:24px;color:var(--text3);font-size:13px;">불러오는 중...</div>
+          <div class="table-wrap" id="admin-users-table-wrap" style="display:none;">
+            <table>
+              <thead><tr><th>사용자명</th><th>접속 코드</th><th>역할</th><th>법인</th><th>상태</th><th></th></tr></thead>
+              <tbody id="admin-users-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 사용자 추가 모달 -->
+      <div id="add-user-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9990;align-items:center;justify-content:center;">
+        <div style="background:#161b27;border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:28px 32px;width:400px;max-width:92vw;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <div style="font-size:15px;font-weight:600;color:#f1f5f9;" id="add-user-modal-title">사용자 코드 추가</div>
+            <button onclick="closeAddUserModal()" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;">×</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div><label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:5px;">사용자명</label>
+              <input type="text" id="modal-user-name" placeholder="예: 셀바스에이아이 담당자" style="width:100%;background:#1e2535;border:1px solid rgba(255,255,255,0.14);color:#f1f5f9;padding:9px 12px;border-radius:8px;font-size:13px;outline:none;font-family:inherit;"></div>
+            <div><label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:5px;">접속 코드</label>
+              <input type="text" id="modal-user-code" placeholder="예: AI-FUND-2026" style="width:100%;background:#1e2535;border:1px solid rgba(255,255,255,0.14);color:#f1f5f9;padding:9px 12px;border-radius:8px;font-size:13px;outline:none;font-family:inherit;"></div>
+            <div><label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:5px;">역할</label>
+              <select id="modal-user-role" onchange="toggleModalCompany()" style="width:100%;background:#1e2535;border:1px solid rgba(255,255,255,0.14);color:#f1f5f9;padding:9px 12px;border-radius:8px;font-size:13px;outline:none;font-family:inherit;">
+                <option value="company">법인 담당자</option>
+                <option value="ceo">CEO (전체 열람)</option>
+                <option value="master">Master</option>
+              </select></div>
+            <div id="modal-company-wrap"><label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:5px;">담당 법인</label>
+              <select id="modal-user-company" style="width:100%;background:#1e2535;border:1px solid rgba(255,255,255,0.14);color:#f1f5f9;padding:9px 12px;border-radius:8px;font-size:13px;outline:none;font-family:inherit;">
+                <option value="셀바스에이아이">셀바스에이아이</option>
+                <option value="셀바스헬스케어">셀바스헬스케어</option>
+                <option value="메디아나">메디아나</option>
+              </select></div>
+          </div>
+          <div style="margin-top:20px;display:flex;gap:8px;">
+            <button id="add-user-save-btn" onclick="saveUserCode()" style="flex:1;background:#3b82f6;color:#fff;border:none;padding:10px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;">저장</button>
+            <button onclick="closeAddUserModal()" style="flex:1;background:#1e2535;border:1px solid rgba(255,255,255,0.1);color:#94a3b8;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;">취소</button>
+          </div>
+          <div id="add-user-error" style="font-size:12px;color:#ef4444;margin-top:8px;text-align:center;display:none;"></div>
+        </div>
+      </div>
+
+      <!-- ══ 관리 페이지 3: 데이터 관리 ══ -->
+      <div class="page" id="page-admin-data">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="card">
+            <div class="card-title">☁ Supabase 데이터 이전</div>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:16px;line-height:1.6;">현재 PC의 localStorage 데이터를 Supabase로 일괄 이전합니다. 중복 데이터는 자동으로 제외됩니다.</p>
+            <button id="migrate-btn" class="btn btn-primary" onclick="migrateLocalToSupabase()" style="width:100%;">localStorage → Supabase 이전 실행</button>
+            <div id="migration-status" style="font-size:12px;color:var(--text3);margin-top:10px;min-height:18px;"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">↓ JSON 전체 백업</div>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:16px;line-height:1.6;">현재 Supabase에 저장된 모든 데이터를 JSON 파일로 내보냅니다. 정기적으로 백업하세요.</p>
+            <button class="btn btn-primary" onclick="exportAllData()" style="width:100%;background:rgba(16,185,129,0.15);border-color:rgba(16,185,129,0.3);color:var(--green);">JSON 백업 다운로드</button>
+          </div>
+          <div class="card">
+            <div class="card-title">↑ JSON 데이터 복원</div>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:16px;line-height:1.6;">백업 JSON 파일을 업로드하여 Supabase 데이터를 복원합니다. 기존 데이터가 교체됩니다.</p>
+            <button class="btn btn-primary" onclick="importDataFromJSON()" style="width:100%;background:rgba(245,158,11,0.1);border-color:rgba(245,158,11,0.3);color:var(--amber);">JSON 파일 복원</button>
+          </div>
+          <div class="card">
+            <div class="card-title">Supabase 연결 상태</div>
+            <div id="sb-status-detail" style="font-size:13px;color:var(--text3);line-height:1.8;">확인 중...</div>
+            <button class="btn btn-ghost" onclick="adminCheckStatus()" style="margin-top:12px;width:100%;font-size:12px;">연결 재확인</button>
+          </div>
+        </div>
+      </div>
+
       </div>
 
     </div>
@@ -1266,25 +1396,7 @@ function resetUserCode(userKey) {
   showToast(u.label + ' 코드 초기화 완료', 'success');
 }
 
-function doLogin() {
-  const inputCode = document.getElementById('login-code').value.trim();
-
-  // localStorage에 저장된 코드 우선, 없으면 기본 코드 사용
-  const codes = loadCurrentCodes();
-  let matchedUser = null;
-  Object.values(codes).forEach(u => {
-    if (u.code === inputCode) matchedUser = u;
-  });
-
-  if (!matchedUser) {
-    document.getElementById('login-error').style.display = 'block';
-    document.getElementById('login-code').value = '';
-    return;
-  }
-  currentUser = matchedUser;
-  sessionStorage.setItem('treasury_user', JSON.stringify(matchedUser));
-  applyAccessControl(matchedUser);
-}
+// doLogin은 access_codes 섹션으로 이동됨
 
 function applyAccessControl(user) {
   // 오버레이 숨김
@@ -1309,9 +1421,12 @@ function applyAccessControl(user) {
     // Master / CEO: 모든 탭 표시, currentCompany는 첫 번째 탭으로 시작
     // tab-total(통합현황)은 향후 활성화 예정 — 현재 숨김 유지
     document.querySelectorAll('.ci-tab').forEach(tab => {
-      tab.style.display = '';  // 모든 탭 표시
+      tab.style.display = '';
     });
     currentCompany = '셀바스에이아이';
+    // 관리 메뉴 표시 (마스터 전용)
+    const adminNav = document.getElementById('admin-nav-section');
+    if (adminNav) adminNav.style.display = '';
     ['i-company','v-company','l-company','e-company'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
@@ -1378,6 +1493,8 @@ function doLogout() {
   if (codeMgrBtn2) codeMgrBtn2.style.display = 'none';
   const userInfo2 = document.getElementById('user-info');
   if (userInfo2) userInfo2.style.display = 'none';
+  const adminNav2 = document.getElementById('admin-nav-section');
+  if (adminNav2) adminNav2.style.display = 'none';
   document.getElementById('login-code').value = '';
   document.getElementById('login-error').style.display = 'none';
 }
@@ -1500,13 +1617,16 @@ function goto(page) {
     if (el && currentCompany && currentCompany !== 'TOTAL') el.value = currentCompany;
   });
 
-  if(page === 'dashboard') renderDashboard();
-  if(page === 'input')   renderDailyHistory(1);
-  if(page === 'equity')  renderEquity();
-  if(page === 'history') filterHistory();
-  if(page === 'invest')  renderInvestments();
-  if(page === 'fx')      renderFXEquivTable();
-  if(page === 'loans')   renderLoans();
+  if(page === 'dashboard')    renderDashboard();
+  if(page === 'input')        renderDailyHistory(1);
+  if(page === 'equity')       renderEquity();
+  if(page === 'history')      filterHistory();
+  if(page === 'invest')       renderInvestments();
+  if(page === 'fx')           renderFXEquivTable();
+  if(page === 'loans')        renderLoans();
+  if(page === 'admin-users')  adminLoadUsers();
+  if(page === 'admin-data')   adminCheckStatus();
+  if(page === 'admin-mycode') { document.getElementById('admin-current-code').value=''; document.getElementById('admin-new-code').value=''; document.getElementById('admin-new-code2').value=''; }
 }
 
 async function refreshFX() {
@@ -3481,6 +3601,299 @@ function getPriceHistory(type, key, days) {
   return DB.get('price_history')
     .filter(h => h.key === histKey && h.date >= cutoffStr)
     .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+
+// ══════════════════════════════════════════════════════
+// access_codes 테이블 — Supabase 기반 인증 시스템
+// ══════════════════════════════════════════════════════
+
+// access_codes 전체 조회
+async function fetchAccessCodes() {
+  const data = await sbFetch('/rest/v1/access_codes?is_active=eq.true&order=created_at.asc');
+  return data || [];
+}
+
+// 로그인: 입력 코드 → Supabase 조회 검증
+async function doLogin() {
+  const inputCode = document.getElementById('login-code').value.trim();
+  const errEl = document.getElementById('login-error');
+  const btn = document.querySelector('#login-overlay button');
+  if (!inputCode) return;
+
+  if (btn) { btn.textContent = '확인 중...'; btn.disabled = true; }
+
+  try {
+    const data = await sbFetch(
+      '/rest/v1/access_codes?access_code=eq.' + encodeURIComponent(inputCode) + '&is_active=eq.true&limit=1'
+    );
+
+    if (!data || data.length === 0) {
+      // Supabase 실패 시 로컬 폴백
+      const localCodes = loadCurrentCodes();
+      let matched = null;
+      Object.values(localCodes).forEach(u => { if (u.code === inputCode) matched = u; });
+      if (!matched) {
+        if (errEl) { errEl.style.display = 'block'; errEl.textContent = '접속 코드가 올바르지 않습니다'; }
+        if (btn) { btn.textContent = '로그인'; btn.disabled = false; }
+        document.getElementById('login-code').value = '';
+        return;
+      }
+      currentUser = matched;
+    } else {
+      const row = data[0];
+      currentUser = {
+        role:    row.role,
+        company: row.company || null,
+        label:   row.label || row.user_name,
+        code:    row.access_code,
+        sb_id:   row.id,
+      };
+    }
+
+    sessionStorage.setItem('treasury_user', JSON.stringify(currentUser));
+    if (errEl) errEl.style.display = 'none';
+    applyAccessControl(currentUser);
+  } catch(e) {
+    console.error('Login error:', e);
+    // 네트워크 오류 시 로컬 폴백
+    const localCodes = loadCurrentCodes();
+    let matched = null;
+    Object.values(localCodes).forEach(u => { if (u.code === inputCode) matched = u; });
+    if (matched) {
+      currentUser = matched;
+      sessionStorage.setItem('treasury_user', JSON.stringify(currentUser));
+      applyAccessControl(currentUser);
+    } else {
+      alert('서버 통신에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    }
+  } finally {
+    if (btn) { btn.textContent = '로그인'; btn.disabled = false; }
+  }
+}
+
+// ── 관리 페이지 1: 마스터 내 코드 변경 ─────────────────────
+function checkAdminCodeStrength(val) {
+  const el = document.getElementById('admin-code-strength');
+  if (!val) { el.textContent = ''; return; }
+  if (val.length < 6) { el.textContent = '너무 짧음 (6자 이상)'; el.style.color = 'var(--red)'; }
+  else if (val.length < 10) { el.textContent = '보통 강도'; el.style.color = 'var(--amber)'; }
+  else { el.textContent = '강함'; el.style.color = 'var(--green)'; }
+}
+
+async function adminSaveMyCode() {
+  const current  = document.getElementById('admin-current-code').value.trim();
+  const newCode  = document.getElementById('admin-new-code').value.trim();
+  const newCode2 = document.getElementById('admin-new-code2').value.trim();
+  const errEl    = document.getElementById('admin-code-error');
+  const btn      = document.getElementById('admin-save-code-btn');
+  errEl.style.display = 'none';
+
+  if (!current || !newCode || !newCode2) {
+    errEl.textContent = '모든 항목을 입력해주세요'; errEl.style.display = 'block'; return;
+  }
+  if (currentUser && current !== currentUser.code) {
+    errEl.textContent = '현재 코드가 올바르지 않습니다'; errEl.style.display = 'block'; return;
+  }
+  if (newCode.length < 6) {
+    errEl.textContent = '새 코드는 6자 이상이어야 합니다'; errEl.style.display = 'block'; return;
+  }
+  if (newCode !== newCode2) {
+    errEl.textContent = '새 코드가 일치하지 않습니다'; errEl.style.display = 'block'; return;
+  }
+
+  btn.textContent = '저장 중...'; btn.disabled = true;
+  try {
+    // Supabase 업데이트
+    const sbId = currentUser.sb_id;
+    if (sbId) {
+      await sbFetch('/rest/v1/access_codes?id=eq.' + sbId, {
+        method: 'PATCH',
+        body: JSON.stringify({ access_code: newCode }),
+      });
+    }
+    // 로컬 코드도 업데이트
+    const codes = loadCurrentCodes();
+    const key = Object.keys(codes).find(k => codes[k].role === 'master');
+    if (key) { codes[key].code = newCode; saveCurrentCodes(codes); }
+    currentUser.code = newCode;
+    sessionStorage.setItem('treasury_user', JSON.stringify(currentUser));
+    showToast('마스터 코드가 변경되었습니다', 'success');
+    document.getElementById('admin-current-code').value = '';
+    document.getElementById('admin-new-code').value = '';
+    document.getElementById('admin-new-code2').value = '';
+  } catch(e) {
+    console.error(e);
+    errEl.textContent = '서버 통신 실패. 잠시 후 다시 시도하세요.'; errEl.style.display = 'block';
+  } finally {
+    btn.textContent = '코드 변경 저장'; btn.disabled = false;
+  }
+}
+
+// ── 관리 페이지 2: 사용자 코드 목록 ────────────────────────
+async function adminLoadUsers() {
+  const loading = document.getElementById('admin-users-loading');
+  const wrap    = document.getElementById('admin-users-table-wrap');
+  const tbody   = document.getElementById('admin-users-tbody');
+  if (!tbody) return;
+  if (loading) loading.style.display = '';
+  if (wrap) wrap.style.display = 'none';
+  try {
+    const codes = await sbFetch('/rest/v1/access_codes?order=created_at.asc');
+    if (!codes) throw new Error('조회 실패');
+    window._adminCodesList = codes;
+    if (loading) loading.style.display = 'none';
+    if (wrap) wrap.style.display = '';
+    const roleLabel = { master: 'Master', ceo: 'CEO', company: '법인 담당자' };
+    const rows = [];
+    codes.forEach(function(c, idx) {
+      var isActive = c.is_active;
+      var isMaster = c.role === 'master';
+      var statusBg = isActive ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)';
+      var statusColor = isActive ? 'var(--green)' : 'var(--red)';
+      var statusText = isActive ? '활성' : '비활성';
+      var resetBtn = '<button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;margin-right:4px;" onclick="adminResetCode(' + idx + ')">초기화</button>';
+      var toggleBtn = !isMaster ? '<button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;color:var(--red);" onclick="adminToggleActive(' + idx + ')">' + (isActive ? '비활성화' : '활성화') + '</button>' : '';
+      rows.push('<tr>'
+        + '<td style="font-weight:500;">' + (c.label || c.user_name) + '</td>'
+        + '<td><code style="background:var(--bg3);padding:2px 8px;border-radius:4px;font-size:12px;">' + c.access_code + '</code></td>'
+        + '<td>' + (roleLabel[c.role] || c.role) + '</td>'
+        + '<td style="font-size:12px;color:var(--text3);">' + (c.company || '—') + '</td>'
+        + '<td><span style="font-size:10px;padding:2px 7px;border-radius:4px;font-weight:500;background:' + statusBg + ';color:' + statusColor + ';">' + statusText + '</span></td>'
+        + '<td onclick="event.stopPropagation()" style="white-space:nowrap;">' + resetBtn + toggleBtn + '</td>'
+        + '</tr>');
+    });
+    tbody.innerHTML = rows.join('');
+  } catch(e) {
+    console.error(e);
+    if (loading) { loading.style.display = ''; loading.textContent = '불러오기 실패 — 새로고침 후 다시 시도하세요.'; }
+  }
+}
+
+async function adminResetCode(idx) {
+  const c = (window._adminCodesList || [])[parseInt(idx)];
+  if (!c) return;
+  const userName = c.label || c.user_name;
+  const newCode = prompt(userName + ' 의 코드를 변경합니다.\n새 코드를 입력하세요 (현재: ' + c.access_code + '):', c.access_code);
+  if (!newCode || newCode.trim() === '') return;
+  if (newCode.trim().length < 4) { alert('코드는 4자 이상이어야 합니다.'); return; }
+  try {
+    await sbFetch('/rest/v1/access_codes?id=eq.' + c.id, {
+      method: 'PATCH',
+      body: JSON.stringify({ access_code: newCode.trim() }),
+    });
+    showToast(userName + ' 코드 변경 완료', 'success');
+    adminLoadUsers();
+  } catch(e) {
+    alert('서버 통신에 실패했습니다. 잠시 후 다시 시도해주세요.');
+  }
+}
+
+async function adminToggleActive(idx) {
+  const c = (window._adminCodesList || [])[parseInt(idx)];
+  if (!c) return;
+  const action = c.is_active ? '비활성화' : '활성화';
+  if (!confirm('이 코드를 ' + action + ' 하시겠습니까?')) return;
+  try {
+    await sbFetch('/rest/v1/access_codes?id=eq.' + c.id, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_active: !c.is_active }),
+    });
+    showToast(action + ' 완료', 'success');
+    adminLoadUsers();
+  } catch(e) {
+    alert('서버 통신에 실패했습니다. 잠시 후 다시 시도해주세요.');
+  }
+}
+
+// 사용자 추가 모달
+let _editingUserId = null;
+
+function openAddUserModal() {
+  _editingUserId = null;
+  document.getElementById('add-user-modal-title').textContent = '사용자 코드 추가';
+  document.getElementById('modal-user-name').value = '';
+  document.getElementById('modal-user-code').value = '';
+  document.getElementById('modal-user-role').value = 'company';
+  document.getElementById('modal-user-company').value = '셀바스에이아이';
+  document.getElementById('modal-company-wrap').style.display = '';
+  document.getElementById('add-user-error').style.display = 'none';
+  document.getElementById('add-user-modal').style.display = 'flex';
+}
+
+function closeAddUserModal() {
+  document.getElementById('add-user-modal').style.display = 'none';
+}
+
+function toggleModalCompany() {
+  const role = document.getElementById('modal-user-role').value;
+  document.getElementById('modal-company-wrap').style.display = role === 'company' ? '' : 'none';
+}
+
+async function saveUserCode() {
+  const name    = document.getElementById('modal-user-name').value.trim();
+  const code    = document.getElementById('modal-user-code').value.trim();
+  const role    = document.getElementById('modal-user-role').value;
+  const company = role === 'company' ? document.getElementById('modal-user-company').value : null;
+  const errEl   = document.getElementById('add-user-error');
+  const btn     = document.getElementById('add-user-save-btn');
+  errEl.style.display = 'none';
+
+  if (!name || !code) { errEl.textContent = '사용자명과 코드를 모두 입력하세요.'; errEl.style.display = 'block'; return; }
+  if (code.length < 4) { errEl.textContent = '코드는 4자 이상이어야 합니다.'; errEl.style.display = 'block'; return; }
+
+  btn.textContent = '저장 중...'; btn.disabled = true;
+  try {
+    const payload = {
+      user_name: name, label: name,
+      access_code: code, role, company,
+      is_active: true,
+    };
+    const result = await sbFetch('/rest/v1/access_codes', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    if (!result) throw new Error('저장 실패');
+    showToast(name + ' 코드 추가 완료', 'success');
+    closeAddUserModal();
+    adminLoadUsers();
+  } catch(e) {
+    console.error(e);
+    errEl.textContent = e.message.includes('unique') ? '이미 사용 중인 코드입니다.' : '서버 통신에 실패했습니다.';
+    errEl.style.display = 'block';
+  } finally {
+    btn.textContent = '저장'; btn.disabled = false;
+  }
+}
+
+// 모달 외부 클릭 닫기
+document.getElementById('add-user-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeAddUserModal();
+});
+
+// ── 관리 페이지 3: 연결 상태 확인 ──────────────────────────
+async function adminCheckStatus() {
+  const el = document.getElementById('sb-status-detail');
+  if (!el) return;
+  el.textContent = '확인 중...';
+  try {
+    const start = Date.now();
+    const data = await sbFetch('/rest/v1/access_codes?limit=1');
+    const ms = Date.now() - start;
+    const counts = {};
+    for (const t of ['daily','investments','loans','equities']) {
+      const d = DB.get(t);
+      counts[t] = d.length;
+    }
+    el.innerHTML =
+      '<div style="color:var(--green);font-weight:600;margin-bottom:8px;">✅ 연결됨 (' + ms + 'ms)</div>' +
+      '<div>운전자금 레코드: <b>' + counts.daily + '건</b></div>' +
+      '<div>운용자금: <b>' + counts.investments + '건</b></div>' +
+      '<div>차입금: <b>' + counts.loans + '건</b></div>' +
+      '<div>지분투자: <b>' + counts.equities + '건</b></div>';
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--red);">❌ 연결 실패 — ' + e.message + '</div>';
+  }
 }
 
 function filterHistory() {
