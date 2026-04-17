@@ -1368,8 +1368,9 @@ function showToast(msg, type='') { const t = document.getElementById('toast'); t
 // ══════════════════════════════════════════════════════
 // 주가 조회 API 설정 (Google Apps Script Web App)
 // ══════════════════════════════════════════════════════
-const GAS_API_URL = 'https://script.google.com/macros/d/https://script.google.com/macros/s/AKfycbyPhVvHIy66zWd7WzMix-jS0BzvVga2y4gAkTySuaEc8yUmp59l2UMfrRXl0TXc3SXG/exec/usercontent';
-// 
+const GAS_API_URL = '여기에_웹앱_URL_입력';
+// 예시: 'https://script.google.com/macros/s/AKfycbyPhVvHIy66zWd7WzMix-jS0BzvVga2y4gAkTySuaEc8yUmp59l2UMfrRXl0TXc3SXG/exec'
+//
 // GAS 배포 방법:
 // 1. Google Apps Script 에디터 열기: https://script.google.com/
 // 2. 새 프로젝트 생성
@@ -1377,6 +1378,7 @@ const GAS_API_URL = 'https://script.google.com/macros/d/https://script.google.co
 // 4. "배포" → "새 배포" → "웹앱" 선택
 // 5. "다음 권한으로 실행: [자신의계정]" 설정
 // 6. "다음 사용자로 액세스: [모든 사람]" 설정
+// 7. 배포 후 나오는 URL 복사하여 위의 GAS_API_URL에 입력
 // 7. 배포 후 나오는 URL 복사하여 위의 GAS_API_URL에 입력
 // 
 
