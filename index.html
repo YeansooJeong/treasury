@@ -126,10 +126,10 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
   .section-divider::before, .section-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
   .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
 
-  .table-wrap { overflow-x: auto; }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { text-align: left; padding: 10px 12px; color: var(--text3); font-size: 11px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-  td { padding: 11px 12px; border-bottom: 1px solid var(--border); }
+  th { text-align: left; padding: 9px 10px; color: var(--text3); font-size: 11px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 10px 10px; border-bottom: 1px solid var(--border); }
   tr:hover td { background: rgba(255,255,255,.02); }
   .td-num { text-align: right; font-variant-numeric: tabular-nums; }
 
@@ -575,6 +575,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
         <div class="fx-row"><span class="fx-label">EUR</span><span class="fx-val" id="sf-eur">—</span></div>
         <div class="fx-row"><span class="fx-label">JPY</span><span class="fx-val" id="sf-jpy">—</span></div>
         <div class="fx-row"><span class="fx-label">GBP</span><span class="fx-val" id="sf-gbp">—</span></div>
+        <div class="fx-row"><span class="fx-label">CNY</span><span class="fx-val" id="sf-cny">—</span></div>
       </div>
     </div>
   </aside>
@@ -762,7 +763,20 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
         </div>
         
         <div class="card">
-          <div class="card-title">지분투자 평가 추이 <span style="color:var(--pink);">최근 14일 기록</span></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+            <span class="card-title" style="margin:0;">지분투자 평가 추이</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <select id="dash-equity-filter" onchange="onEquityFilterChange()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:3px 8px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;">
+                <option value="">전체 종목</option>
+              </select>
+              <div style="display:flex;gap:3px;">
+                <button class="btn btn-ghost eq-period-btn active" onclick="setEquityPeriod(14,this)" style="padding:3px 8px;font-size:10px;">14일</button>
+                <button class="btn btn-ghost eq-period-btn" onclick="setEquityPeriod(30,this)" style="padding:3px 8px;font-size:10px;">30일</button>
+                <button class="btn btn-ghost eq-period-btn" onclick="setEquityPeriod(90,this)" style="padding:3px 8px;font-size:10px;">90일</button>
+                <button class="btn btn-ghost eq-period-btn" onclick="setEquityPeriod(365,this)" style="padding:3px 8px;font-size:10px;">1년</button>
+              </div>
+            </div>
+          </div>
           <div class="chart-area" style="height:220px;"><canvas id="equityChart"></canvas></div>
         </div>
       </div>
@@ -793,6 +807,8 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
             <div class="form-group"><label>USD 잔액</label><div class="input-with-unit"><input type="text" id="i-fx-usd" placeholder="0" oninput="formatNumericInput(this, true)"><span class="unit">$</span></div></div>
             <div class="form-group"><label>EUR 잔액</label><div class="input-with-unit"><input type="text" id="i-fx-eur" placeholder="0" oninput="formatNumericInput(this, true)"><span class="unit">€</span></div></div>
             <div class="form-group"><label>JPY 잔액</label><div class="input-with-unit"><input type="text" id="i-fx-jpy" placeholder="0" oninput="formatNumericInput(this, true)"><span class="unit">¥</span></div></div>
+            <div class="form-group"><label>GBP 잔액</label><div class="input-with-unit"><input type="text" id="i-fx-gbp" placeholder="0" oninput="formatNumericInput(this, true)"><span class="unit">£</span></div></div>
+            <div class="form-group"><label>CNY 잔액</label><div class="input-with-unit"><input type="text" id="i-fx-cny" placeholder="0" oninput="formatNumericInput(this, true)"><span class="unit">¥₁</span></div></div>
           </div>
           <div class="form-group" style="margin-top:16px;"><label>특이사항</label><textarea id="i-memo" placeholder="비고 입력"></textarea></div>
           <div class="form-actions"><button class="btn btn-success" onclick="saveDaily()">운전자금 저장</button></div>
@@ -810,7 +826,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
                 <tr>
                   <th>일자</th><th>법인</th>
                   <th class="td-num">보통예금</th><th class="td-num">국책</th><th class="td-num">MMDA</th>
-                  <th class="td-num">USD</th><th class="td-num">EUR</th><th class="td-num">JPY</th>
+                  <th class="td-num">USD</th><th class="td-num">EUR</th><th class="td-num">JPY</th><th class="td-num">GBP</th><th class="td-num">CNY</th>
                   <th class="td-num">외화환산</th><th>비고</th><th></th>
                 </tr>
               </thead>
@@ -859,7 +875,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
             <div class="form-group" id="v-group-amount">
               <label>통화 / 금액</label>
               <div style="display:flex;gap:10px;">
-                <select id="v-currency" style="width:80px;"><option value="KRW">KRW</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="JPY">JPY</option></select>
+                <select id="v-currency" style="width:80px;"><option value="KRW">KRW</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="JPY">JPY</option><option value="GBP">GBP</option><option value="CNY">CNY</option></select>
                 <input type="text" id="v-amount" style="flex:1;" placeholder="0" oninput="formatNumericInput(this, true)">
               </div>
             </div>
@@ -932,7 +948,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
             </div>
             <div class="form-group"><label>차입처</label><input type="text" id="l-lender" placeholder="예: 하나은행"></div>
             <div class="form-group"><label>구분</label><select id="l-type"><option value="담보대출">담보대출</option><option value="신용대출">신용대출</option><option value="외화대출">외화대출</option><option value="정책자금">정책자금</option></select></div>
-            <div class="form-group"><label>통화 / 금액</label><div style="display:flex;gap:10px;"><select id="l-currency" style="width:80px;"><option value="KRW">KRW</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="JPY">JPY</option></select><input type="text" id="l-amount" style="flex:1;" placeholder="0" oninput="formatNumericInput(this, true)"></div></div>
+            <div class="form-group"><label>통화 / 금액</label><div style="display:flex;gap:10px;"><select id="l-currency" style="width:80px;"><option value="KRW">KRW</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="JPY">JPY</option><option value="GBP">GBP</option><option value="CNY">CNY</option></select><input type="text" id="l-amount" style="flex:1;" placeholder="0" oninput="formatNumericInput(this, true)"></div></div>
             <div class="form-group"><label>이자율 (%)</label><div class="input-with-unit"><input type="text" id="l-rate" placeholder="4.2" oninput="formatNumericInput(this, true)"><span class="unit">%</span></div></div>
             <div class="form-group"><label>실행일</label><input type="date" id="l-start"></div>
             <div class="form-group"><label>만기일</label><input type="date" id="l-maturity"></div>
@@ -1031,7 +1047,29 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
             <button class="btn btn-primary" style="background:var(--pink);" onclick="saveEquity()">지분 기록 및 저장</button>
           </div>
         </div>
-        <div class="card"><div class="card-title">보유 지분투자 현황</div><div class="table-wrap"><table><thead><tr><th>기준일</th><th>보유법인</th><th>종목명</th><th>투자목적</th><th>상장여부</th><th>가용</th><th class="td-num">보유주식수</th><th class="td-num">1주당 단가</th><th class="td-num">총 평가금액</th><th></th></tr></thead><tbody id="equity-tbody"></tbody></table></div></div>
+        <div class="card"><div class="card-title">보유 지분투자 현황</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;">
+              <div>
+                <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;">보유 종목 현황 <span style="font-weight:400;color:var(--text3);">(행 클릭 → 우측에 이력 표시)</span></div>
+                <div class="table-wrap"><table>
+                  <thead><tr>
+                    <th>기준일</th><th>법인</th><th>종목명</th>
+                    <th class="td-num">총 평가금액</th><th>관리</th>
+                  </tr></thead>
+                  <tbody id="equity-tbody"></tbody>
+                </table></div>
+              </div>
+              <div id="equity-history-panel" style="display:none;">
+                <div id="equity-history-title" style="font-size:12px;font-weight:600;color:var(--pink);margin-bottom:8px;">종목을 선택하면 이력이 표시됩니다</div>
+                <div class="table-wrap"><table>
+                  <thead><tr>
+                    <th>기준일</th><th class="td-num">주가</th><th class="td-num">주식수</th>
+                    <th class="td-num">평가금액</th><th>수정</th>
+                  </tr></thead>
+                  <tbody id="equity-history-tbody"></tbody>
+                </table></div>
+              </div>
+            </div>
+      </div>
       </div>
 
       <div class="page" id="page-history">
@@ -1044,7 +1082,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
                 <tr>
                   <th>일자</th><th>법인</th>
                   <th class="td-num">원화운전</th>
-                  <th class="td-num">USD</th><th class="td-num">EUR</th><th class="td-num">JPY</th>
+                  <th class="td-num">USD</th><th class="td-num">EUR</th><th class="td-num">JPY</th><th class="td-num">GBP</th><th class="td-num">CNY</th>
                   <th class="td-num">외화환산</th>
                   <th class="td-num" style="color:var(--green);">운용자금</th>
                   <th class="td-num" style="color:var(--amber);">차입금</th>
@@ -1070,7 +1108,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
               </button>
             </div>
           </div>
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;">
             <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:20px;">
               <div style="font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">USD / KRW</div>
               <div style="font-size:28px;font-weight:700;color:var(--accent2);margin-bottom:4px;" id="p-fx-usd">—</div>
@@ -1102,7 +1140,19 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
               <div style="font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">GBP / KRW</div>
               <div style="font-size:28px;font-weight:700;color:var(--accent2);margin-bottom:4px;" id="p-fx-gbp">—</div>
               <div style="font-size:12px;color:var(--text3);" id="p-fx-gbp-prev">전일 대비 —</div>
-              <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);">참고 환율</div>
+              <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);">
+                보유: <span id="p-gbp-amt">—</span><br>
+                환산: <span style="color:var(--green);font-weight:600;" id="p-gbp-krw">—</span>
+              </div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:20px;">
+              <div style="font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">CNY / KRW</div>
+              <div style="font-size:28px;font-weight:700;color:var(--accent2);margin-bottom:4px;" id="p-fx-cny">—</div>
+              <div style="font-size:12px;color:var(--text3);" id="p-fx-cny-prev">전일 대비 —</div>
+              <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);">
+                보유: <span id="p-cny-amt">—</span><br>
+                환산: <span style="color:var(--green);font-weight:600;" id="p-cny-krw">—</span>
+              </div>
             </div>
           </div>
           <div class="card" style="background:var(--bg3);margin-bottom:0;">
@@ -1168,6 +1218,11 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
               <tbody id="admin-users-tbody"></tbody>
             </table>
           </div>
+          <!-- 삭제 로그 섹션 -->
+          <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:18px;">
+            <div style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:12px;">🗑 계정 삭제 로그</div>
+            <div id="admin-delete-logs-wrap" style="font-size:12px;color:var(--text3);">로딩 중...</div>
+          </div>
         </div>
       </div>
 
@@ -1214,6 +1269,18 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
             <div id="migration-status" style="font-size:12px;color:var(--text3);margin-top:10px;min-height:18px;"></div>
           </div>
           <div class="card">
+            <div class="card-title">☁ 클라우드 백업 (Supabase Storage)</div>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:12px;line-height:1.6;">
+              매 영업일(월~금) <b>23:59(KST)</b>에 서버에서 자동 백업됩니다.<br>
+              아래 버튼으로 지금 즉시 클라우드에 백업본을 생성할 수 있습니다.
+            </p>
+            <button class="btn btn-primary" onclick="triggerCloudBackup()"
+              style="width:100%;font-size:12px;margin-bottom:6px;background:rgba(139,92,246,0.8);border-color:rgba(139,92,246,0.5);">
+              ☁ 클라우드 수동 백업 실행
+            </button>
+            <div id="cloud-backup-status" style="font-size:11px;color:var(--text3);min-height:16px;"></div>
+          </div>
+          <div class="card">
             <div class="card-title">↓ JSON 전체 백업</div>
             <p style="font-size:13px;color:var(--text3);margin-bottom:16px;line-height:1.6;">현재 Supabase에 저장된 모든 데이터를 JSON 파일로 내보냅니다. 정기적으로 백업하세요.</p>
             <button class="btn btn-primary" onclick="exportAllData()" style="width:100%;background:rgba(16,185,129,0.15);border-color:rgba(16,185,129,0.3);color:var(--green);">JSON 백업 다운로드</button>
@@ -1227,6 +1294,36 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
             <div class="card-title">Supabase 연결 상태</div>
             <div id="sb-status-detail" style="font-size:13px;color:var(--text3);line-height:1.8;">확인 중...</div>
             <button class="btn btn-ghost" onclick="adminCheckStatus()" style="margin-top:12px;width:100%;font-size:12px;">연결 재확인</button>
+          </div>
+          <div class="card" style="grid-column:1/-1;">
+            <div class="card-title">🗑 선택적 데이터 초기화 <span style="font-size:11px;color:var(--text3);font-weight:400;">(법인·메뉴 개별 선택)</span></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+              <div>
+                <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:6px;">법인 선택</label>
+                <select id="sel-reset-company" style="width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:8px 10px;border-radius:8px;font-size:13px;font-family:inherit;">
+                  <option value="ALL">전체 법인</option>
+                  <option value="셀바스에이아이">셀바스에이아이</option>
+                  <option value="셀바스헬스케어">셀바스헬스케어</option>
+                  <option value="메디아나">메디아나</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:6px;">메뉴 선택 (복수 선택 가능)</label>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;padding-top:4px;">
+                  <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" id="sr-daily" value="daily" style="accent-color:var(--accent);"> 운전자금</label>
+                  <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" id="sr-inv" value="investments" style="accent-color:var(--accent);"> 운용자금</label>
+                  <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" id="sr-loan" value="loans" style="accent-color:var(--accent);"> 차입금</label>
+                  <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" id="sr-eq" value="equities" style="accent-color:var(--accent);"> 지분투자</label>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px;">
+              <button class="btn btn-ghost" onclick="previewSelectiveReset()" style="font-size:12px;padding:7px 14px;">대상 건수 확인</button>
+              <input type="password" id="selective-reset-code" placeholder="마스터 접속 코드"
+                style="flex:1;background:var(--bg3);border:1px solid rgba(239,68,68,0.3);color:var(--text);padding:8px 12px;border-radius:8px;font-size:13px;font-family:inherit;">
+              <button class="btn" onclick="runSelectiveReset()" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:var(--red);padding:8px 16px;border-radius:8px;font-size:13px;font-family:inherit;white-space:nowrap;">선택 초기화 실행</button>
+            </div>
+            <div id="selective-reset-status" style="font-size:12px;color:var(--text3);min-height:16px;"></div>
           </div>
           <div class="card" style="border-color:rgba(239,68,68,0.35);grid-column:1/-1;">
             <div class="card-title" style="color:var(--red);">⚠ Supabase 데이터 전체 초기화</div>
@@ -1245,8 +1342,6 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
             <div id="reset-status" style="font-size:12px;margin-top:8px;min-height:16px;"></div>
           </div>
         </div>
-      </div>
-
       </div>
 
     </div>
@@ -1432,7 +1527,7 @@ function normalizeRow(table, r) {
   // ── 테이블별 허용 컬럼 화이트리스트 (Supabase 스키마 기준) ──
   const COLUMNS = {
     daily: ['id','company','date','writer','krw_demand','krw_govt','krw_mmda',
-            'fx_usd','fx_eur','fx_jpy','fx_krw','memo'],
+            'fx_usd','fx_eur','fx_jpy','fx_gbp','fx_cny','fx_krw','memo'],
     investments: ['id','company','bank','product','currency','amount','available',
                   'rate','start_date','maturity','active',
                   'bond_name','bond_ticker','bond_qty','bond_price'],
@@ -1519,7 +1614,7 @@ async function initSupabase() {
   }
 }
 
-let FX = { KRW: 1, USD: 1380, EUR: 1500, JPY: 9.2, GBP: 1750 }; 
+let FX = { KRW: 1, USD: 1380, EUR: 1500, JPY: 9.2, GBP: 1750, CNY: 190 }; 
 let FX_SOURCE = 'ExchangeRate-API';
 let currentCompany = '셀바스에이아이';
 let mainChartObj = null;
@@ -1621,6 +1716,8 @@ document.addEventListener('DOMContentLoaded', function() {
   if (codeModal) codeModal.addEventListener('click', function(e) {
     if (e.target === this) closeCodeModal();
   });
+
+  // 자동 백업: Supabase Edge Function + pg_cron 서버 스케줄러로 대체
 });
 
 // ── 코드 강도 표시 ─────────────────────────────────────────────
@@ -1836,6 +1933,8 @@ function applyAccessControl(user) {
   const firstTab   = document.querySelector('.ci-tab:not([style*="none"])');
   const initCompany = user.role === 'company' ? user.company : '셀바스에이아이';
   setCompany(initCompany, firstTab);
+  // 모바일 바 동기화 (래핑 없이 직접 호출)
+  updateMobileCompanyBar(user);
 }
 function doLogout() {
   if (!confirm('로그아웃 하시겠습니까?')) return;
@@ -1880,11 +1979,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (saved) {
       try {
         currentUser = JSON.parse(saved);
-        applyAccessControl(currentUser);
-      } catch(e) { sessionStorage.removeItem('treasury_user'); }
+        applyAccessControl(currentUser); // 내부에서 setCompany 호출
+      } catch(e) {
+        sessionStorage.removeItem('treasury_user');
+        // 세션 오류 시에만 기본 초기화
+        setCompany('셀바스에이아이', document.querySelector('.ci-tab'));
+      }
+    } else {
+      // 로그인 전 상태: 대시보드 탭만 초기화 (로그인 오버레이 표시 중)
+      setCompany('셀바스에이아이', document.querySelector('.ci-tab'));
     }
     refreshFX();
-    setCompany('셀바스에이아이', document.querySelector('.ci-tab'));
   });
 });
 
@@ -1915,7 +2020,13 @@ function setCompany(comp, btnEl) {
       if (el) el.value = comp;
     });
   }
-  renderDashboard(); renderInvestments(); renderLoans(); renderEquity(); filterHistory(); renderDailyHistory(1);
+  // 각 렌더 함수를 try-catch로 감싸서 한 함수 오류가 나머지를 막지 않도록
+  try { renderDashboard(); } catch(e) { console.error('renderDashboard 오류:', e); }
+  try { renderInvestments(); } catch(e) { console.error('renderInvestments 오류:', e); }
+  try { renderLoans(); } catch(e) { console.error('renderLoans 오류:', e); }
+  try { renderEquity(); } catch(e) { console.error('renderEquity 오류:', e); }
+  try { filterHistory(); } catch(e) { console.error('filterHistory 오류:', e); }
+  try { renderDailyHistory(1); } catch(e) { console.error('renderDailyHistory 오류:', e); }
 }
 
 function getFiltered(table) {
@@ -1961,49 +2072,107 @@ function syncCompanySelect(selectId) {
 
 // 메뉴 이동 충돌 방지 로직 고도화
 function goto(page) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('page-' + page).classList.add('active');
-  
-  // 사이드바 해당 항목 활성화
-  const navItems = document.querySelectorAll('.nav-item');
-  navItems.forEach(n => {
-    if(n.getAttribute('onclick').includes(`goto('${page}')`)) {
-        n.classList.add('active');
-        document.getElementById('page-title').textContent = n.textContent.trim();
+  // ── 1. 모든 페이지 비활성화 ──────────────────────────────
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+
+  // ── 2. 타겟 페이지 활성화 ────────────────────────────────
+  var targetPage = document.getElementById('page-' + page);
+  if (!targetPage) {
+    console.warn('[goto] 페이지 div 없음: page-' + page);
+    return;
+  }
+  targetPage.classList.add('active');
+
+  // ── 3. 사이드바 활성화 + 타이틀 ─────────────────────────
+  var pageTitleSet = false;
+  document.querySelectorAll('.nav-item').forEach(function(n) {
+    var oc = n.getAttribute('onclick') || '';
+    if (oc.indexOf("goto('" + page + "')") !== -1) {
+      n.classList.add('active');
+      if (!pageTitleSet) {
+        var titleEl = document.getElementById('page-title');
+        if (titleEl) titleEl.textContent = n.textContent.trim();
+        pageTitleSet = true;
+      }
     }
   });
-  
-  // 드롭박스를 현재 currentCompany에 맞춤
-  ['i-company','v-company','l-company','e-company'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el && currentCompany && currentCompany !== 'TOTAL') el.value = currentCompany;
-  });
 
-  if(page === 'dashboard')    { Promise.allSettled([DB.load('daily'),DB.load('investments'),DB.load('loans'),DB.load('equities')]).then(() => renderDashboard()); }
-  if(page === 'input')        { DB.load('daily').catch(()=>{}).then(() => renderDailyHistory(1)); }
-  if(page === 'equity')       { DB.load('equities').catch(()=>{}).then(() => renderEquity()); }
-  if(page === 'history')      { Promise.allSettled([DB.load('daily'),DB.load('investments'),DB.load('loans'),DB.load('equities')]).then(() => filterHistory()); }
-  if(page === 'invest')       { DB.load('investments').catch(()=>{}).then(() => renderInvestments()); }
-  if(page === 'fx')           renderFXEquivTable();
-  if(page === 'loans')        { DB.load('loans').catch(()=>{}).then(() => renderLoans()); }
-  if(page === 'admin-users')  adminLoadUsers();
-  if(page === 'admin-data')   adminCheckStatus();
-  if(page === 'admin-mycode') {
-    ['admin-current-code','admin-new-code','admin-new-code2'].forEach(function(id) {
+  // ── 4. 드롭박스 동기화 ───────────────────────────────────
+  if (currentCompany && currentCompany !== 'TOTAL') {
+    ['i-company','v-company','l-company','e-company'].forEach(function(id) {
       var el = document.getElementById(id);
-      if (el) el.value = '';
+      if (el) el.value = currentCompany;
     });
-    var errEl = document.getElementById('admin-code-error');
-    if (errEl) errEl.style.display = 'none';
-    var strEl = document.getElementById('admin-code-strength');
-    if (strEl) strEl.textContent = '';
+  }
+
+  // ── 5. 페이지별 데이터 로드 + 렌더 (try-catch로 안전하게) ─
+  try {
+    if (page === 'dashboard') {
+      Promise.allSettled([
+        DB.load('daily'), DB.load('investments'),
+        DB.load('loans'), DB.load('equities')
+      ]).then(function() { try { renderDashboard(); } catch(e) { console.error('renderDashboard:', e); } });
+    }
+    else if (page === 'input') {
+      DB.load('daily').catch(function(){}).then(function() {
+        try { renderDailyHistory(1); } catch(e) { console.error('renderDailyHistory:', e); }
+      });
+    }
+    else if (page === 'invest') {
+      DB.load('investments').catch(function(){}).then(function() {
+        try { renderInvestments(); } catch(e) { console.error('renderInvestments:', e); }
+      });
+    }
+    else if (page === 'loans') {
+      DB.load('loans').catch(function(){}).then(function() {
+        try { renderLoans(); } catch(e) { console.error('renderLoans:', e); }
+      });
+    }
+    else if (page === 'equity') {
+      DB.load('equities').catch(function(){}).then(function() {
+        try { renderEquity(); } catch(e) { console.error('renderEquity:', e); }
+      });
+    }
+    else if (page === 'history') {
+      Promise.allSettled([
+        DB.load('daily'), DB.load('investments'),
+        DB.load('loans'), DB.load('equities')
+      ]).then(function() { try { filterHistory(); } catch(e) { console.error('filterHistory:', e); } });
+    }
+    else if (page === 'fx') {
+      try { renderFXEquivTable(); } catch(e) { console.error('renderFXEquivTable:', e); }
+    }
+    else if (page === 'policy') {
+      /* 개발 예정 — 렌더 함수 없음, 빈 화면 방지용 */
+    }
+    else if (page === 'report') {
+      /* 개발 예정 — 렌더 함수 없음, 빈 화면 방지용 */
+    }
+    else if (page === 'admin-mycode') {
+      ['admin-current-code','admin-new-code','admin-new-code2'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      var errEl = document.getElementById('admin-code-error');
+      if (errEl) errEl.style.display = 'none';
+      var strEl = document.getElementById('admin-code-strength');
+      if (strEl) strEl.textContent = '';
+    }
+    else if (page === 'admin-users') {
+      try { adminLoadUsers(); } catch(e) { console.error('adminLoadUsers:', e); }
+    }
+    else if (page === 'admin-data') {
+      try { adminCheckStatus(); } catch(e) { console.error('adminCheckStatus:', e); }
+    }
+  } catch(e) {
+    console.error('[goto] 렌더 오류 (page=' + page + '):', e);
   }
 }
 
 async function refreshFX() {
   // 로딩 표시
-  ['usd','eur','jpy'].forEach(c => {
+  ['usd','eur','jpy','gbp','cny'].forEach(c => {
     const el = document.getElementById('sf-'+c);
     if(el) el.textContent = '조회중...';
   });
@@ -2024,7 +2193,8 @@ async function refreshFX() {
             USD: 1 / r.USD,
             EUR: 1 / r.EUR,
             JPY: 1 / r.JPY,
-            GBP: 1 / r.GBP
+            GBP: 1 / r.GBP,
+            CNY: 1 / r.CNY
           };
           success = true;
           FX_SOURCE = 'ExchangeRate-API';
@@ -2047,7 +2217,8 @@ async function refreshFX() {
             USD: k,
             EUR: k / data.rates.EUR,
             JPY: k / data.rates.JPY,
-            GBP: k / data.rates.GBP
+            GBP: k / data.rates.GBP,
+            CNY: k / data.rates.CNY
           };
           success = true;
           FX_SOURCE = 'ExchangeRate-API';
@@ -2068,7 +2239,7 @@ async function refreshFX() {
   // 최종 폴백: 기본값 (어느 API도 실패한 경우)
   if (!success) {
     console.warn('모든 환율 API 실패 — 기본값 적용 (실제 환율과 다를 수 있음)');
-    FX = { KRW: 1, USD: 1378, EUR: 1492, JPY: 9.21, GBP: 1748 };
+    FX = { KRW: 1, USD: 1378, EUR: 1492, JPY: 9.21, GBP: 1748, CNY: 190 };
     FX_SOURCE = '기본값(오프라인)';
   }
 
@@ -2077,7 +2248,7 @@ async function refreshFX() {
 }
 
 function updateFXDisplay() {
-  ['usd','eur','jpy','gbp'].forEach(c => {
+  ['usd','eur','jpy','gbp','cny'].forEach(c => {
     const val = FX[c.toUpperCase()];
     const sf = document.getElementById('sf-'+c);
     if(sf) sf.textContent = val ? val.toFixed(2)+'원' : '—';
@@ -2592,6 +2763,18 @@ async function saveEquity() {
     total_value
   };
 
+  // 이력 수정 모드 확인 (loadEquityHistoryToForm 에서 dataset.historyMode 설정)
+  const saveBtn2 = document.querySelector('#page-equity .form-actions button.btn-primary');
+  const historyId = saveBtn2 && saveBtn2.dataset.historyMode;
+  if (historyId) {
+    eq.id = historyId;
+    delete saveBtn2.dataset.historyMode;
+    await DB.updateOne('equities', eq);
+    showToast('[' + company + '] ' + name + ' 이력 수정 완료', 'success');
+    if (saveBtn2) { saveBtn2.textContent = '지분 기록 및 저장'; saveBtn2.style.background = 'var(--pink)'; }
+    clearEquityForm(); renderEquity(); renderDashboard();
+    return;
+  }
   eq.id = crypto.randomUUID();
   await DB.append('equities', eq);
   showToast('[' + company + '] ' + name + ' ' + (editingEquityKey ? '업데이트' : '저장') + ' 완료', 'success');
@@ -2626,27 +2809,38 @@ function renderEquity() {
 
   const tbody = document.getElementById('equity-tbody');
   if(!latestEq.length) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text3);">등록된 지분증권이 없습니다</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text3);">등록된 지분증권이 없습니다</td></tr>';
+    // 히스토리 패널 숨김
+    const panel = document.getElementById('equity-history-panel');
+    if (panel) panel.style.display = 'none';
     return;
   }
 
-  tbody.innerHTML = latestEq.map(e => `
-    <tr style="cursor:pointer;" onclick="loadEquityToForm('${e.id}')" title="클릭하면 위 폼에 불러옵니다">
-      <td>${e.date}</td>
-      <td>${e.company}</td>
-      <td style="font-weight:600; color:var(--text);">${e.name}${e.ticker ? ` <span style="font-size:11px;color:var(--text3);">(${e.ticker})</span>` : ''}</td>
-      <td>${e.purpose}</td>
-      <td>${e.market}</td>
-      <td><span style="font-size:10px;padding:2px 6px;border-radius:4px;font-weight:500;background:${(e.available||'가용')==='불가용'?'rgba(239,68,68,0.12)':'rgba(16,185,129,0.12)'};color:${(e.available||'가용')==='불가용'?'var(--red)':'var(--green)'};">${e.available||'가용'}</span></td>
-      <td class="td-num">${e.shares.toLocaleString()} 주</td>
-      <td class="td-num">${e.price.toLocaleString()} 원</td>
-      <td class="td-num" style="color:var(--pink); font-weight:700;">${fmtKRW(e.total_value)}</td>
-      <td onclick="event.stopPropagation()">
-        ${e.ticker && e.market !== '비상장' ? `<button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;margin-bottom:3px;border-color:rgba(236,72,153,0.3);color:var(--pink);" onclick="refreshEquityPrice('${e.id}','${e.ticker}','${e.market}')">시세↑</button><br>` : ''}
-        <button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;" onclick="deleteEquity('${e.id}')">삭제</button>
+  tbody.innerHTML = latestEq.map(e => {
+    const key = e.company + '_' + e.name;
+    const isSelected = selectedEquityKey === key;
+    return `<tr style="cursor:pointer;background:${isSelected?'rgba(236,72,153,0.08)':''};"
+      onclick="selectEquityForHistory('${key}','${e.name.replace(/'/g,'\'')}')"
+      title="클릭하면 이력 표시">
+      <td style="font-size:11px;">${e.date}</td>
+      <td style="font-size:11px;color:var(--text3);">${e.company}</td>
+      <td>
+        <div style="font-weight:600;color:var(--text);font-size:13px;">${e.name}</div>
+        ${e.ticker ? `<div style="font-size:10px;color:var(--text3);">${e.ticker} · ${e.market}</div>` : ''}
       </td>
-    </tr>
-  `).join('');
+      <td class="td-num" style="color:var(--pink);font-weight:700;">${fmtKRW(e.total_value)}</td>
+      <td onclick="event.stopPropagation()" style="white-space:nowrap;">
+        ${e.ticker && e.market !== '비상장' ? `<button class="btn btn-ghost" style="padding:2px 7px;font-size:10px;color:var(--pink);border-color:rgba(236,72,153,0.3);margin-bottom:2px;" onclick="refreshEquityPrice('${e.id}','${e.ticker}','${e.market}')">시세↑</button><br>` : ''}
+        <button class="btn btn-ghost" style="padding:2px 7px;font-size:10px;color:var(--red);" onclick="deleteEquity('${e.id}')">삭제</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // 선택된 종목 히스토리 유지
+  if (selectedEquityKey) {
+    const sel = latestEq.find(e => (e.company+'_'+e.name) === selectedEquityKey);
+    if (sel) selectEquityForHistory(selectedEquityKey, sel.name);
+  }
 }
 
 // 목록에서 특정 종목 시세 업데이트 (병렬 조회)
@@ -2859,6 +3053,80 @@ async function migrateLocalToSupabase() {
   renderDashboard();
 }
 
+// ══════════════════════════════════════════════════════════════════
+// 클라우드 백업 트리거 — Supabase Edge Function(treasury-backup) 호출
+//
+// [URL 구조]
+//   https://[프로젝트ID].supabase.co/functions/v1/treasury-backup
+//   ↑ SUPABASE_URL 변수가 이미 프로젝트 URL을 담고 있으므로
+//     아래 edgeFnUrl 은 자동으로 올바른 주소가 됩니다.
+//
+// [배포 확인]
+//   Supabase 대시보드 > Edge Functions 에
+//   'treasury-backup' 함수가 배포되어 있어야 합니다.
+// ══════════════════════════════════════════════════════════════════
+async function triggerCloudBackup() {
+  const statusEl = document.getElementById('cloud-backup-status');
+  const btn = document.querySelector('[onclick="triggerCloudBackup()"]');
+
+  if (statusEl) { statusEl.textContent = '☁ 백업 요청 중...'; statusEl.style.color = 'var(--text3)'; }
+  if (btn)      { btn.disabled = true; btn.style.opacity = '0.6'; }
+
+  // ── Edge Function 엔드포인트 ──────────────────────────────────
+  // SUPABASE_URL = 'https://[프로젝트ID].supabase.co'  (이미 코드 상단에 선언됨)
+  // 아래 경로는 Supabase Edge Functions 표준 경로이므로 수정하지 마세요.
+  const edgeFnUrl = SUPABASE_URL + '/functions/v1/treasury-backup';
+
+  try {
+    const res = await fetch(edgeFnUrl, {
+      method: 'POST',
+      headers: {
+        // anon key 인증 — Edge Function이 요청을 수신하기 위해 필수
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+      },
+      body: JSON.stringify({ source: 'manual', ts: Date.now() }),
+    });
+
+    // HTTP 에러 처리 (4xx / 5xx)
+    if (!res.ok) {
+      let errMsg = 'HTTP ' + res.status;
+      try { const j = await res.json(); errMsg += ': ' + (j.error || JSON.stringify(j)); }
+      catch { errMsg += ': ' + (await res.text()).slice(0, 120); }
+      throw new Error(errMsg);
+    }
+
+    const result = await res.json();
+    const fileName = result.fileName || '완료';
+
+    if (statusEl) {
+      statusEl.textContent = '✅ 클라우드 백업 완료 — ' + fileName;
+      statusEl.style.color = 'var(--green)';
+    }
+    showToast('☁ 클라우드 백업 완료: ' + fileName, 'success');
+    console.log('[클라우드백업]', result);
+
+  } catch(e) {
+    // "Failed to fetch" → Edge Function URL 오류 또는 CORS / 네트워크 문제
+    const msg = (e && e.message) ? e.message : String(e);
+    console.error('[클라우드백업] 실패:', msg);
+
+    let hint = '';
+    if (msg.includes('Failed to fetch')) {
+      hint = ' (URL 확인 또는 Edge Function 미배포)';
+    }
+
+    if (statusEl) {
+      statusEl.textContent = '❌ 백업 실패: ' + msg + hint;
+      statusEl.style.color = 'var(--red)';
+    }
+    showToast('☁ 클라우드 백업 실패', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+  }
+}
+
 // JSON 백업 (전체 다운로드)
 function exportAllData() {
   const data = {};
@@ -2897,8 +3165,17 @@ async function importDataFromJSON() {
 
     const tables = ['daily','investments','loans','equities','price_history'];
     for (const table of tables) {
-      if (data[table]) {
-        await DB.set(table, data[table]);
+      if (!data[table] || !data[table].length) continue;
+      // 기존 데이터 전체 삭제 후 복원
+      const sbT = {'daily':'daily','investments':'investments','loans':'loans','equities':'equities','price_history':'price_history'}[table];
+      await sbFetch('/rest/v1/' + sbT + '?id=not.is.null', { method: 'DELETE' });
+      _cache[table] = [];
+      // 50건씩 배치 INSERT
+      for (let i = 0; i < data[table].length; i += 50) {
+        const batch = data[table].slice(i, i + 50);
+        for (const item of batch) {
+          await DB.append(table, item);
+        }
       }
     }
 
@@ -3313,24 +3590,55 @@ function updateMainChart(records) {
 }
 
 function updateEquityChart(allEqRecords) {
-  const ctx = document.getElementById('equityChart').getContext('2d');
+  const ctx = document.getElementById('equityChart');
+  if (!ctx) return;
   if (equityChartObj) equityChartObj.destroy();
-  if (!allEqRecords.length) return;
+
+  // 종목별 필터
+  const filtered = equityChartStock
+    ? allEqRecords.filter(e => e.name === equityChartStock)
+    : allEqRecords;
+
+  // 종목 버튼 렌더링
+  renderEquityStockBtns(allEqRecords);
+
+  if (!filtered.length) return;
+
+  // 기간 필터 (equityChartDays 기준)
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - equityChartDays);
+  const cutoffStr = cutoff.toISOString().slice(0,10);
 
   const dateMap = {};
-  const allDates = [...new Set(allEqRecords.map(e=>e.date))].sort();
-  let runningState = {}; 
+  const allDates = [...new Set(filtered.map(e=>e.date))].sort().filter(d => d >= cutoffStr);
+  let runningState = {};
+  // 기간 이전 최신 상태로 초기화
+  filtered.filter(e => e.date < cutoffStr)
+    .sort((a,b) => a.date.localeCompare(b.date))
+    .forEach(r => { runningState[r.company+'_'+r.name] = r.total_value; });
+
   allDates.forEach(date => {
-    const recordsOnDate = allEqRecords.filter(e=>e.date === date);
-    recordsOnDate.forEach(r => { runningState[r.company+'_'+r.name] = r.total_value; });
+    filtered.filter(e=>e.date === date).forEach(r => { runningState[r.company+'_'+r.name] = r.total_value; });
     dateMap[date] = Object.values(runningState).reduce((a,b)=>a+b, 0);
   });
 
-  const recentDates = allDates.slice(-14);
-  const labels = recentDates.map(d => d.slice(5));
-  const data = recentDates.map(d => dateMap[d]);
+  if (!allDates.length) return;
 
-  equityChartObj = new Chart(ctx, { type: 'line', data: { labels, datasets: [{ label: '지분투자 평가금액', data, borderColor: '#ec4899', backgroundColor: 'rgba(236,72,153,0.1)', tension: 0.4, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', callback: v => (v/100000000).toFixed(0) + '억' } }, x: { grid: { display: false }, ticks: { color: '#64748b' } } } } });
+  const labels = allDates.map(d => equityChartDays <= 30 ? d.slice(5) : d.slice(2,7));
+  const data   = allDates.map(d => dateMap[d]);
+  const label  = equityChartStock ? equityChartStock + ' 평가금액' : '지분투자 합계';
+
+  equityChartObj = new Chart(ctx.getContext('2d'), {
+    type: 'line',
+    data: { labels, datasets: [{ label, data, borderColor: '#ec4899', backgroundColor: 'rgba(236,72,153,0.1)', tension: 0.4, fill: true, pointRadius: allDates.length > 60 ? 0 : 3 }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#94a3b8', font:{size:11} } } },
+      scales: {
+        y: { grid:{color:'rgba(255,255,255,0.05)'}, ticks:{color:'#64748b', callback: v=>(v/100000000).toFixed(1)+'억'} },
+        x: { grid:{display:false}, ticks:{color:'#64748b', maxTicksLimit: equityChartDays<=30?14:12, maxRotation:0} }
+      }
+    }
+  });
 }
 
 // ══════════════════════════════════════════════════════
@@ -3365,6 +3673,8 @@ function loadDailyToForm(date, company) {
   setFmt('i-fx-usd',     r.fx_usd);
   setFmt('i-fx-eur',     r.fx_eur);
   setFmt('i-fx-jpy',     r.fx_jpy);
+  setFmt('i-fx-gbp',     r.fx_gbp || 0);
+  setFmt('i-fx-cny',     r.fx_cny || 0);
 
   // 메모
   const memoEl = document.getElementById('i-memo');
@@ -3408,13 +3718,15 @@ async function saveDaily() {
     fx_usd: parseNum(document.getElementById('i-fx-usd').value),
     fx_eur: parseNum(document.getElementById('i-fx-eur').value),
     fx_jpy: parseNum(document.getElementById('i-fx-jpy').value),
+    fx_gbp: parseNum(document.getElementById('i-fx-gbp').value),
+    fx_cny: parseNum(document.getElementById('i-fx-cny').value),
     loan_krw: l.filter(x=>x.currency==='KRW').reduce((s,x)=>s+x.amount,0),
     loan_fx:  l.filter(x=>x.currency!=='KRW').reduce((s,x)=>s+calcKRW(x.amount,x.currency),0),
     inv_krw:  i.filter(x=>x.currency==='KRW').reduce((s,x)=>s+x.amount,0),
     inv_fx:   i.filter(x=>x.currency!=='KRW').reduce((s,x)=>s+calcKRW(x.amount,x.currency),0),
     memo: document.getElementById('i-memo').value
   };
-  r.fx_krw = r.fx_usd*FX.USD + r.fx_eur*FX.EUR + r.fx_jpy*FX.JPY;
+  r.fx_krw = r.fx_usd*FX.USD + r.fx_eur*FX.EUR + r.fx_jpy*FX.JPY + (r.fx_gbp||0)*FX.GBP + (r.fx_cny||0)*FX.CNY;
 
   const rs = DB.get('daily');
   const existingDaily = rs.find(x => x.date === d && x.company === company);
@@ -3428,7 +3740,7 @@ async function saveDaily() {
   }
 
   showToast('[' + company + '] ' + d + ' 운전자금 저장 완료', 'success');
-  ['i-krw-demand','i-krw-govt','i-krw-mmda','i-fx-usd','i-fx-eur','i-fx-jpy','i-memo'].forEach(function(id) {
+  ['i-krw-demand','i-krw-govt','i-krw-mmda','i-fx-usd','i-fx-eur','i-fx-jpy','i-fx-gbp','i-fx-cny','i-memo'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -4021,7 +4333,7 @@ function renderDailyHistory(page) {
   }
 
   if (!pageData.length) {
-    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--text3);">입력된 데이터가 없습니다</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:24px;color:var(--text3);">입력된 데이터가 없습니다</td></tr>';
     if (pager) pager.innerHTML = '';
     return;
   }
@@ -4036,6 +4348,8 @@ function renderDailyHistory(page) {
       <td class="td-num">${r.fx_usd > 0 ? r.fx_usd.toLocaleString()+'$' : '—'}</td>
       <td class="td-num">${r.fx_eur > 0 ? r.fx_eur.toLocaleString()+'€' : '—'}</td>
       <td class="td-num">${r.fx_jpy > 0 ? r.fx_jpy.toLocaleString()+'¥' : '—'}</td>
+      <td class="td-num">${(r.fx_gbp||0) > 0 ? (r.fx_gbp).toLocaleString()+'£' : '—'}</td>
+      <td class="td-num">${(r.fx_cny||0) > 0 ? (r.fx_cny).toLocaleString()+'¥₁' : '—'}</td>
       <td class="td-num" style="color:var(--accent2);font-weight:600;">${fmtKRW(r.fx_krw||0)}</td>
       <td style="font-size:11px;color:var(--text3);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.memo||''}</td>
       <td>
@@ -4141,13 +4455,15 @@ function renderFXEquivTable() {
     return;
   }
   const rows = [
-    {cur:'USD', sym:'$', amt: latest.fx_usd, rate: FX.USD},
-    {cur:'EUR', sym:'€', amt: latest.fx_eur, rate: FX.EUR},
-    {cur:'JPY', sym:'¥', amt: latest.fx_jpy, rate: FX.JPY},
+    {cur:'USD', sym:'$',  amt: latest.fx_usd, rate: FX.USD},
+    {cur:'EUR', sym:'€',  amt: latest.fx_eur, rate: FX.EUR},
+    {cur:'JPY', sym:'¥',  amt: latest.fx_jpy, rate: FX.JPY},
+    {cur:'GBP', sym:'£',  amt: latest.fx_gbp||0, rate: FX.GBP},
+    {cur:'CNY', sym:'¥₁', amt: latest.fx_cny||0, rate: FX.CNY},
   ].filter(r => r.amt > 0);
 
   // 사이드바 + 환율페이지 보유분 업데이트
-  ['usd','eur','jpy'].forEach(c => {
+  ['usd','eur','jpy','gbp','cny'].forEach(c => {
     const amtEl = document.getElementById('p-'+c+'-amt');
     const krwEl = document.getElementById('p-'+c+'-krw');
     const val   = latest['fx_'+c] || 0;
@@ -4327,7 +4643,7 @@ async function adminLoadUsers() {
   if (loading) loading.style.display = '';
   if (wrap) wrap.style.display = 'none';
   try {
-    const codes = await sbFetch('/rest/v1/access_codes?order=created_at.asc');
+    const codes = await sbFetch('/rest/v1/access_codes?deleted_at=is.null&order=created_at.asc');
     if (!codes) throw new Error('조회 실패');
     window._adminCodesList = codes;
     if (loading) loading.style.display = 'none';
@@ -4341,14 +4657,15 @@ async function adminLoadUsers() {
       var statusColor = isActive ? 'var(--green)' : 'var(--red)';
       var statusText = isActive ? '활성' : '비활성';
       var resetBtn = '<button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;margin-right:4px;" onclick="adminResetCode(' + idx + ')">초기화</button>';
-      var toggleBtn = !isMaster ? '<button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;color:var(--red);" onclick="adminToggleActive(' + idx + ')">' + (isActive ? '비활성화' : '활성화') + '</button>' : '';
+      var toggleBtn = !isMaster ? '<button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;color:var(--red);margin-right:4px;" onclick="adminToggleActive(' + idx + ')">' + (isActive ? '비활성화' : '활성화') + '</button>' : '';
+      var deleteBtn = !isMaster ? '<button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;color:var(--red);border-color:rgba(239,68,68,0.5);" onclick="adminDeleteUser(' + idx + ')">삭제</button>' : '<span style="font-size:10px;color:var(--text3);">삭제불가</span>';
       rows.push('<tr>'
         + '<td style="font-weight:500;">' + (c.label || c.user_name) + '</td>'
         + '<td><code style="background:var(--bg3);padding:2px 8px;border-radius:4px;font-size:12px;">' + c.access_code + '</code></td>'
         + '<td>' + (roleLabel[c.role] || c.role) + '</td>'
         + '<td style="font-size:12px;color:var(--text3);">' + (c.company || '—') + '</td>'
         + '<td><span style="font-size:10px;padding:2px 7px;border-radius:4px;font-weight:500;background:' + statusBg + ';color:' + statusColor + ';">' + statusText + '</span></td>'
-        + '<td onclick="event.stopPropagation()" style="white-space:nowrap;">' + resetBtn + toggleBtn + '</td>'
+        + '<td onclick="event.stopPropagation()" style="white-space:nowrap;">' + resetBtn + toggleBtn + deleteBtn + '</td>'
         + '</tr>');
     });
     tbody.innerHTML = rows.join('');
@@ -4356,6 +4673,8 @@ async function adminLoadUsers() {
     console.error(e);
     if (loading) { loading.style.display = ''; loading.textContent = '불러오기 실패 — 새로고침 후 다시 시도하세요.'; }
   }
+  // 삭제 로그도 함께 로드
+  adminLoadDeleteLogs();
 }
 
 async function adminResetCode(idx) {
@@ -4536,6 +4855,220 @@ async function resetAllSupabaseData() {
   if (btn) { btn.disabled = false; btn.textContent = '전체 데이터 초기화'; }
 }
 
+
+// ══════════════════════════════════════════════════════════════
+// S-05: 선택적 데이터 초기화
+// ══════════════════════════════════════════════════════════════
+async function previewSelectiveReset() {
+  const company = document.getElementById('sel-reset-company').value;
+  const tables = ['daily','investments','loans','equities'].filter(t =>
+    document.getElementById('sr-' + (t==='daily'?'daily':t==='investments'?'inv':t==='loans'?'loan':'eq'))?.checked
+  );
+  const statusEl = document.getElementById('selective-reset-status');
+  if (!tables.length) { statusEl.textContent = '메뉴를 하나 이상 선택하세요.'; statusEl.style.color='var(--amber)'; return; }
+  statusEl.textContent = '건수 확인 중...'; statusEl.style.color='var(--text3)';
+  const tbMap = {daily:'daily',investments:'investments',loans:'loans',equities:'equities'};
+  let msg = [];
+  for (const t of tables) {
+    const q = company === 'ALL'
+      ? '/rest/v1/' + tbMap[t] + '?select=id'
+      : '/rest/v1/' + tbMap[t] + '?select=id&company=eq.' + encodeURIComponent(company);
+    const rows = await sbFetch(q);
+    const label = {daily:'운전자금',investments:'운용자금',loans:'차입금',equities:'지분투자'}[t];
+    msg.push(label + ' ' + (rows ? rows.length : '?') + '건');
+  }
+  statusEl.textContent = '삭제 대상: ' + msg.join(' / ');
+  statusEl.style.color = 'var(--amber)';
+}
+
+async function runSelectiveReset() {
+  const company  = document.getElementById('sel-reset-company').value;
+  const inputCode = document.getElementById('selective-reset-code').value.trim();
+  const statusEl  = document.getElementById('selective-reset-status');
+  const tables = ['daily','investments','loans','equities'].filter(t =>
+    document.getElementById('sr-' + (t==='daily'?'daily':t==='investments'?'inv':t==='loans'?'loan':'eq'))?.checked
+  );
+  if (!tables.length) { statusEl.textContent = '메뉴를 선택하세요.'; statusEl.style.color='var(--red)'; return; }
+  if (!inputCode)      { statusEl.textContent = '마스터 코드를 입력하세요.'; statusEl.style.color='var(--red)'; return; }
+
+  // 마스터 코드 검증
+  let verified = false;
+  try {
+    const d = await sbFetch('/rest/v1/access_codes?role=eq.master&is_active=eq.true&limit=1');
+    if (d && d.length > 0 && d[0].access_code === inputCode) verified = true;
+  } catch(e) {}
+  if (!verified) { statusEl.textContent = '마스터 코드가 올바르지 않습니다.'; statusEl.style.color='var(--red)'; return; }
+
+  const coLabel = company === 'ALL' ? '전체 법인' : company;
+  const tbLabels = tables.map(t=>({daily:'운전자금',investments:'운용자금',loans:'차입금',equities:'지분투자'}[t])).join(', ');
+  if (!confirm(`[${coLabel}] ${tbLabels} 데이터를 삭제합니다.
+복구 불가능합니다. 계속하시겠습니까?`)) return;
+
+  statusEl.textContent = '진행 중...'; statusEl.style.color='var(--amber)';
+  let ok = true;
+  for (const t of tables) {
+    const q = company === 'ALL'
+      ? '/rest/v1/' + t + '?id=not.is.null'
+      : '/rest/v1/' + t + '?company=eq.' + encodeURIComponent(company);
+    const res = await sbFetch(q, { method: 'DELETE' });
+    if (res === null) ok = false;
+    // 캐시도 제거
+    if (company === 'ALL') _cache[t] = [];
+    else _cache[t] = (_cache[t]||[]).filter(r => r.company !== company);
+  }
+  document.getElementById('selective-reset-code').value = '';
+  statusEl.textContent = ok ? '✅ 초기화 완료' : '⚠ 일부 실패 — 연결 확인';
+  statusEl.style.color = ok ? 'var(--green)' : 'var(--red)';
+  if (ok) { renderDashboard(); showToast('선택 초기화 완료', 'success'); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// S-01: 계정 삭제 + 삭제 로그
+// ══════════════════════════════════════════════════════════════
+// ── 소프트 딜리트: deleted_at PATCH ──────────────────────
+async function adminDeleteUser(idx) {
+  const c = (window._adminCodesList || [])[parseInt(idx)];
+  if (!c) return;
+  if (c.role === 'master') { showToast('Master 계정은 삭제할 수 없습니다', 'error'); return; }
+  if (currentUser && c.id === currentUser.sb_id) { showToast('본인 계정은 삭제할 수 없습니다', 'error'); return; }
+  if (!confirm('[' + (c.label||c.user_name) + '] 계정을 삭제합니다.\n삭제된 계정은 하단 로그에서 확인할 수 있습니다.\n계속하시겠습니까?')) return;
+
+  // 소프트 딜리트: deleted_at에 현재 시각 PATCH
+  const now = new Date().toISOString();
+  const res = await sbFetch('/rest/v1/access_codes?id=eq.' + c.id, {
+    method: 'PATCH',
+    body: JSON.stringify({ deleted_at: now, is_active: false }),
+  });
+  if (res !== null) {
+    showToast((c.label||c.user_name) + ' 계정 삭제 완료', 'success');
+    adminLoadUsers();
+  } else {
+    showToast('삭제 실패 — 연결 확인', 'error');
+  }
+}
+
+// 삭제된 계정 로그: deleted_at=not.is.null 조회
+async function adminLoadDeleteLogs() {
+  const wrap = document.getElementById('admin-delete-logs-wrap');
+  if (!wrap) return;
+  const data = await sbFetch('/rest/v1/access_codes?deleted_at=not.is.null&order=deleted_at.desc&limit=50');
+  if (!data || !data.length) {
+    wrap.innerHTML = '<p style="font-size:12px;color:var(--text3);">삭제 이력이 없습니다.</p>';
+    return;
+  }
+  wrap.innerHTML = '<div class="table-wrap"><table>' +
+    '<thead><tr><th>삭제일시</th><th>사용자명</th><th>접속코드</th><th>역할</th><th>법인</th></tr></thead>' +
+    '<tbody>' + data.map(function(r) {
+      return '<tr>' +
+        '<td style="font-size:11px;">' + (r.deleted_at||'').slice(0,16).replace('T',' ') + '</td>' +
+        '<td>' + (r.label||r.user_name||'') + '</td>' +
+        '<td style="font-size:11px;color:var(--text3);">' + (r.access_code||'') + '</td>' +
+        '<td>' + (r.role||'') + '</td>' +
+        '<td style="font-size:11px;">' + (r.company||'—') + '</td>' +
+        '</tr>';
+    }).join('') + '</tbody></table></div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// S-02: 지분투자 차트 기간 + 종목 선택
+// ══════════════════════════════════════════════════════════════
+let equityChartDays = 14;
+let equityChartStock = null; // null = 전체
+
+function setEquityPeriod(days, btn) {
+  equityChartDays = days;
+  document.querySelectorAll('.eq-period-btn').forEach(b => {
+    b.classList.remove('active');
+    b.classList.add('btn-ghost');
+  });
+  if (btn) { btn.classList.add('active'); btn.classList.remove('btn-ghost'); }
+  const allEq = getFiltered('equities').sort((a,b)=>a.date.localeCompare(b.date));
+  updateEquityChart(allEq);
+}
+
+function setEquityStock(name, btn) {
+  equityChartStock = (equityChartStock === name) ? null : name;
+  // 드롭다운 동기화
+  const sel = document.getElementById('dash-equity-filter');
+  if (sel) sel.value = equityChartStock || '';
+  const allEq = getFiltered('equities').sort((a,b)=>a.date.localeCompare(b.date));
+  updateEquityChart(allEq);
+}
+
+// 드롭다운 종목 목록 동적 업데이트
+function renderEquityStockBtns(allEq) {
+  const sel = document.getElementById('dash-equity-filter');
+  if (!sel) return;
+  const names = [...new Set(allEq.map(e => e.name))];
+  // 현재 선택값 보존
+  const curVal = equityChartStock || '';
+  sel.innerHTML = '<option value="">전체 종목</option>' +
+    names.map(n => '<option value="' + n + '"' + (n === curVal ? ' selected' : '') + '>' + n + '</option>').join('');
+}
+
+function onEquityFilterChange() {
+  const sel = document.getElementById('dash-equity-filter');
+  equityChartStock = sel ? (sel.value || null) : null;
+  const allEq = getFiltered('equities').sort((a,b)=>a.date.localeCompare(b.date));
+  updateEquityChart(allEq);
+}
+
+// ══════════════════════════════════════════════════════════════
+// S-03: 지분투자 테이블 분할 — 히스토리 렌더링
+// ══════════════════════════════════════════════════════════════
+let selectedEquityKey = null;
+
+function selectEquityForHistory(key, name) {
+  selectedEquityKey = key;
+  const panel = document.getElementById('equity-history-panel');
+  const title = document.getElementById('equity-history-title');
+  if (!panel) return;
+  panel.style.display = '';
+  if (title) title.textContent = '📋 ' + name + ' 입력 이력';
+
+  const allEq = DB.get('equities').filter(e => (e.company + '_' + e.name) === key)
+    .sort((a,b) => b.date.localeCompare(a.date));
+
+  const tbody = document.getElementById('equity-history-tbody');
+  if (!tbody) return;
+  if (!allEq.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);">이력 없음</td></tr>';
+    return;
+  }
+  tbody.innerHTML = allEq.map(e => `
+    <tr style="cursor:pointer;" onclick="loadEquityHistoryToForm('${e.id}')" title="클릭하면 수정 가능">
+      <td style="color:var(--accent2);">${e.date}</td>
+      <td class="td-num">${(e.price||0).toLocaleString()}원</td>
+      <td class="td-num">${(e.shares||0).toLocaleString()}주</td>
+      <td class="td-num" style="color:var(--pink);font-weight:600;">${fmtKRW(e.total_value)}</td>
+      <td><button class="btn btn-ghost" style="padding:2px 7px;font-size:10px;color:var(--amber);" onclick="event.stopPropagation();loadEquityHistoryToForm('${e.id}')">수정</button></td>
+    </tr>`).join('');
+}
+
+function loadEquityHistoryToForm(id) {
+  const eq = DB.get('equities').find(e => String(e.id) === String(id));
+  if (!eq) return;
+  // 기존 loadEquityToForm 호출 (id 기반)
+  loadEquityToForm(id);
+  // 저장 버튼을 "이력 수정 저장" 모드로 변경
+  const saveBtn = document.querySelector('#page-equity .form-actions button.btn-primary');
+  if (saveBtn) {
+    saveBtn.textContent = '이력 수정 저장 (' + eq.date + ')';
+    saveBtn.style.background = 'var(--amber)';
+    saveBtn.dataset.historyMode = id; // 이력 수정 모드 표시
+  }
+  showToast(eq.date + ' 이력을 수정합니다', '');
+}
+
+// ══════════════════════════════════════════════════════════════
+// S-04: 자동 백업 스케줄러 (매 영업일 11:59)
+// ══════════════════════════════════════════════════════════════
+// startAutoBackupScheduler: Supabase pg_cron으로 대체
+
+// runAutoBackup: Supabase Edge Function(treasury-backup)으로 대체
+
+
+
 async function adminCheckStatus() {
   const el = document.getElementById('sb-status-detail');
   if (!el) return;
@@ -4607,12 +5140,7 @@ function mobileSwitchCompany(company, el) {
   setCompany(company, tab);
 }
 
-// applyAccessControl 후 모바일 UI 동기화
-const _origApply = applyAccessControl;
-applyAccessControl = function(user) {
-  _origApply(user);
-  updateMobileCompanyBar(user);
-};
+// updateMobileCompanyBar는 applyAccessControl 내부에서 직접 호출됨 (아래 참조)
 
 // 모바일 회사 선택 바 표시 제어 — 단독 함수로 분리
 function updateMobileCompanyBar(user) {
@@ -4658,7 +5186,7 @@ function filterHistory() {
 
   tbody.innerHTML = records.map(r => {
     const opKrw = r.krw_demand + r.krw_govt + r.krw_mmda;
-    const fxKrw = r.fx_krw || 0;
+    const fxKrw = r.fx_krw || (r.fx_usd||0)*FX.USD + (r.fx_eur||0)*FX.EUR + (r.fx_jpy||0)*FX.JPY + (r.fx_gbp||0)*FX.GBP + (r.fx_cny||0)*FX.CNY;
     const opTotal = opKrw + fxKrw;
 
     // 해당 날짜 기준 운용자금 (active이면서 가입일 ≤ 날짜 ≤ 만기일)
@@ -4688,6 +5216,8 @@ function filterHistory() {
       '<td class="td-num">' + (r.fx_usd > 0 ? r.fx_usd.toLocaleString() + '$' : '—') + '</td>' +
       '<td class="td-num">' + (r.fx_eur > 0 ? r.fx_eur.toLocaleString() + '€' : '—') + '</td>' +
       '<td class="td-num">' + (r.fx_jpy > 0 ? r.fx_jpy.toLocaleString() + '¥' : '—') + '</td>' +
+      '<td class="td-num">' + ((r.fx_gbp||0) > 0 ? (r.fx_gbp).toLocaleString() + '£' : '—') + '</td>' +
+      '<td class="td-num">' + ((r.fx_cny||0) > 0 ? (r.fx_cny).toLocaleString() + '¥₁' : '—') + '</td>' +
       '<td class="td-num" style="color:var(--accent2);">' + fmtKRW(fxKrw) + '</td>' +
       '<td class="td-num" style="color:var(--green);">' + (invTotal > 0 ? fmtKRW(invTotal) : '—') + '</td>' +
       '<td class="td-num" style="color:var(--amber);">' + (loanTotal > 0 ? fmtKRW(loanTotal) : '—') + '</td>' +
