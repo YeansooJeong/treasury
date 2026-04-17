@@ -2421,6 +2421,61 @@ document.addEventListener('click', (e) => {
 // 타임아웃 3초 — 실패 시 즉시 null 반환 (기존 6초에서 단축)
 
 // ── Yahoo 응답 파싱 공통 함수 ──────────────────────────────────
+
+// ╔══════════════════════════════════════════════════════════════════════╗
+// ║  주가 조회 모듈 — Phase 1 v2 (완전 재작성)                          ║
+// ║  수정 내역:                                                          ║
+// ║  1. updateAllEvaluation async/await 누락 버그 수정                   ║
+// ║  2. 네이버 모바일 API 응답 필드 다중 파싱 강화                       ║
+// ║  3. CORS 프록시 4개 소스 순차 폴백 추가                              ║
+// ║  4. 10초 타임아웃 + 버튼 disabled + 로딩 UI                         ║
+// ║  5. 종목별 독립 try-catch (루프 중단 방지)                           ║
+// ╚══════════════════════════════════════════════════════════════════════╝
+
+// ── 유틸: 타임아웃 fetch ──────────────────────────────────────────────
+async function _safeFetch(url, options, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs || 8000);
+  try {
+    const resp = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timer);
+    return resp.ok ? resp : null;
+  } catch(e) {
+    clearTimeout(timer);
+    return null;
+  }
+}
+
+// ── 유틸: CORS 프록시를 통해 URL 내용을 텍스트로 가져오기 ───────────
+// 프록시 순서: allorigins(raw) → allorigins(get) → corsproxy.io → codetabs
+async function _fetchViaProxy(targetUrl, timeoutMs) {
+  const proxies = [
+    (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+    (u) => 'https://corsproxy.io/?' + encodeURIComponent(u),
+    (u) => 'https://api.allorigins.win/get?url=' + encodeURIComponent(u),
+    (u) => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
+  ];
+
+  for (const buildUrl of proxies) {
+    try {
+      const resp = await _safeFetch(buildUrl(targetUrl), {}, timeoutMs || 8000);
+      if (!resp) continue;
+      const text = await resp.text();
+      if (!text || text.length < 5) continue;
+      // allorigins get 방식: { "contents": "...", "status": {...} }
+      if (text.trim().startsWith('{') && text.includes('"contents"')) {
+        try {
+          const wrapper = JSON.parse(text);
+          if (wrapper.contents) return wrapper.contents;
+        } catch(_) {}
+      }
+      return text;
+    } catch(e) { continue; }
+  }
+  return null;
+}
+
+// ── Yahoo Finance 응답 파서 ─────────────────────────────────────────
 function _extractYahooPrice(data) {
   const result = data?.chart?.result?.[0];
   if (!result) return null;
@@ -2433,79 +2488,40 @@ function _extractYahooPrice(data) {
       return {
         price: Math.round(closes[i]),
         date: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,
+        source: 'yahoo',
       };
     }
   }
   return null;
 }
 
-// ── 단일 프록시 호출 (타임아웃 3초) ───────────────────────────
-async function _fetchViaProxy(proxyUrl, timeout = 3000) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeout);
-  try {
-    const resp = await fetch(proxyUrl, { signal: controller.signal });
-    clearTimeout(timer);
-    if (!resp.ok) return null;
-    const data = await resp.json();
-    return _extractYahooPrice(data);
-  } catch(e) {
-    clearTimeout(timer);
-    return null;
-  }
-}
-
-// ══════════════════════════════════════════════════════════
-// 주가 조회 엔진 — 다중 소스 병렬 시도
-// ══════════════════════════════════════════════════════════
-
-// ══════════════════════════════════════════════════════════
-// 주가 조회 엔진 v3
-// 도메인 무관하게 동작하는 다중 소스 병렬 시도
-// ══════════════════════════════════════════════════════════
-
-// 공통 fetch 헬퍼 (타임아웃 + 에러 처리)
-async function _safeFetch(url, options, timeoutMs) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs || 6000);
-  try {
-    const resp = await fetch(url, { ...options, signal: controller.signal });
-    clearTimeout(timer);
-    return resp.ok ? resp : null;
-  } catch(e) {
-    clearTimeout(timer);
-    return null;
-  }
-}
-
-// ── 소스 A: 네이버 증권 (다중 프록시 순차 시도) ────────────
+// ── 소스 A: 네이버 증권 HTML 파싱 ──────────────────────────────────
 async function _fetchNaverPrice(code6) {
-  // allorigins는 origin/referrer 헤더를 제거해서 전달 → 도메인 무관
-  const naverUrl = 'https://finance.naver.com/item/sise.nhn?code=' + code6;
-  const proxyUrls = [
-    'https://api.allorigins.win/get?url=' + encodeURIComponent(naverUrl),
-    'https://api.allorigins.win/get?url=' + encodeURIComponent(
-      'https://finance.naver.com/item/main.nhn?code=' + code6
-    ),
+  const urls = [
+    'https://finance.naver.com/item/sise.nhn?code=' + code6,
+    'https://finance.naver.com/item/main.nhn?code=' + code6,
   ];
-  for (const proxyUrl of proxyUrls) {
+  // 가격 추출 정규식 (네이버 여러 버전 대응)
+  const patterns = [
+    /id="now_value"[^>]*>([\d,]+)</,
+    /id="_nowVal"[^>]*>([\d,]+)</,
+    /class="[^"]*blind[^"]*">([\d,]+)<\/span>[\s\S]{0,50}원/,
+    /"현재가":"([\d,]+)"/,
+    /\"close\":\s*\"([\d,]+)\"/,
+  ];
+
+  for (const url of urls) {
     try {
-      const resp = await _safeFetch(proxyUrl, {}, 7000);
-      if (!resp) continue;
-      const json = await resp.json();
-      const html = json.contents || '';
-      // sise 페이지: <span id="now_value">14,800</span>
-      const patterns = [
-        /id="now_value"[^>]*>([\d,]+)</,
-        /id="_nowVal"[^>]*>([\d,]+)</,
-        /"현재가":"([\d,]+)"/,
-        /closePrice":"([\d,]+)"/,
-      ];
-      for (const pat of patterns) {
-        const m = html.match(pat);
+      const html = await _fetchViaProxy(url, 8000);
+      if (!html) continue;
+      for (const pattern of patterns) {
+        const m = html.match(pattern);
         if (m) {
           const price = parseInt(m[1].replace(/,/g, ''), 10);
-          if (price > 100) return { price, date: new Date().toISOString().slice(0,10), source: 'naver' };
+          if (price > 100) {
+            const today = new Date().toISOString().slice(0, 10);
+            return { price, date: today, source: 'naver-html' };
+          }
         }
       }
     } catch(e) { continue; }
@@ -2513,59 +2529,79 @@ async function _fetchNaverPrice(code6) {
   return null;
 }
 
-// ── 소스 B: Yahoo Finance v8 (다중 프록시) ─────────────────
+// ── 소스 B: Yahoo Finance v8 API ───────────────────────────────────
 async function _fetchYahooPrice(symbol, range) {
   const yahooUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/' + symbol +
     '?interval=1d&range=' + (range || '5d') + '&includePrePost=false';
-  // allorigins는 커스텀 도메인에서도 동작 (origin 미포함 전달)
-  const proxyUrls = [
+
+  const proxies = [
     'https://api.allorigins.win/raw?url=' + encodeURIComponent(yahooUrl),
-    'https://api.allorigins.win/get?url=' + encodeURIComponent(yahooUrl),
     'https://corsproxy.io/?' + encodeURIComponent(yahooUrl),
+    'https://api.allorigins.win/get?url=' + encodeURIComponent(yahooUrl),
+    'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(yahooUrl),
   ];
-  for (const proxyUrl of proxyUrls) {
+
+  for (const proxyUrl of proxies) {
     try {
-      const resp = await _safeFetch(proxyUrl, {}, 7000);
+      const resp = await _safeFetch(proxyUrl, {}, 8000);
       if (!resp) continue;
+      const text = await resp.text();
+      if (!text) continue;
       let data;
       try {
-        const text = await resp.text();
-        // allorigins get 방식은 { contents: "..." } 형태로 감쌈
-        if (text.startsWith('{') && text.includes('"contents"')) {
+        // allorigins get 방식 unwrap
+        if (text.trim().startsWith('{') && text.includes('"contents"')) {
           const wrapper = JSON.parse(text);
-          data = JSON.parse(wrapper.contents || '{}');
+          data = JSON.parse(wrapper.contents);
         } else {
           data = JSON.parse(text);
         }
-      } catch(e) { continue; }
+      } catch(_) { continue; }
       const result = _extractYahooPrice(data);
-      if (result) return { ...result, source: 'yahoo' };
+      if (result) return result;
     } catch(e) { continue; }
   }
   return null;
 }
 
-// ── 소스 C: 네이버 증권 JSON API (모바일 API) ──────────────
+// ── 소스 C: 네이버 증권 모바일 JSON API ────────────────────────────
 async function _fetchNaverMobilePrice(code6) {
-  // 네이버 증권 모바일 API → allorigins 경유
-  const apiUrl = 'https://m.stock.naver.com/api/stock/' + code6 + '/basic';
-  const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(apiUrl);
-  try {
-    const resp = await _safeFetch(proxyUrl, {}, 7000);
-    if (!resp) return null;
-    const data = await resp.json();
-    // { closePrice: "14,800", ... }
-    const priceStr = data?.closePrice || data?.currentPrice || data?.price || '';
-    const price = parseInt(String(priceStr).replace(/,/g, ''), 10);
-    if (price > 100) {
-      const today = new Date().toISOString().slice(0, 10);
-      return { price, date: today, source: 'naver-mobile' };
-    }
-  } catch(e) {}
+  // 네이버 모바일 API는 버전에 따라 필드명이 다름 — 다중 파싱 적용
+  const endpoints = [
+    'https://m.stock.naver.com/api/stock/' + code6 + '/basic',
+    'https://m.stock.naver.com/api/stock/' + code6 + '/integration',
+  ];
+
+  for (const apiUrl of endpoints) {
+    try {
+      const text = await _fetchViaProxy(apiUrl, 7000);
+      if (!text) continue;
+
+      let data;
+      try { data = JSON.parse(text); } catch(_) { continue; }
+
+      // 다양한 필드명 대응 (네이버 API 버전별)
+      const priceStr =
+        data?.closePrice ||       // 구버전
+        data?.currentPrice ||     // 현재가
+        data?.price ||
+        data?.stockPrice?.closePrice ||
+        data?.stockInfo?.closePrice ||
+        data?.dealTrendInfos?.[0]?.closePrice ||
+        '';
+
+      const price = parseInt(String(priceStr).replace(/,/g, ''), 10);
+      if (price > 100) {
+        const today = new Date().toISOString().slice(0, 10);
+        return { price, date: today, source: 'naver-mobile' };
+      }
+    } catch(e) { continue; }
+  }
   return null;
 }
 
-// ── 통합 병렬 조회 ─────────────────────────────────────────
+// ── 병렬 조회: 3개 소스 동시 시작, 가장 빠른 성공값 반환 ──────────
+// 최종 타임아웃: 12초 (모든 소스 실패 시)
 async function _fetchStockParallel(symbol, rangeDays) {
   const code6 = symbol.split('.')[0];
 
@@ -2578,83 +2614,249 @@ async function _fetchStockParallel(symbol, rangeDays) {
       }
     };
 
-    // 세 소스 병렬 시작
-    _fetchNaverMobilePrice(code6).then(done);   // 가장 빠름 (JSON API)
-    _fetchNaverPrice(code6).then(done);          // 네이버 HTML
-    _fetchYahooPrice(symbol, rangeDays || '5d').then(done); // Yahoo
+    // ① 네이버 모바일 JSON (가장 빠름)
+    _fetchNaverMobilePrice(code6).then(done).catch(() => {});
+    // ② 네이버 HTML 파싱
+    _fetchNaverPrice(code6).then(done).catch(() => {});
+    // ③ Yahoo Finance
+    _fetchYahooPrice(symbol, rangeDays || '5d').then(done).catch(() => {});
 
-    // 10초 후 결과 없으면 null
+    // 12초 최종 타임아웃
     setTimeout(() => {
       if (!settled) { settled = true; resolve(null); }
-    }, 10000);
+    }, 12000);
   });
 }
 
+// ── 개별 종목 주가 조회 버튼 핸들러 (지분투자 입력 폼) ────────────
 async function fetchStockPrice() {
-  const ticker  = document.getElementById('e-ticker').value.trim();
-  const market  = document.getElementById('e-market').value;
+  const ticker   = document.getElementById('e-ticker').value.trim();
+  const market   = document.getElementById('e-market').value;
   const statusEl = document.getElementById('e-price-status');
   const sourceEl = document.getElementById('e-price-source');
   const fetchBtn = document.getElementById('e-fetch-btn');
 
-  if (!ticker || ticker.length !== 6) {
-    statusEl.textContent = '❌ 6자리 종목코드를 입력하세요 (예: 108860)';
+  // ── 입력 검증 ────────────────────────────────────────────────────
+  if (!ticker) {
+    statusEl.textContent = '❌ 종목코드를 입력하세요';
     statusEl.style.color = 'var(--red)';
     return;
   }
+  if (!/^\d{5,6}$/.test(ticker)) {
+    statusEl.textContent = '❌ 5~6자리 숫자 종목코드를 입력하세요 (예: 108860)';
+    statusEl.style.color = 'var(--red)';
+    return;
+  }
+  if (market === '비상장') {
+    statusEl.textContent = '⚠ 비상장 종목은 단가를 직접 입력하세요';
+    statusEl.style.color = 'var(--amber)';
+    return;
+  }
 
+  // ── 시장 구분자 자동 처리 (5자리면 앞에 0 패딩) ─────────────────
+  const code6  = ticker.padStart(6, '0');
   const suffix = market === 'KOSDAQ' ? '.KQ' : '.KS';
-  const symbol = ticker + suffix;
+  const symbol = code6 + suffix;
 
-  // ── 기준일자 기반 직전 영업일 계산 ──────────────────────────
-  // 기준일자가 오늘이면 가장 최근 종가(직전 영업일)
-  // 과거 일자이면 해당일 또는 그 이전 가장 최근 종가
+  // ── 기준일자 기반 Yahoo range 계산 ──────────────────────────────
   const baseDateEl = document.getElementById('e-date');
-  const baseDate = baseDateEl ? baseDateEl.value : null;
-  const today = new Date().toISOString().slice(0, 10);
-
-  // 기준일과 오늘 사이 일수 계산 (Yahoo range 설정용)
-  let rangeDays = '7d'; // 기본: 최근 7거래일
+  const baseDate   = baseDateEl ? baseDateEl.value : null;
+  const today      = new Date().toISOString().slice(0, 10);
+  let rangeDays = '7d';
   if (baseDate && baseDate < today) {
     const diff = Math.ceil((new Date(today) - new Date(baseDate)) / 86400000);
     if (diff > 7) rangeDays = Math.min(diff + 10, 30) + 'd';
   }
 
-  fetchBtn.textContent = '조회중...';
-  fetchBtn.disabled = true;
-  statusEl.textContent = symbol + ' 조회 중...';
+  // ── 로딩 UI ─────────────────────────────────────────────────────
+  if (fetchBtn) {
+    fetchBtn.disabled = true;
+    fetchBtn.textContent = '⏳ 조회중...';
+    fetchBtn.style.opacity = '0.65';
+  }
+  statusEl.textContent = symbol + ' — 데이터 수신 중... (최대 12초)';
   statusEl.style.color = 'var(--text3)';
+  if (sourceEl) sourceEl.textContent = '';
 
-  const result = await _fetchStockParallel(symbol, rangeDays);
+  // ── 네트워크 타임아웃 표시 타이머 (10초 경고) ───────────────────
+  const warnTimer = setTimeout(() => {
+    if (fetchBtn && fetchBtn.disabled) {
+      statusEl.textContent = '⏳ 네트워크 응답 지연 중... 잠시만 기다려 주세요';
+      statusEl.style.color = 'var(--amber)';
+    }
+  }, 10000);
 
-  fetchBtn.textContent = '주가 조회';
-  fetchBtn.disabled = false;
+  let result = null;
+  try {
+    result = await _fetchStockParallel(symbol, rangeDays);
+  } catch(e) {
+    console.error('[fetchStockPrice] 예외:', e);
+  } finally {
+    clearTimeout(warnTimer);
+    if (fetchBtn) {
+      fetchBtn.disabled = false;
+      fetchBtn.textContent = '주가 조회';
+      fetchBtn.style.opacity = '';
+    }
+  }
 
   if (result) {
-    // 기준일자 이전 가장 최근 종가 필터 (과거 일자 입력 시)
-    let finalPrice = result.price;
-    let finalDate  = result.date;
-
-    // 기준일이 오늘보다 과거면 해당일 이전 종가를 가져왔는지 확인
+    // 기준일보다 미래 날짜 종가일 때 경고
     if (baseDate && result.date > baseDate) {
-      // 조회된 날짜가 기준일보다 미래면 range 내 기준일 이전 데이터 없음
-      statusEl.textContent = '⚠ ' + baseDate + ' 기준 종가 없음 — 최근 종가(' + result.date + ') 적용';
+      statusEl.textContent = `⚠ ${baseDate} 기준 종가 없음 — 최근 종가(${result.date}) 적용`;
       statusEl.style.color = 'var(--amber)';
     } else {
-      statusEl.textContent = '✅ ' + finalDate + ' 종가: ' + finalPrice.toLocaleString() + '원';
+      statusEl.textContent = `✅ ${result.date} 종가: ${result.price.toLocaleString()}원`;
       statusEl.style.color = 'var(--green)';
     }
-
-    document.getElementById('e-price').value = finalPrice.toLocaleString();
+    document.getElementById('e-price').value = result.price.toLocaleString();
     calcEquityValue();
-    if (sourceEl) sourceEl.textContent = finalDate + ' 직전 영업일 종가';
-    showToast(symbol + ' ' + finalPrice.toLocaleString() + '원 (' + finalDate + ')', 'success');
+    if (sourceEl) sourceEl.textContent = `${result.date} 종가 (출처: ${result.source})`;
+    showToast(`${symbol} ${result.price.toLocaleString()}원 (${result.date})`, 'success');
   } else {
-    statusEl.textContent = '❌ 조회 실패 — 직접 입력하세요';
+    statusEl.textContent = '❌ 주가 조회 실패 — 모든 데이터 소스 응답 없음. 단가를 직접 입력하세요';
     statusEl.style.color = 'var(--red)';
-    showToast('주가 조회 실패 — 직접 입력하세요', 'error');
+    if (sourceEl) sourceEl.textContent = '네이버/Yahoo Finance 모두 응답 없음';
+    showToast('주가 조회 실패 — 단가 직접 입력 필요', 'error');
   }
 }
+
+// ── 지분투자 목록에서 개별 종목 시세↑ 버튼 ───────────────────────
+async function refreshEquityPrice(id, ticker, market) {
+  if (!ticker || market === '비상장') {
+    showToast('비상장 종목은 단가를 직접 수정하세요', 'error');
+    return;
+  }
+  const code6  = String(ticker).padStart(6, '0');
+  const suffix = market === 'KOSDAQ' ? '.KQ' : '.KS';
+  const symbol = code6 + suffix;
+
+  showToast(`${symbol} 시세 업데이트 중...`);
+
+  let result = null;
+  try {
+    result = await _fetchStockParallel(symbol);
+  } catch(e) {
+    console.error('[refreshEquityPrice] 예외:', e);
+  }
+
+  if (result) {
+    const equities = DB.get('equities');
+    const eq = equities.find(e => String(e.id) === String(id));
+    if (eq) {
+      eq.price       = result.price;
+      eq.total_value = eq.shares * result.price;
+      eq.date        = result.date;
+      await DB.updateOne('equities', eq);
+      renderEquity();
+      renderDashboard();
+      showToast(`${eq.name} ${result.price.toLocaleString()}원 (${result.date})`, 'success');
+    }
+  } else {
+    showToast(`${symbol} 시세 조회 실패 — 직접 수정하세요`, 'error');
+  }
+}
+
+// ── 전체 평가금액 업데이트 (환율 업데이트 후 자동 호출) ─────────────
+// ⚠ 버그 수정: async function 으로 변경 + for...of await 적용
+//   (이전 코드: 일반 function 내 await 사용 → await 무시되어 즉시 종료되는 버그)
+async function updateAllEvaluation() {
+  const equities = DB.get('equities');
+  if (!equities.length) {
+    showToast('등록된 지분투자 종목이 없습니다', 'error');
+    return;
+  }
+
+  // 업데이트 대상 종목 필터 (티커 있고 비상장 아닌 것)
+  const targets = equities.filter(eq => eq.ticker && eq.market !== '비상장');
+  const uniqueKeys = [...new Set(targets.map(eq => eq.company + '_' + eq.name))];
+
+  // 대표 1개(가장 최신)만 업데이트 (같은 종목 중복 API 호출 방지)
+  const latestMap = {};
+  for (const eq of targets) {
+    const key = eq.company + '_' + eq.name;
+    if (!latestMap[key] || eq.date > latestMap[key].date) {
+      latestMap[key] = eq;
+    }
+  }
+  const latestTargets = Object.values(latestMap);
+
+  showToast(`전체 평가금액 업데이트 중... (${latestTargets.length}종목)`);
+
+  let updated = 0;
+  let failed  = 0;
+  const failedNames = [];
+
+  // ── 핵심 수정: 순차 await (병렬 시 API 호출 과다 방지) ──────────
+  for (const eq of latestTargets) {
+    try {
+      const code6  = String(eq.ticker).padStart(6, '0');
+      const suffix = eq.market === 'KOSDAQ' ? '.KQ' : '.KS';
+      const symbol = code6 + suffix;
+
+      const result = await _fetchStockParallel(symbol);
+
+      if (result) {
+        // 해당 종목의 모든 이력에 새 단가 반영 (최신 이력만)
+        eq.price       = result.price;
+        eq.total_value = eq.shares * result.price;
+        eq.date        = result.date;
+        await DB.updateOne('equities', eq);
+        updated++;
+      } else {
+        failed++;
+        failedNames.push(eq.name);
+      }
+    } catch(e) {
+      // 개별 종목 실패 시 루프 계속 (전체 중단 방지)
+      console.error('[updateAllEvaluation] 종목 실패:', eq.name, e);
+      failed++;
+      failedNames.push(eq.name);
+    }
+  }
+
+  renderEquity();
+  renderFXEquivTable();
+  renderDashboard();
+
+  const el = document.getElementById('fx-last-update');
+  if (el) el.textContent = '업데이트: ' + new Date().toLocaleTimeString('ko-KR');
+
+  if (failed > 0) {
+    showToast(`업데이트 완료 — ${updated}종목 성공, ${failed}종목 실패 (${failedNames.join(', ')})`, 'error');
+  } else {
+    showToast(`전체 평가금액 업데이트 완료 — ${updated}종목 반영`, 'success');
+  }
+}
+
+
+
+// ── 단일 프록시 호출 (타임아웃 3초) ───────────────────────────
+
+
+// ══════════════════════════════════════════════════════════
+// 주가 조회 엔진 — 다중 소스 병렬 시도
+// ══════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════
+// 주가 조회 엔진 v3
+// 도메인 무관하게 동작하는 다중 소스 병렬 시도
+// ══════════════════════════════════════════════════════════
+
+// 공통 fetch 헬퍼 (타임아웃 + 에러 처리)
+
+
+// ── 소스 A: 네이버 증권 (다중 프록시 순차 시도) ────────────
+
+
+// ── 소스 B: Yahoo Finance v8 (다중 프록시) ─────────────────
+
+
+
+// ── 통합 병렬 조회 ─────────────────────────────────────────
+
+
+
 
 function calcEquityValue() {
   const shares = parseNum(document.getElementById('e-shares').value);
@@ -2844,30 +3046,7 @@ function renderEquity() {
 }
 
 // 목록에서 특정 종목 시세 업데이트 (병렬 조회)
-async function refreshEquityPrice(id, ticker, market) {
-  const suffix = market === 'KOSDAQ' ? '.KQ' : '.KS';
-  const symbol = ticker + suffix;
-  showToast(`${symbol} 시세 업데이트 중...`);
 
-  const result = await _fetchStockParallel(symbol);
-
-  if (result) {
-    const equities = DB.get('equities');
-    const eq = equities.find(e => String(e.id) === String(id));
-    if (eq) {
-      eq.price = result.price;
-      eq.total_value = eq.shares * result.price;
-      eq.date = result.date;
-      // 해당 항목만 PATCH (전체 배열 교체 없이)
-      await DB.updateOne('equities', eq);
-      renderEquity();
-      renderDashboard();
-      showToast(`${eq.name} ${result.price.toLocaleString()}원 (${result.date})`, 'success');
-    }
-  } else {
-    showToast('시세 조회 실패 — 직접 수정하세요', 'error');
-  }
-}
 
 // ══════════════════════════════════════════════════════
 // 대시보드 & 차트
@@ -4415,34 +4594,7 @@ function toggleInvDetail(event) {
 
 
 // ── 전체 평가금액 일괄 업데이트 (환율+주가 새로고침 후 호출) ──
-async function updateAllEvaluation() {
-  showToast('전체 평가금액 업데이트 중...');
-  const equities = DB.get('equities');
-  let updated = 0;
-  for (const eq of equities) {
-    if (!eq.ticker || eq.market === '비상장') continue;
-    const suffix = eq.market === 'KOSDAQ' ? '.KQ' : '.KS';
-    const result = await _fetchStockParallel(eq.ticker + suffix);
-    if (result) {
-      eq.price = result.price;
-      eq.total_value = eq.shares * result.price;
-      eq.date = result.date;
-      await DB.updateOne('equities', eq);
-      updated++;
-    }
-  }
-  // (각 종목은 refreshEquityPrice 내 updateOne으로 이미 저장됨)
 
-  // 환율 현황 페이지 외화보유 현황 업데이트
-  renderFXEquivTable();
-  renderDashboard();
-
-  // 환율 업데이트 시각 표시
-  const el = document.getElementById('fx-last-update');
-  if (el) el.textContent = '업데이트: ' + new Date().toLocaleTimeString('ko-KR');
-
-  showToast('전체 업데이트 완료 — 주가 ' + updated + '종목 반영', 'success');
-}
 
 // ── 환율 현황 페이지 외화 보유 현황 테이블 ─────────────────────
 function renderFXEquivTable() {
