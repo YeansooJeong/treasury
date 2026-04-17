@@ -2,6 +2,12 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<script>
+// HTTP 접속 시 HTTPS로 강제 리다이렉트 (Supabase Mixed Content 차단 방지)
+if (location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+  location.replace('https:' + location.href.slice(5));
+}
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Selvas Treasury — 통합자금관리</title>
 <style>
@@ -2282,53 +2288,85 @@ async function _fetchViaProxy(proxyUrl, timeout = 3000) {
 // 주가 조회 엔진 — 다중 소스 병렬 시도
 // ══════════════════════════════════════════════════════════
 
-// 소스 1: 네이버 증권 (allorigins 경유 크롤링)
-async function _fetchNaverPrice(code6) {
+// ══════════════════════════════════════════════════════════
+// 주가 조회 엔진 v3
+// 도메인 무관하게 동작하는 다중 소스 병렬 시도
+// ══════════════════════════════════════════════════════════
+
+// 공통 fetch 헬퍼 (타임아웃 + 에러 처리)
+async function _safeFetch(url, options, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs || 6000);
   try {
-    const naverUrl = 'https://finance.naver.com/item/main.nhn?code=' + code6;
-    const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(naverUrl);
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 6000);
-    const resp = await fetch(proxyUrl, { signal: controller.signal });
+    const resp = await fetch(url, { ...options, signal: controller.signal });
     clearTimeout(timer);
-    if (!resp.ok) return null;
-    const json = await resp.json();
-    const html = json.contents || '';
-    // 현재가 파싱: <dd class="no_today"> ... <span class="blind">현재가</span>숫자
-    const m1 = html.match(/<span class="no_today">\s*<span[^>]*>.*?<\/span>\s*([\d,]+)/);
-    if (m1) {
-      const price = parseInt(m1[1].replace(/,/g, ''), 10);
-      if (price > 0) {
-        const today = new Date().toISOString().slice(0,10);
-        return { price, date: today, source: 'naver' };
-      }
-    }
-    // 대체 패턴
-    const m2 = html.match(/id="_nowVal"[^>]*>([\d,]+)</);
-    if (m2) {
-      const price = parseInt(m2[1].replace(/,/g, ''), 10);
-      if (price > 0) return { price, date: new Date().toISOString().slice(0,10), source: 'naver2' };
-    }
+    return resp.ok ? resp : null;
+  } catch(e) {
+    clearTimeout(timer);
     return null;
-  } catch(e) { return null; }
+  }
 }
 
-// 소스 2: Yahoo Finance (allorigins + corsproxy 경유)
+// ── 소스 A: 네이버 증권 (다중 프록시 순차 시도) ────────────
+async function _fetchNaverPrice(code6) {
+  // allorigins는 origin/referrer 헤더를 제거해서 전달 → 도메인 무관
+  const naverUrl = 'https://finance.naver.com/item/sise.nhn?code=' + code6;
+  const proxyUrls = [
+    'https://api.allorigins.win/get?url=' + encodeURIComponent(naverUrl),
+    'https://api.allorigins.win/get?url=' + encodeURIComponent(
+      'https://finance.naver.com/item/main.nhn?code=' + code6
+    ),
+  ];
+  for (const proxyUrl of proxyUrls) {
+    try {
+      const resp = await _safeFetch(proxyUrl, {}, 7000);
+      if (!resp) continue;
+      const json = await resp.json();
+      const html = json.contents || '';
+      // sise 페이지: <span id="now_value">14,800</span>
+      const patterns = [
+        /id="now_value"[^>]*>([\d,]+)</,
+        /id="_nowVal"[^>]*>([\d,]+)</,
+        /"현재가":"([\d,]+)"/,
+        /closePrice":"([\d,]+)"/,
+      ];
+      for (const pat of patterns) {
+        const m = html.match(pat);
+        if (m) {
+          const price = parseInt(m[1].replace(/,/g, ''), 10);
+          if (price > 100) return { price, date: new Date().toISOString().slice(0,10), source: 'naver' };
+        }
+      }
+    } catch(e) { continue; }
+  }
+  return null;
+}
+
+// ── 소스 B: Yahoo Finance v8 (다중 프록시) ─────────────────
 async function _fetchYahooPrice(symbol, range) {
   const yahooUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/' + symbol +
     '?interval=1d&range=' + (range || '5d') + '&includePrePost=false';
-  const proxies = [
+  // allorigins는 커스텀 도메인에서도 동작 (origin 미포함 전달)
+  const proxyUrls = [
     'https://api.allorigins.win/raw?url=' + encodeURIComponent(yahooUrl),
+    'https://api.allorigins.win/get?url=' + encodeURIComponent(yahooUrl),
     'https://corsproxy.io/?' + encodeURIComponent(yahooUrl),
   ];
-  for (const proxyUrl of proxies) {
+  for (const proxyUrl of proxyUrls) {
     try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 5000);
-      const resp = await fetch(proxyUrl, { signal: controller.signal });
-      clearTimeout(timer);
-      if (!resp.ok) continue;
-      const data = await resp.json();
+      const resp = await _safeFetch(proxyUrl, {}, 7000);
+      if (!resp) continue;
+      let data;
+      try {
+        const text = await resp.text();
+        // allorigins get 방식은 { contents: "..." } 형태로 감쌈
+        if (text.startsWith('{') && text.includes('"contents"')) {
+          const wrapper = JSON.parse(text);
+          data = JSON.parse(wrapper.contents || '{}');
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch(e) { continue; }
       const result = _extractYahooPrice(data);
       if (result) return { ...result, source: 'yahoo' };
     } catch(e) { continue; }
@@ -2336,70 +2374,48 @@ async function _fetchYahooPrice(symbol, range) {
   return null;
 }
 
-// 소스 3: KRX (한국거래소 공식 API — CORS 허용)
-async function _fetchKrxPrice(code6) {
+// ── 소스 C: 네이버 증권 JSON API (모바일 API) ──────────────
+async function _fetchNaverMobilePrice(code6) {
+  // 네이버 증권 모바일 API → allorigins 경유
+  const apiUrl = 'https://m.stock.naver.com/api/stock/' + code6 + '/basic';
+  const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(apiUrl);
   try {
-    const today = new Date();
-    // 어제 날짜 (주말이면 금요일)
-    const d = new Date(today);
-    if (d.getDay() === 0) d.setDate(d.getDate() - 2);
-    else if (d.getDay() === 1) d.setDate(d.getDate() - 3);
-    else d.setDate(d.getDate() - 1);
-    const trdDd = d.getFullYear().toString() +
-      String(d.getMonth()+1).padStart(2,'0') +
-      String(d.getDate()).padStart(2,'0');
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
-    const resp = await fetch(
-      'https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'bld=dbms/MDC/STAT/standard/MDCSTAT01901&isuCd=' + code6 +
-              '&isuCd2=&strtDd=' + trdDd + '&endDd=' + trdDd + '&adjStkPrc=1',
-        signal: controller.signal,
-      }
-    );
-    clearTimeout(timer);
-    if (!resp.ok) return null;
+    const resp = await _safeFetch(proxyUrl, {}, 7000);
+    if (!resp) return null;
     const data = await resp.json();
-    const rows = data?.output || [];
-    if (rows.length > 0) {
-      const price = parseInt((rows[0].TDD_CLSPRC || '0').replace(/,/g, ''), 10);
-      if (price > 0) {
-        const dateStr = trdDd.slice(0,4) + '-' + trdDd.slice(4,6) + '-' + trdDd.slice(6,8);
-        return { price, date: dateStr, source: 'krx' };
-      }
+    // { closePrice: "14,800", ... }
+    const priceStr = data?.closePrice || data?.currentPrice || data?.price || '';
+    const price = parseInt(String(priceStr).replace(/,/g, ''), 10);
+    if (price > 100) {
+      const today = new Date().toISOString().slice(0, 10);
+      return { price, date: today, source: 'naver-mobile' };
     }
-    return null;
-  } catch(e) { return null; }
+  } catch(e) {}
+  return null;
 }
 
-// 통합 병렬 조회 — 세 소스를 동시에 시도, 가장 빠른 성공 채택
+// ── 통합 병렬 조회 ─────────────────────────────────────────
 async function _fetchStockParallel(symbol, rangeDays) {
-  // symbol 형식: '108860.KQ' or '005930.KS'
-  const parts = symbol.split('.');
-  const code6 = parts[0];
+  const code6 = symbol.split('.')[0];
 
   return new Promise((resolve) => {
     let settled = false;
     const done = (result) => {
-      if (!settled && result && result.price > 0) {
+      if (!settled && result && result.price > 100) {
         settled = true;
         resolve(result);
       }
     };
 
-    // 세 소스 병렬 시도
-    _fetchNaverPrice(code6).then(done);
-    _fetchYahooPrice(symbol, rangeDays || '5d').then(done);
-    _fetchKrxPrice(code6).then(done);
+    // 세 소스 병렬 시작
+    _fetchNaverMobilePrice(code6).then(done);   // 가장 빠름 (JSON API)
+    _fetchNaverPrice(code6).then(done);          // 네이버 HTML
+    _fetchYahooPrice(symbol, rangeDays || '5d').then(done); // Yahoo
 
-    // 8초 후 결과 없으면 null
+    // 10초 후 결과 없으면 null
     setTimeout(() => {
       if (!settled) { settled = true; resolve(null); }
-    }, 8000);
+    }, 10000);
   });
 }
 
