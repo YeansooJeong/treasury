@@ -1366,6 +1366,21 @@ function fmtKRW(n) { if(!n&&n!==0) return '0'; const a=Math.abs(n); if(a>=1e12) 
 function showToast(msg, type='') { const t = document.getElementById('toast'); t.textContent = msg; t.className = 'show '+type; setTimeout(()=>t.className='',3000); }
 
 // ══════════════════════════════════════════════════════
+// 주가 조회 API 설정 (Google Apps Script Web App)
+// ══════════════════════════════════════════════════════
+const GAS_API_URL = 'https://script.google.com/macros/d/https://script.google.com/macros/s/AKfycbyPhVvHIy66zWd7WzMix-jS0BzvVga2y4gAkTySuaEc8yUmp59l2UMfrRXl0TXc3SXG/exec/usercontent';
+// 
+// GAS 배포 방법:
+// 1. Google Apps Script 에디터 열기: https://script.google.com/
+// 2. 새 프로젝트 생성
+// 3. 아래 GAS_코드.gs 내용을 코드.gs 파일에 복사-붙여넣기
+// 4. "배포" → "새 배포" → "웹앱" 선택
+// 5. "다음 권한으로 실행: [자신의계정]" 설정
+// 6. "다음 사용자로 액세스: [모든 사람]" 설정
+// 7. 배포 후 나오는 URL 복사하여 위의 GAS_API_URL에 입력
+// 
+
+// ══════════════════════════════════════════════════════
 // Supabase 연동 설정
 // ══════════════════════════════════════════════════════
 const SUPABASE_URL = 'https://qobfmihxcclbzfaohnor.supabase.co';
@@ -2417,28 +2432,47 @@ document.addEventListener('click', (e) => {
 // 모든 주가 조회는 이 함수 1개로 통일
 // symbol: '108860.KQ', '005930.KS' 형태
 // range:  Yahoo range 파라미터 (기본 '5d', 과거 조회 시 '30d' 등)
+// ── 주가 조회: Google Apps Script Web App 호출 ─────────────────────
 async function _fetchStockViaEdge(symbol, range) {
-  const edgeUrl = SUPABASE_URL + '/functions/v1/fetch-stock'
-
-  const resp = await fetch(edgeUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type':  'application/json',
-      'Authorization': 'Bearer ' + SUPABASE_KEY,
-      'apikey':        SUPABASE_KEY,
-    },
-    signal: AbortSignal.timeout(20000), // Edge Function 콜드 스타트 포함 20초
-    body: JSON.stringify({ symbol, range: range || '5d' }),
-  })
-
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({ error: 'HTTP ' + resp.status }))
-    throw new Error(err.error || 'HTTP ' + resp.status)
+  // GAS_API_URL이 설정되지 않았으면 에러
+  if (!GAS_API_URL || GAS_API_URL.includes('여기에_웹앱')) {
+    throw new Error('GAS_API_URL이 설정되지 않았습니다. 환경설정을 확인하세요.')
   }
 
-  const data = await resp.json()
-  if (!data.success) throw new Error(data.error || '주가 조회 실패')
-  return { price: data.price, date: data.date, source: data.source }
+  // symbol 형식: "005930.KS" → ticker: 005930
+  const ticker = symbol.replace(/\.KS|\.KQ/i, '')
+
+  // CORS 문제 해결: GAS는 기본적으로 CORS 헤더를 반성하므로 mode 설정 불필요
+  const url = new URL(GAS_API_URL)
+  url.searchParams.append('ticker', ticker)
+
+  try {
+    const resp = await fetch(url.toString(), {
+      method: 'GET',
+      // CORS 모드 제거 (GAS는 자동 처리)
+      signal: AbortSignal.timeout(15000),
+    })
+
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => 'No response body')
+      throw new Error(`HTTP ${resp.status}: ${text}`)
+    }
+
+    const data = await resp.json()
+
+    if (!data.success) {
+      throw new Error(data.error || '주가 조회 실패')
+    }
+
+    return {
+      price: data.price,
+      date: data.date,
+      source: data.source
+    }
+  } catch (e) {
+    console.error('[_fetchStockViaEdge] GAS 호출 실패:', symbol, e?.message)
+    throw e
+  }
 }
 
 // ── 종목코드 → Yahoo symbol 변환 유틸 ───────────────────────────────
