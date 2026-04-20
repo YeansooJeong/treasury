@@ -2447,269 +2447,269 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// ── 주가 자동 조회 ────────────────────────────────────────────
-// 전략: 빠른 프록시 3개를 동시에 쏘고 가장 먼저 성공한 결과 사용
-// 타임아웃 3초 — 실패 시 즉시 null 반환 (기존 6초에서 단축)
 
-// ── Yahoo 응답 파싱 공통 함수 ──────────────────────────────────
-
+// ── 주가 자동 조회 ────────────────────────────────────────────────
+// 백엔드: Google Apps Script Web App (GAS_API_URL)
+// GAS 서버(Google 서버)에서 직접 네이버/Yahoo 호출 → IP 차단 없음
 
 // ╔══════════════════════════════════════════════════════════════════╗
-// ║  주가 조회 모듈 v3 — Edge Function 기반 서버사이드 방식          ║
+// ║  주가 조회 모듈 — GAS(Google Apps Script) 기반                  ║
 // ║                                                                  ║
-// ║  ◆ 아키텍처 변경 요약                                            ║
-// ║    이전: 브라우저 → CORS 프록시 → 네이버/Yahoo (IP 차단 빈번)   ║
-// ║    현재: 브라우저 → Supabase Edge Function → 네이버/Yahoo        ║
-// ║          (서버 IP 사용 → IP 차단 없음, User-Agent 자유롭게 설정) ║
+// ║  ◆ 아키텍처                                                      ║
+// ║    브라우저 → GAS Web App (GET) → 네이버/Yahoo → 반환           ║
+// ║    · CORS: GAS Web App은 기본적으로 CORS 허용                    ║
+// ║    · IP 차단: Google 서버 IP 사용 → 봇 차단 없음                ║
+// ║                                                                  ║
+// ║  ◆ GAS_API_URL 설정 방법                                        ║
+// ║    1. Google Apps Script 에디터에서 코드.gs 배포                 ║
+// ║    2. "웹앱으로 배포" → 생성된 URL 복사                         ║
+// ║    3. 아래 GAS_API_URL 값에 붙여넣기                             ║
 // ╚══════════════════════════════════════════════════════════════════╝
 
-// ── Edge Function 주가 조회 핵심 헬퍼 ───────────────────────────────
+// ── GAS Web App URL 설정 ─────────────────────────────────────────
+// 아래 URL을 Google Apps Script 배포 후 발급받은 URL로 교체하세요
+const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbytrUYfa_keo9t0QnoZvxpoMVN4pqkKcfVPBUG0Bl2p42vVgwaV3qdQgHlmHyaKqEmB/exec';
+
+// ── 종목코드 → Yahoo symbol 변환 유틸 ──────────────────────────────
+// 5자리는 앞에 0 패딩, 시장 구분자 자동 부여
+function _toSymbol(ticker, market) {
+  const code6  = String(ticker || '').padStart(6, '0');
+  const suffix = market === 'KOSDAQ' ? '.KQ' : '.KS';
+  return code6 + suffix;
+}
+
+// ── GAS Web App 주가 조회 핵심 헬퍼 ─────────────────────────────────
 // 모든 주가 조회는 이 함수 1개로 통일
-// symbol: '108860.KQ', '005930.KS' 형태
-// range:  Yahoo range 파라미터 (기본 '5d', 과거 조회 시 '30d' 등)
-async function _fetchStockViaEdge(symbol, range) {
-  const edgeUrl = SUPABASE_URL + '/functions/v1/fetch-stock'
-
-  const resp = await fetch(edgeUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type':  'application/json',
-      'Authorization': 'Bearer ' + SUPABASE_KEY,
-      'apikey':        SUPABASE_KEY,
-    },
-    signal: AbortSignal.timeout(20000), // Edge Function 콜드 스타트 포함 20초
-    body: JSON.stringify({ symbol, range: range || '5d' }),
-  })
-
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({ error: 'HTTP ' + resp.status }))
-    throw new Error(err.error || 'HTTP ' + resp.status)
+// symbol: '108860.KQ', '005930.KS' 형태 (GAS에서 ticker만 추출)
+async function _fetchStockViaGAS(symbol) {
+  if (!GAS_API_URL || GAS_API_URL.includes('여기에_웹앱')) {
+    throw new Error('GAS_API_URL이 설정되지 않았습니다. 코드 상단의 GAS_API_URL을 설정하세요.');
   }
 
-  const data = await resp.json()
-  if (!data.success) throw new Error(data.error || '주가 조회 실패')
+  // ticker 추출: '108860.KQ' → '108860'
+  const ticker = symbol.replace(/\.(KS|KQ)$/i, '');
+
+  // GAS Web App은 GET 방식, CORS 자동 허용
+  const url = new URL(GAS_API_URL);
+  url.searchParams.set('ticker', ticker);
+
+  const resp = await fetch(url.toString(), {
+    method: 'GET',
+    signal: AbortSignal.timeout(15000), // GAS 콜드 스타트 포함 15초
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => 'No response');
+    throw new Error('HTTP ' + resp.status + ': ' + text.slice(0, 80));
+  }
+
+  const data = await resp.json();
+
+  if (!data.success) {
+    throw new Error(data.error || '주가 조회 실패');
+  }
+
   return {
     price:      data.price,
     prevClose:  data.prevClose  ?? null,
     change:     data.change     ?? null,
     changeRate: data.changeRate ?? null,
     date:       data.date,
-    source:     data.source,
-  }
+    source:     data.source || 'GAS',
+  };
 }
 
-// ── 종목코드 → Yahoo symbol 변환 유틸 ───────────────────────────────
-function _toSymbol(ticker, market) {
-  const code6  = String(ticker || '').padStart(6, '0')
-  const suffix = market === 'KOSDAQ' ? '.KQ' : '.KS'
-  return code6 + suffix
-}
-
-// ── 지분투자 입력 폼: [주가 조회] 버튼 핸들러 ───────────────────────
+// ── 지분투자 입력 폼: [주가 조회] 버튼 핸들러 ────────────────────────
 async function fetchStockPrice() {
-  const ticker   = document.getElementById('e-ticker').value.trim()
-  const market   = document.getElementById('e-market').value
-  const statusEl = document.getElementById('e-price-status')
-  const sourceEl = document.getElementById('e-price-source')
-  const fetchBtn = document.getElementById('e-fetch-btn')
+  const ticker   = document.getElementById('e-ticker').value.trim();
+  const market   = document.getElementById('e-market').value;
+  const statusEl = document.getElementById('e-price-status');
+  const sourceEl = document.getElementById('e-price-source');
+  const fetchBtn = document.getElementById('e-fetch-btn');
 
-  // ── 입력 검증 ─────────────────────────────────────────────────
+  // ── 입력 검증 ──────────────────────────────────────────────────
   if (!ticker) {
-    statusEl.textContent = '❌ 종목코드를 입력하세요'
-    statusEl.style.color = 'var(--red)'
-    return
+    statusEl.textContent = '❌ 종목코드를 입력하세요';
+    statusEl.style.color = 'var(--red)';
+    return;
   }
   if (!/^\d{5,6}$/.test(ticker)) {
-    statusEl.textContent = '❌ 5~6자리 숫자 종목코드를 입력하세요 (예: 108860)'
-    statusEl.style.color = 'var(--red)'
-    return
+    statusEl.textContent = '❌ 5~6자리 숫자 종목코드를 입력하세요 (예: 108860)';
+    statusEl.style.color = 'var(--red)';
+    return;
   }
   if (market === '비상장') {
-    statusEl.textContent = '⚠ 비상장 종목은 단가를 직접 입력하세요'
-    statusEl.style.color = 'var(--amber)'
-    return
+    statusEl.textContent = '⚠ 비상장 종목은 단가를 직접 입력하세요';
+    statusEl.style.color = 'var(--amber)';
+    return;
   }
 
-  const symbol = _toSymbol(ticker, market)
+  const symbol = _toSymbol(ticker, market);
 
-  // ── 기준일자 기반 Yahoo range 계산 ───────────────────────────
-  const baseDateEl = document.getElementById('e-date')
-  const baseDate   = baseDateEl ? baseDateEl.value : null
-  const today      = new Date().toISOString().slice(0, 10)
-  let range = '5d'
-  if (baseDate && baseDate < today) {
-    const diff = Math.ceil((new Date(today) - new Date(baseDate)) / 86400000)
-    if (diff > 5) range = Math.min(diff + 10, 30) + 'd'
-  }
+  // ── 기준일자 확인 ───────────────────────────────────────────────
+  const baseDateEl = document.getElementById('e-date');
+  const baseDate   = baseDateEl ? baseDateEl.value : null;
 
-  // ── 로딩 UI ──────────────────────────────────────────────────
+  // ── 로딩 UI ────────────────────────────────────────────────────
   if (fetchBtn) {
-    fetchBtn.disabled    = true
-    fetchBtn.textContent = '⏳ 조회중...'
-    fetchBtn.style.opacity = '0.6'
+    fetchBtn.disabled    = true;
+    fetchBtn.textContent = '⏳ 조회중...';
+    fetchBtn.style.opacity = '0.6';
   }
-  statusEl.textContent = symbol + ' — 서버에서 주가 수신 중...'
-  statusEl.style.color = 'var(--text3)'
-  if (sourceEl) sourceEl.textContent = ''
+  statusEl.textContent = symbol + ' — GAS 서버에서 주가 수신 중...';
+  statusEl.style.color = 'var(--text3)';
+  if (sourceEl) sourceEl.textContent = '';
 
-  let result = null
-  let errMsg  = ''
+  let result = null;
+  let errMsg  = '';
 
   try {
-    result = await _fetchStockViaEdge(symbol, range)
+    result = await _fetchStockViaGAS(symbol);
   } catch(e) {
-    errMsg = e?.message || String(e)
-    console.error('[fetchStockPrice]', symbol, errMsg)
+    errMsg = e?.message || String(e);
+    console.error('[fetchStockPrice]', symbol, errMsg);
   } finally {
     if (fetchBtn) {
-      fetchBtn.disabled    = false
-      fetchBtn.textContent = '주가 조회'
-      fetchBtn.style.opacity = ''
+      fetchBtn.disabled    = false;
+      fetchBtn.textContent = '주가 조회';
+      fetchBtn.style.opacity = '';
     }
   }
 
   if (result) {
-    // 기준일보다 미래 종가일 경우 경고
     if (baseDate && result.date > baseDate) {
-      statusEl.textContent = `⚠ ${baseDate} 기준 종가 없음 — 최근 종가 (${result.date}) 적용`
-      statusEl.style.color = 'var(--amber)'
+      statusEl.textContent = '⚠ ' + baseDate + ' 기준 종가 없음 — 최근 종가 (' + result.date + ') 적용';
+      statusEl.style.color = 'var(--amber)';
     } else {
-      statusEl.textContent = `✅ ${result.date} 종가: ${result.price.toLocaleString()}원`
-      statusEl.style.color = 'var(--green)'
+      statusEl.textContent = '✅ ' + result.date + ' 종가: ' + result.price.toLocaleString() + '원';
+      statusEl.style.color = 'var(--green)';
     }
-    document.getElementById('e-price').value = result.price.toLocaleString()
-    calcEquityValue()
-    if (sourceEl) sourceEl.textContent = `${result.date} 종가 (${result.source})`
-    showToast(`${symbol} ${result.price.toLocaleString()}원 (${result.date})`, 'success')
+    document.getElementById('e-price').value = result.price.toLocaleString();
+    calcEquityValue();
+    if (sourceEl) sourceEl.textContent = result.date + ' 종가 (' + result.source + ')';
+    showToast(symbol + ' ' + result.price.toLocaleString() + '원 (' + result.date + ')', 'success');
   } else {
-    statusEl.textContent = '❌ 주가 조회 실패 — 단가를 직접 입력하세요'
-    if (errMsg) statusEl.textContent += ` (${errMsg.slice(0, 60)})`
-    statusEl.style.color = 'var(--red)'
-    if (sourceEl) sourceEl.textContent = ''
-    showToast(`${symbol} 주가 조회 실패`, 'error')
+    statusEl.textContent = '❌ 주가 조회 실패 — 단가를 직접 입력하세요';
+    if (errMsg) statusEl.textContent += ' (' + errMsg.slice(0, 60) + ')';
+    statusEl.style.color = 'var(--red)';
+    if (sourceEl) sourceEl.textContent = '';
+    showToast(symbol + ' 주가 조회 실패', 'error');
   }
 }
 
-// ── 지분투자 목록: [시세↑] 버튼 핸들러 ─────────────────────────────
+// ── 지분투자 목록: [시세↑] 버튼 핸들러 ──────────────────────────────
 async function refreshEquityPrice(id, ticker, market) {
   if (!ticker || market === '비상장') {
-    showToast('비상장 종목은 단가를 직접 수정하세요', 'error')
-    return
+    showToast('비상장 종목은 단가를 직접 수정하세요', 'error');
+    return;
   }
+  const symbol = _toSymbol(ticker, market);
+  showToast(symbol + ' 시세 업데이트 중...');
 
-  const symbol = _toSymbol(ticker, market)
-  showToast(`${symbol} 시세 업데이트 중...`)
-
-  let result = null
+  let result = null;
   try {
-    result = await _fetchStockViaEdge(symbol)
+    result = await _fetchStockViaGAS(symbol);
   } catch(e) {
-    console.error('[refreshEquityPrice]', symbol, e?.message)
+    console.error('[refreshEquityPrice]', symbol, e?.message);
   }
 
   if (result) {
-    const allEqs  = DB.get('equities')
-    const current = allEqs.find(e => String(e.id) === String(id))
+    const allEqs  = DB.get('equities');
+    const current = allEqs.find(e => String(e.id) === String(id));
     if (current) {
-      // 오늘 날짜의 레코드가 이미 있으면 Upsert (중복 방지)
+      // Upsert: 결과 날짜 동일 레코드가 있으면 그 레코드 업데이트 (중복 방지)
       const sameDay = allEqs.find(e =>
         e.company === current.company && e.name === current.name && e.date === result.date &&
         String(e.id) !== String(id)
-      )
+      );
       if (sameDay) {
-        // 같은 날짜 기존 레코드 업데이트
-        sameDay.price       = result.price
-        sameDay.total_value = current.shares * result.price
-        await DB.updateOne('equities', sameDay)
+        sameDay.price       = result.price;
+        sameDay.total_value = current.shares * result.price;
+        await DB.updateOne('equities', sameDay);
       } else {
-        // 현재 레코드 날짜/가격 업데이트
-        current.price       = result.price
-        current.total_value = current.shares * result.price
-        current.date        = result.date
-        await DB.updateOne('equities', current)
+        current.price       = result.price;
+        current.total_value = current.shares * result.price;
+        current.date        = result.date;
+        await DB.updateOne('equities', current);
       }
-      renderEquity()
-      renderDashboard()
-      showToast(`${current.name} ${result.price.toLocaleString()}원 (${result.date})`, 'success')
+      renderEquity();
+      renderDashboard();
+      showToast(current.name + ' ' + result.price.toLocaleString() + '원 (' + result.date + ')', 'success');
     }
   } else {
-    showToast(`${symbol} 시세 조회 실패 — 직접 수정하세요`, 'error')
+    showToast(symbol + ' 시세 조회 실패 — 직접 수정하세요', 'error');
   }
 }
 
-// ── 환율 현황 페이지: [↻ 전체 평가금액 업데이트] 버튼 핸들러 ────────
+// ── 환율 현황 페이지: [↻ 전체 평가금액 업데이트] 핸들러 ──────────────
 async function updateAllEvaluation() {
-  const equities = DB.get('equities')
-  const targets  = equities.filter(eq => eq.ticker && eq.market !== '비상장')
+  const equities = DB.get('equities');
+  const targets  = equities.filter(eq => eq.ticker && eq.market !== '비상장');
 
   if (!targets.length) {
-    showToast('업데이트할 상장 종목이 없습니다', 'error')
-    return
+    showToast('업데이트할 상장 종목이 없습니다', 'error');
+    return;
   }
 
   // 종목별 최신 이력 1개만 업데이트 (중복 API 호출 방지)
-  const latestMap = {}
+  const latestMap = {};
   for (const eq of targets) {
-    const key = eq.company + '_' + eq.name
-    if (!latestMap[key] || eq.date > latestMap[key].date) latestMap[key] = eq
+    const key = eq.company + '_' + eq.name;
+    if (!latestMap[key] || eq.date > latestMap[key].date) latestMap[key] = eq;
   }
-  const latestList = Object.values(latestMap)
+  const latestList = Object.values(latestMap);
 
-  showToast(`전체 시세 업데이트 중... (${latestList.length}종목)`)
+  showToast('전체 시세 업데이트 중... (' + latestList.length + '종목)');
 
-  let updated = 0, failed = 0
-  const failedNames = []
+  let updated = 0, failed = 0;
+  const failedNames = [];
 
-  // 순차 처리 (병렬 시 Edge Function 과부하 방지)
   for (const eq of latestList) {
     try {
-      const symbol = _toSymbol(eq.ticker, eq.market)
-      const result = await _fetchStockViaEdge(symbol)
+      const symbol = _toSymbol(eq.ticker, eq.market);
+      const result = await _fetchStockViaGAS(symbol);
 
       if (result) {
-        // Upsert: 결과 날짜에 동일 종목 레코드가 있으면 해당 레코드 업데이트
-        const allEqs  = DB.get('equities')
+        // Upsert: 결과 날짜 동일 레코드가 있으면 해당 레코드 업데이트
+        const allEqs  = DB.get('equities');
         const sameDay = allEqs.find(e =>
           e.company === eq.company && e.name === eq.name && e.date === result.date &&
           String(e.id) !== String(eq.id)
-        )
+        );
         if (sameDay) {
-          sameDay.price       = result.price
-          sameDay.total_value = eq.shares * result.price
-          await DB.updateOne('equities', sameDay)
+          sameDay.price       = result.price;
+          sameDay.total_value = eq.shares * result.price;
+          await DB.updateOne('equities', sameDay);
         } else {
-          eq.price       = result.price
-          eq.total_value = eq.shares * result.price
-          eq.date        = result.date
-          await DB.updateOne('equities', eq)
+          eq.price       = result.price;
+          eq.total_value = eq.shares * result.price;
+          eq.date        = result.date;
+          await DB.updateOne('equities', eq);
         }
-        updated++
+        updated++;
       } else {
-        failed++
-        failedNames.push(eq.name)
+        failed++;
+        failedNames.push(eq.name);
       }
     } catch(e) {
-      // 개별 종목 실패해도 루프 계속 진행
-      console.error('[updateAllEvaluation] 종목 실패:', eq.name, e?.message)
-      failed++
-      failedNames.push(eq.name)
+      // 개별 종목 실패해도 루프 계속
+      console.error('[updateAllEvaluation] 종목 실패:', eq.name, e?.message);
+      failed++;
+      failedNames.push(eq.name);
     }
   }
 
-  renderEquity()
-  renderFXEquivTable()
-  renderDashboard()
+  renderEquity();
+  renderFXEquivTable();
+  renderDashboard();
 
-  const el = document.getElementById('fx-last-update')
-  if (el) el.textContent = '업데이트: ' + new Date().toLocaleTimeString('ko-KR')
+  const el = document.getElementById('fx-last-update');
+  if (el) el.textContent = '업데이트: ' + new Date().toLocaleTimeString('ko-KR');
 
   if (failed > 0) {
-    showToast(
-      `업데이트 완료 — ${updated}종목 성공 / ${failed}종목 실패 (${failedNames.join(', ')})`,
-      'error'
-    )
+    showToast('업데이트 완료 — ' + updated + '종목 성공 / ' + failed + '종목 실패 (' + failedNames.join(', ') + ')', 'error');
   } else {
-    showToast(`전체 시세 업데이트 완료 — ${updated}종목 반영`, 'success')
+    showToast('전체 시세 업데이트 완료 — ' + updated + '종목 반영', 'success');
   }
 }
 
@@ -2722,50 +2722,67 @@ const TICKER_STOCKS = [
   { code: '041920', market: 'KOSDAQ' },
 ];
 
+// 전광판 단일 종목 DOM 업데이트
 function updateTickerItem(code, result) {
   const priceEl  = document.getElementById('tp-' + code);
   const changeEl = document.getElementById('tc-' + code);
   if (!priceEl || !changeEl) return;
+
   if (!result) {
     priceEl.textContent  = '—';
     changeEl.textContent = '—';
     changeEl.className   = 'ticker-change flat';
     return;
   }
+
   priceEl.textContent = result.price.toLocaleString() + '원';
-  if (result.changeRate !== null) {
-    const rate   = result.changeRate;
-    const change = result.change !== null ? result.change : 0;
-    const sign   = change >= 0 ? '+' : '';
-    changeEl.textContent = sign + change.toLocaleString() + ' (' + sign + rate.toFixed(2) + '%)';
-    changeEl.className   = 'ticker-change ' + (change > 0 ? 'up' : change < 0 ? 'down' : 'flat');
+
+  if (result.changeRate !== null && result.change !== null) {
+    const sign   = result.change >= 0 ? '+' : '';
+    changeEl.textContent = sign + result.change.toLocaleString() +
+                           ' (' + sign + result.changeRate.toFixed(2) + '%)';
+    changeEl.className = 'ticker-change ' +
+      (result.change > 0 ? 'up' : result.change < 0 ? 'down' : 'flat');
   } else {
     changeEl.textContent = '—';
     changeEl.className   = 'ticker-change flat';
   }
 }
 
+// 전광판 전체 업데이트 — 3종목 병렬 조회
 async function refreshStockTicker() {
   const tickerEl = document.getElementById('stock-ticker');
   if (!tickerEl || tickerEl.style.display === 'none') return;
-  // 로딩 상태
+
+  // 로딩 상태 표시
   TICKER_STOCKS.forEach(function(s) {
-    var priceEl = document.getElementById('tp-' + s.code);
-    if (priceEl) { priceEl.textContent = '···'; priceEl.className = 'ticker-price ticker-loading'; }
+    const priceEl = document.getElementById('tp-' + s.code);
+    if (priceEl) {
+      priceEl.textContent = '···';
+      priceEl.className   = 'ticker-price ticker-loading';
+    }
+    const changeEl = document.getElementById('tc-' + s.code);
+    if (changeEl) changeEl.textContent = '';
   });
-  // 3종목 병렬 조회
+
+  // 3종목 병렬 조회 (GAS 서버 부하 고려, 순차도 가능하나 병렬 우선)
   await Promise.allSettled(TICKER_STOCKS.map(async function(s) {
-    var symbol = s.code + (s.market === 'KOSDAQ' ? '.KQ' : '.KS');
+    const symbol = _toSymbol(s.code, s.market);
     try {
-      var result = await _fetchStockViaEdge(symbol, '5d');
+      const result = await _fetchStockViaGAS(symbol);
       updateTickerItem(s.code, result);
     } catch(e) {
+      console.warn('[Ticker]', s.code, e?.message);
       updateTickerItem(s.code, null);
     }
-    var priceEl = document.getElementById('tp-' + s.code);
+    // 로딩 클래스 해제
+    const priceEl = document.getElementById('tp-' + s.code);
     if (priceEl) priceEl.className = 'ticker-price';
   }));
 }
+
+
+
 
 
 
