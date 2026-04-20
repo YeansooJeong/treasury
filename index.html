@@ -374,6 +374,29 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
     .metrics { grid-template-columns: 1fr 1fr !important; }
     .topbar-right .date-badge { display: none; }
   }
+
+  /* ── 그룹사 주가 전광판 ──────────────────────────────────────── */
+  #stock-ticker {
+    display: none;
+    align-items: center;
+    gap: 20px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px 14px;
+    white-space: nowrap;
+  }
+  .ticker-item { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .ticker-name  { color: var(--text2); font-weight: 500; }
+  .ticker-price { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .ticker-change { font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .ticker-change.up   { color: #ef4444; }
+  .ticker-change.down { color: #3b82f6; }
+  .ticker-change.flat { color: var(--text3); }
+  .ticker-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--border2); }
+  .ticker-loading { color: var(--text3); font-size: 11px; animation: tkpulse 1.5s ease-in-out infinite; }
+  @keyframes tkpulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  @media (max-width: 768px) { #stock-ticker { display: none !important; } }
 </style>
 </head>
 <body>
@@ -587,6 +610,25 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
         <div class="date-badge" id="today-badge">—</div>
         <div id="sb-save-indicator" style="display:none;font-size:11px;padding:4px 10px;border-radius:6px;font-weight:500;transition:all .3s;"></div>
         <div id="user-info" style="display:none;font-size:12px;color:#94a3b8;padding:4px 10px;background:#1e2535;border-radius:8px;border:1px solid rgba(255,255,255,0.08);"></div>
+        <div id="stock-ticker">
+          <div class="ticker-item">
+            <span class="ticker-name">셀바스AI</span>
+            <span class="ticker-price" id="tp-108860">—</span>
+            <span class="ticker-change flat" id="tc-108860">—</span>
+          </div>
+          <div class="ticker-dot"></div>
+          <div class="ticker-item">
+            <span class="ticker-name">셀바스HC</span>
+            <span class="ticker-price" id="tp-208370">—</span>
+            <span class="ticker-change flat" id="tc-208370">—</span>
+          </div>
+          <div class="ticker-dot"></div>
+          <div class="ticker-item">
+            <span class="ticker-name">메디아나</span>
+            <span class="ticker-price" id="tp-041920">—</span>
+            <span class="ticker-change flat" id="tc-041920">—</span>
+          </div>
+        </div>
         <button class="btn btn-ghost" onclick="refreshFX()" style="font-size:12px;padding:6px 12px;">↻ 환율</button>
         <button id="code-mgr-btn" onclick="goto('admin-mycode')" style="display:none;background:#1e2535;border:1px solid rgba(255,255,255,0.1);color:#94a3b8;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">⚙ 코드 관리</button>
         <button id="logout-btn" onclick="doLogout()" style="display:none;background:#1e2535;border:1px solid rgba(255,255,255,0.1);color:#94a3b8;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">로그아웃</button>
@@ -1366,23 +1408,6 @@ function fmtKRW(n) { if(!n&&n!==0) return '0'; const a=Math.abs(n); if(a>=1e12) 
 function showToast(msg, type='') { const t = document.getElementById('toast'); t.textContent = msg; t.className = 'show '+type; setTimeout(()=>t.className='',3000); }
 
 // ══════════════════════════════════════════════════════
-// 주가 조회 API 설정 (Google Apps Script Web App)
-// ══════════════════════════════════════════════════════
-const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyPhVvHIy66zWd7WzMix-jS0BzvVga2y4gAkTySuaEc8yUmp59l2UMfrRXl0TXc3SXG/exec';
-// 예시: 'https://script.google.com/macros/s/AKfycbyPhVvHIy66zWd7WzMix-jS0BzvVga2y4gAkTySuaEc8yUmp59l2UMfrRXl0TXc3SXG/exec'
-//
-// GAS 배포 방법:
-// 1. Google Apps Script 에디터 열기: https://script.google.com/
-// 2. 새 프로젝트 생성
-// 3. 아래 GAS_코드.gs 내용을 코드.gs 파일에 복사-붙여넣기
-// 4. "배포" → "새 배포" → "웹앱" 선택
-// 5. "다음 권한으로 실행: [자신의계정]" 설정
-// 6. "다음 사용자로 액세스: [모든 사람]" 설정
-// 7. 배포 후 나오는 URL 복사하여 위의 GAS_API_URL에 입력
-// 7. 배포 후 나오는 URL 복사하여 위의 GAS_API_URL에 입력
-// 
-
-// ══════════════════════════════════════════════════════
 // Supabase 연동 설정
 // ══════════════════════════════════════════════════════
 const SUPABASE_URL = 'https://qobfmihxcclbzfaohnor.supabase.co';
@@ -1866,6 +1891,12 @@ function applyAccessControl(user) {
 
   // ── 오버레이 숨기고 topbar 표시 ──────────────────────────
   document.getElementById('login-overlay').style.display = 'none';
+  // 그룹사 주가 전광판 표시 및 자동 로드
+  var tickerEl2 = document.getElementById('stock-ticker');
+  if (tickerEl2) {
+    tickerEl2.style.display = 'flex';
+    setTimeout(refreshStockTicker, 1500);
+  }
 
   const logoutBtn  = document.getElementById('logout-btn');
   const codeMgrBtn = document.getElementById('code-mgr-btn');
@@ -1966,6 +1997,8 @@ function doLogout() {
     btn.removeAttribute('data-ceo-disabled');
   });
   document.getElementById('login-overlay').style.display = 'flex';
+  var tickerHide = document.getElementById('stock-ticker');
+  if (tickerHide) tickerHide.style.display = 'none';
   const logoutBtn2 = document.getElementById('logout-btn');
   if (logoutBtn2) logoutBtn2.style.display = 'none';
   const codeMgrBtn2 = document.getElementById('code-mgr-btn');
@@ -2434,46 +2467,34 @@ document.addEventListener('click', (e) => {
 // 모든 주가 조회는 이 함수 1개로 통일
 // symbol: '108860.KQ', '005930.KS' 형태
 // range:  Yahoo range 파라미터 (기본 '5d', 과거 조회 시 '30d' 등)
-// ── 주가 조회: Google Apps Script Web App 호출 ─────────────────────
 async function _fetchStockViaEdge(symbol, range) {
-  // GAS_API_URL이 설정되지 않았으면 에러
-  if (!GAS_API_URL || GAS_API_URL.includes('여기에_웹앱')) {
-    throw new Error('GAS_API_URL이 설정되지 않았습니다. 환경설정을 확인하세요.')
+  const edgeUrl = SUPABASE_URL + '/functions/v1/fetch-stock'
+
+  const resp = await fetch(edgeUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'apikey':        SUPABASE_KEY,
+    },
+    signal: AbortSignal.timeout(20000), // Edge Function 콜드 스타트 포함 20초
+    body: JSON.stringify({ symbol, range: range || '5d' }),
+  })
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ error: 'HTTP ' + resp.status }))
+    throw new Error(err.error || 'HTTP ' + resp.status)
   }
 
-  // symbol 형식: "005930.KS" → ticker: 005930
-  const ticker = symbol.replace(/\.KS|\.KQ/i, '')
-
-  // CORS 문제 해결: GAS는 기본적으로 CORS 헤더를 반성하므로 mode 설정 불필요
-  const url = new URL(GAS_API_URL)
-  url.searchParams.append('ticker', ticker)
-
-  try {
-    const resp = await fetch(url.toString(), {
-      method: 'GET',
-      // CORS 모드 제거 (GAS는 자동 처리)
-      signal: AbortSignal.timeout(15000),
-    })
-
-    if (!resp.ok) {
-      const text = await resp.text().catch(() => 'No response body')
-      throw new Error(`HTTP ${resp.status}: ${text}`)
-    }
-
-    const data = await resp.json()
-
-    if (!data.success) {
-      throw new Error(data.error || '주가 조회 실패')
-    }
-
-    return {
-      price: data.price,
-      date: data.date,
-      source: data.source
-    }
-  } catch (e) {
-    console.error('[_fetchStockViaEdge] GAS 호출 실패:', symbol, e?.message)
-    throw e
+  const data = await resp.json()
+  if (!data.success) throw new Error(data.error || '주가 조회 실패')
+  return {
+    price:      data.price,
+    prevClose:  data.prevClose  ?? null,
+    change:     data.change     ?? null,
+    changeRate: data.changeRate ?? null,
+    date:       data.date,
+    source:     data.source,
   }
 }
 
@@ -2587,15 +2608,29 @@ async function refreshEquityPrice(id, ticker, market) {
   }
 
   if (result) {
-    const eq = DB.get('equities').find(e => String(e.id) === String(id))
-    if (eq) {
-      eq.price       = result.price
-      eq.total_value = eq.shares * result.price
-      eq.date        = result.date
-      await DB.updateOne('equities', eq)
+    const allEqs  = DB.get('equities')
+    const current = allEqs.find(e => String(e.id) === String(id))
+    if (current) {
+      // 오늘 날짜의 레코드가 이미 있으면 Upsert (중복 방지)
+      const sameDay = allEqs.find(e =>
+        e.company === current.company && e.name === current.name && e.date === result.date &&
+        String(e.id) !== String(id)
+      )
+      if (sameDay) {
+        // 같은 날짜 기존 레코드 업데이트
+        sameDay.price       = result.price
+        sameDay.total_value = current.shares * result.price
+        await DB.updateOne('equities', sameDay)
+      } else {
+        // 현재 레코드 날짜/가격 업데이트
+        current.price       = result.price
+        current.total_value = current.shares * result.price
+        current.date        = result.date
+        await DB.updateOne('equities', current)
+      }
       renderEquity()
       renderDashboard()
-      showToast(`${eq.name} ${result.price.toLocaleString()}원 (${result.date})`, 'success')
+      showToast(`${current.name} ${result.price.toLocaleString()}원 (${result.date})`, 'success')
     }
   } else {
     showToast(`${symbol} 시세 조회 실패 — 직접 수정하세요`, 'error')
@@ -2632,10 +2667,22 @@ async function updateAllEvaluation() {
       const result = await _fetchStockViaEdge(symbol)
 
       if (result) {
-        eq.price       = result.price
-        eq.total_value = eq.shares * result.price
-        eq.date        = result.date
-        await DB.updateOne('equities', eq)
+        // Upsert: 결과 날짜에 동일 종목 레코드가 있으면 해당 레코드 업데이트
+        const allEqs  = DB.get('equities')
+        const sameDay = allEqs.find(e =>
+          e.company === eq.company && e.name === eq.name && e.date === result.date &&
+          String(e.id) !== String(eq.id)
+        )
+        if (sameDay) {
+          sameDay.price       = result.price
+          sameDay.total_value = eq.shares * result.price
+          await DB.updateOne('equities', sameDay)
+        } else {
+          eq.price       = result.price
+          eq.total_value = eq.shares * result.price
+          eq.date        = result.date
+          await DB.updateOne('equities', eq)
+        }
         updated++
       } else {
         failed++
@@ -2665,6 +2712,61 @@ async function updateAllEvaluation() {
     showToast(`전체 시세 업데이트 완료 — ${updated}종목 반영`, 'success')
   }
 }
+
+// ══════════════════════════════════════════════════════════════════
+// 그룹사 주가 전광판 — 3개 그룹사 실시간 주가 표시
+// ══════════════════════════════════════════════════════════════════
+const TICKER_STOCKS = [
+  { code: '108860', market: 'KOSDAQ' },
+  { code: '208370', market: 'KOSDAQ' },
+  { code: '041920', market: 'KOSDAQ' },
+];
+
+function updateTickerItem(code, result) {
+  const priceEl  = document.getElementById('tp-' + code);
+  const changeEl = document.getElementById('tc-' + code);
+  if (!priceEl || !changeEl) return;
+  if (!result) {
+    priceEl.textContent  = '—';
+    changeEl.textContent = '—';
+    changeEl.className   = 'ticker-change flat';
+    return;
+  }
+  priceEl.textContent = result.price.toLocaleString() + '원';
+  if (result.changeRate !== null) {
+    const rate   = result.changeRate;
+    const change = result.change !== null ? result.change : 0;
+    const sign   = change >= 0 ? '+' : '';
+    changeEl.textContent = sign + change.toLocaleString() + ' (' + sign + rate.toFixed(2) + '%)';
+    changeEl.className   = 'ticker-change ' + (change > 0 ? 'up' : change < 0 ? 'down' : 'flat');
+  } else {
+    changeEl.textContent = '—';
+    changeEl.className   = 'ticker-change flat';
+  }
+}
+
+async function refreshStockTicker() {
+  const tickerEl = document.getElementById('stock-ticker');
+  if (!tickerEl || tickerEl.style.display === 'none') return;
+  // 로딩 상태
+  TICKER_STOCKS.forEach(function(s) {
+    var priceEl = document.getElementById('tp-' + s.code);
+    if (priceEl) { priceEl.textContent = '···'; priceEl.className = 'ticker-price ticker-loading'; }
+  });
+  // 3종목 병렬 조회
+  await Promise.allSettled(TICKER_STOCKS.map(async function(s) {
+    var symbol = s.code + (s.market === 'KOSDAQ' ? '.KQ' : '.KS');
+    try {
+      var result = await _fetchStockViaEdge(symbol, '5d');
+      updateTickerItem(s.code, result);
+    } catch(e) {
+      updateTickerItem(s.code, null);
+    }
+    var priceEl = document.getElementById('tp-' + s.code);
+    if (priceEl) priceEl.className = 'ticker-price';
+  }));
+}
+
 
 
 
@@ -2775,7 +2877,7 @@ async function saveEquity() {
     total_value
   };
 
-  // 이력 수정 모드 확인 (loadEquityHistoryToForm 에서 dataset.historyMode 설정)
+  // ── 이력 수정 모드 (loadEquityHistoryToForm에서 dataset.historyMode 설정) ──
   const saveBtn2 = document.querySelector('#page-equity .form-actions button.btn-primary');
   const historyId = saveBtn2 && saveBtn2.dataset.historyMode;
   if (historyId) {
@@ -2787,9 +2889,25 @@ async function saveEquity() {
     clearEquityForm(); renderEquity(); renderDashboard();
     return;
   }
-  eq.id = crypto.randomUUID();
-  await DB.append('equities', eq);
-  showToast('[' + company + '] ' + name + ' ' + (editingEquityKey ? '업데이트' : '저장') + ' 완료', 'success');
+
+  // ── Upsert: 같은 날짜(date) + 법인 + 종목명 레코드가 있으면 UPDATE, 없으면 INSERT ──
+  // 목적: 동일 일자 데이터는 '최종값' 1건만 유지 (중복 이력 방지)
+  const allEquities = DB.get('equities');
+  const sameDay = allEquities.find(e =>
+    e.company === company && e.name === name && e.date === date
+  );
+
+  if (sameDay) {
+    // 기존 레코드 덮어쓰기 (id 유지)
+    eq.id = sameDay.id;
+    await DB.updateOne('equities', eq);
+    showToast('[' + company + '] ' + name + ' ' + date + ' 업데이트(덮어쓰기) 완료', 'success');
+  } else {
+    // 신규 날짜 → 새 레코드 추가
+    eq.id = crypto.randomUUID();
+    await DB.append('equities', eq);
+    showToast('[' + company + '] ' + name + ' ' + (editingEquityKey ? '업데이트' : '저장') + ' 완료', 'success');
+  }
 
   // 평가금액 히스토리 기록
   recordPriceHistory('equity', company + '_' + name, eq.date, eq.total_value);
@@ -2881,7 +2999,6 @@ function renderDashboardAlerts() {
   const banner = document.getElementById('dash-alert-banner');
   if (!banner) return;
 
-  // 알림 대상: Master/CEO는 3사 전체, 담당자는 자사만
   const user = currentUser;
   const isAll = !user || user.role === 'master' || user.role === 'ceo';
   const targetCompanies = isAll
@@ -2889,17 +3006,23 @@ function renderDashboardAlerts() {
     : [user.company];
 
   const today = new Date().toISOString().slice(0, 10);
+  const todayDow = new Date().getDay(); // 0=일, 6=토
 
-  // 오늘이 영업일인지 확인 (주말 제외)
-  const todayDow = new Date().getDay();
-  const isTodayBizDay = todayDow !== 0 && todayDow !== 6;
-
-  // 직전 영업일 계산
+  // ── 영업일 헬퍼 ─────────────────────────────────────────────────
+  // 주말 여부 (true면 영업일)
+  function isBizDay(dateStr) {
+    const dow = new Date(dateStr).getDay();
+    return dow !== 0 && dow !== 6;
+  }
+  // 직전 영업일 계산 (주말 건너뜀)
   function prevBizDay(dateStr) {
     const d = new Date(dateStr);
     do { d.setDate(d.getDate() - 1); } while (d.getDay() === 0 || d.getDay() === 6);
     return d.toISOString().slice(0, 10);
   }
+
+  const isTodayBizDay  = isBizDay(today);
+  const lastBizDay     = prevBizDay(today); // 직전 영업일 (오늘이 주말이어도 정확히 계산)
 
   const alerts = [];
 
@@ -2907,7 +3030,7 @@ function renderDashboardAlerts() {
     const daily = DB.get('daily').filter(r => r.company === company);
     const inputDates = new Set(daily.map(r => r.date));
 
-    // 당일 미입력 (영업일인 경우)
+    // ① 운전자금 당일 미입력 — 오늘이 영업일인 경우만
     if (isTodayBizDay && !inputDates.has(today)) {
       alerts.push({
         level: 'error',
@@ -2915,17 +3038,19 @@ function renderDashboardAlerts() {
       });
     }
 
-    // 직전 영업일 미입력
-    const yesterday = prevBizDay(today);
-    if (!inputDates.has(yesterday) && daily.length > 0) {
+    // ② 직전 영업일 미입력 — 오늘이 주말이어도 금요일 누락을 감지
+    if (!inputDates.has(lastBizDay) && daily.length > 0) {
       alerts.push({
         level: 'warn',
-        msg: '[' + company + '] 직전 영업일(' + yesterday + ') 운전자금 누락',
+        msg: '[' + company + '] 직전 영업일(' + lastBizDay + ') 운전자금 누락',
       });
     }
 
-    // 지분투자 — 당일 평가금액 업데이트 여부
-    if (isTodayBizDay) {
+    // ③ 지분투자 평가금액 업데이트 여부
+    //    - 오늘이 영업일: 오늘 날짜로 업데이트됐는지 확인
+    //    - 오늘이 주말: 직전 영업일(금요일) 기준으로 확인 (주말엔 주가 없음)
+    const equityRefDate = isTodayBizDay ? today : lastBizDay;
+    {
       const equities = DB.get('equities').filter(e => e.company === company);
       const latestMap = {};
       equities.forEach(e => {
@@ -2933,25 +3058,28 @@ function renderDashboardAlerts() {
         if (!latestMap[key] || e.date > latestMap[key].date) latestMap[key] = e;
       });
       Object.values(latestMap).forEach(eq => {
-        if (eq.market !== '비상장' && eq.date < today) {
+        // 비상장 제외, 마지막 업데이트일이 기준일보다 오래됐으면 알림
+        if (eq.market !== '비상장' && eq.date < equityRefDate) {
           alerts.push({
             level: 'info',
-            msg: '[' + company + '] ' + eq.name + ' 평가금액 미업데이트 (최종: ' + eq.date + ')',
+            msg: '[' + company + '] ' + eq.name + ' 평가금액 미업데이트' +
+                 ' (최종: ' + eq.date + ', 기준: ' + equityRefDate + ')',
           });
         }
       });
     }
 
-    // 운용자금 국공채 — 당일 기준가 업데이트 여부
-    if (isTodayBizDay) {
+    // ④ 국공채 기준가 업데이트 — 같은 기준 적용
+    {
       const bonds = DB.get('investments').filter(i =>
         i.company === company && i.active && i.product === '국공채'
       );
       bonds.forEach(b => {
-        if (b.priceDate && b.priceDate < today) {
+        if (b.priceDate && b.priceDate < equityRefDate) {
           alerts.push({
             level: 'info',
-            msg: '[' + company + '] ' + (b.bondName || b.bank) + ' 기준가 미업데이트 (최종: ' + b.priceDate + ')',
+            msg: '[' + company + '] ' + (b.bondName || b.bank) + ' 기준가 미업데이트' +
+                 ' (최종: ' + b.priceDate + ')',
           });
         }
       });
