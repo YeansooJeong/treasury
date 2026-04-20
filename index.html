@@ -48,9 +48,9 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
 
   /* ── 메인 콘텐츠 ── */
   .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-  .topbar { height: 56px; background: var(--bg2); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 28px; flex-shrink: 0; }
-  .topbar-title { font-size: 15px; font-weight: 600; }
-  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .topbar { height: 56px; background: var(--bg2); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 28px; flex-shrink: 0; gap: 8px; overflow: hidden; }
+  .topbar-title { font-size: 15px; font-weight: 600; flex-shrink: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .topbar-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; min-width: 0; }
   .date-badge { font-size: 12px; color: var(--text2); background: var(--bg3); padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border); }
   
   .btn { padding: 7px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: 500; cursor: pointer; transition: all .15s; font-family: inherit; }
@@ -295,10 +295,13 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
     .layout, .main { max-width: 100vw !important; overflow-x: hidden !important; }
 
     /* topbar 간소화 */
-    .topbar { padding: 0 12px; height: 50px; }
-    .topbar-title { font-size: 14px; }
-    .topbar-right { gap: 6px; }
+    .topbar { padding: 0 10px; height: 50px; gap: 6px; }
+    .topbar-title { font-size: 13px; flex-shrink: 1; }
+    .topbar-right { gap: 6px; flex-shrink: 0; }
+    /* 모바일에서 불필요한 요소 숨김 */
     #code-mgr-btn, #sb-save-indicator { display: none !important; }
+    .date-badge { display: none !important; }
+    #user-info { display: none !important; }
 
     /* 모바일 전용 UI 표시 */
     #mobile-tabbar { display: flex; }
@@ -375,28 +378,94 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
     .topbar-right .date-badge { display: none; }
   }
 
-  /* ── 그룹사 주가 전광판 ──────────────────────────────────────── */
+  /* ── 그룹사 주가 전광판 (PC) ─────────────────────────────────── */
   #stock-ticker {
-    display: none;
+    display: none;           /* 로그인 후 JS로 flex 변경 */
     align-items: center;
-    gap: 20px;
+    gap: 0;
     background: rgba(255,255,255,0.03);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 4px 14px;
+    padding: 0 10px;
+    /* flex-shrink 허용: topbar가 좁아질 때 전광판이 먼저 줄어듦 */
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: 380px;
+    overflow: hidden;
     white-space: nowrap;
+    height: 36px;
+    position: relative;
   }
-  .ticker-item { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  /* 내부 콘텐츠: marquee 컨테이너 */
+  #stock-ticker-inner {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    white-space: nowrap;
+    /* marquee 애니메이션: 공간이 부족할 때 흐름 (JS로 overflow 감지 후 활성화) */
+    transition: none;
+  }
+  #stock-ticker-inner.marquee {
+    animation: tickerScroll 18s linear infinite;
+    padding-right: 40px; /* 끝에 여백 */
+  }
+  @keyframes tickerScroll {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  #stock-ticker:hover #stock-ticker-inner.marquee { animation-play-state: paused; }
+
+  .ticker-item { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; flex-shrink: 0; }
   .ticker-name  { color: var(--text2); font-weight: 500; }
   .ticker-price { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
   .ticker-change { font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; }
-  .ticker-change.up   { color: #ef4444; }
-  .ticker-change.down { color: #3b82f6; }
+  .ticker-change.up   { color: #ef4444; }  /* 한국 증시: 상승=빨강 */
+  .ticker-change.down { color: #3b82f6; }  /* 하락=파랑 */
   .ticker-change.flat { color: var(--text3); }
-  .ticker-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--border2); }
+  .ticker-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--border2); flex-shrink: 0; margin: 0 4px; }
   .ticker-loading { color: var(--text3); font-size: 11px; animation: tkpulse 1.5s ease-in-out infinite; }
   @keyframes tkpulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-  @media (max-width: 768px) { #stock-ticker { display: none !important; } }
+
+  /* 모바일: topbar에서 전광판 숨기고 → 하단 고정 바로 표시 */
+  @media (max-width: 768px) {
+    #stock-ticker { display: none !important; }  /* topbar 내 전광판 숨김 */
+  }
+
+  /* ── 모바일 전용: 하단 주가 바 (탭바 위) ─────────────────────── */
+  #mobile-stock-bar {
+    display: none;  /* 로그인 후 JS로 flex 변경 */
+    position: fixed;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 56px); /* 탭바 높이만큼 위 */
+    left: 0; right: 0;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    z-index: 195;
+    padding: 5px 12px;
+    justify-content: space-around;
+    align-items: center;
+    font-size: 11px;
+    gap: 4px;
+    overflow: hidden;
+  }
+  .mob-ticker-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    flex: 1;
+    min-width: 0;
+  }
+  .mob-ticker-name  { color: var(--text3); font-size: 10px; white-space: nowrap; }
+  .mob-ticker-price { color: var(--text); font-weight: 700; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .mob-ticker-change { font-size: 10px; font-weight: 500; white-space: nowrap; }
+  .mob-ticker-change.up   { color: #ef4444; }
+  .mob-ticker-change.down { color: #3b82f6; }
+  .mob-ticker-change.flat { color: var(--text3); }
+  @media (max-width: 768px) {
+    #mobile-stock-bar { display: none; } /* 로그인 후 JS가 flex로 변경 */
+    /* 하단 탭바가 있을 때 content 추가 여백 (mobile-stock-bar 높이 38px) */
+    .content { padding-bottom: 122px !important; } /* 84(탭바) + 38(주가바) */
+  }
 </style>
 </head>
 <body>
@@ -610,23 +679,26 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
         <div class="date-badge" id="today-badge">—</div>
         <div id="sb-save-indicator" style="display:none;font-size:11px;padding:4px 10px;border-radius:6px;font-weight:500;transition:all .3s;"></div>
         <div id="user-info" style="display:none;font-size:12px;color:#94a3b8;padding:4px 10px;background:#1e2535;border-radius:8px;border:1px solid rgba(255,255,255,0.08);"></div>
+        <!-- PC 상단 주가 전광판 (좁은 화면: marquee 자동 활성화) -->
         <div id="stock-ticker">
-          <div class="ticker-item">
-            <span class="ticker-name">셀바스AI</span>
-            <span class="ticker-price" id="tp-108860">—</span>
-            <span class="ticker-change flat" id="tc-108860">—</span>
-          </div>
-          <div class="ticker-dot"></div>
-          <div class="ticker-item">
-            <span class="ticker-name">셀바스HC</span>
-            <span class="ticker-price" id="tp-208370">—</span>
-            <span class="ticker-change flat" id="tc-208370">—</span>
-          </div>
-          <div class="ticker-dot"></div>
-          <div class="ticker-item">
-            <span class="ticker-name">메디아나</span>
-            <span class="ticker-price" id="tp-041920">—</span>
-            <span class="ticker-change flat" id="tc-041920">—</span>
+          <div id="stock-ticker-inner">
+            <div class="ticker-item">
+              <span class="ticker-name">셀바스AI</span>
+              <span class="ticker-price" id="tp-108860">—</span>
+              <span class="ticker-change flat" id="tc-108860">—</span>
+            </div>
+            <div class="ticker-dot"></div>
+            <div class="ticker-item">
+              <span class="ticker-name">셀바스HC</span>
+              <span class="ticker-price" id="tp-208370">—</span>
+              <span class="ticker-change flat" id="tc-208370">—</span>
+            </div>
+            <div class="ticker-dot"></div>
+            <div class="ticker-item">
+              <span class="ticker-name">메디아나</span>
+              <span class="ticker-price" id="tp-041920">—</span>
+              <span class="ticker-change flat" id="tc-041920">—</span>
+            </div>
           </div>
         </div>
         <button class="btn btn-ghost" onclick="refreshFX()" style="font-size:12px;padding:6px 12px;">↻ 환율</button>
@@ -1891,12 +1963,13 @@ function applyAccessControl(user) {
 
   // ── 오버레이 숨기고 topbar 표시 ──────────────────────────
   document.getElementById('login-overlay').style.display = 'none';
-  // 그룹사 주가 전광판 표시 및 자동 로드
-  var tickerEl2 = document.getElementById('stock-ticker');
-  if (tickerEl2) {
-    tickerEl2.style.display = 'flex';
-    setTimeout(refreshStockTicker, 1500);
-  }
+  // 그룹사 주가 전광판 표시 (PC: topbar, 모바일: 하단 바)
+  var tickerEl2   = document.getElementById('stock-ticker');
+  var mobBarEl    = document.getElementById('mobile-stock-bar');
+  var isMob       = window.innerWidth <= 768;
+  if (tickerEl2 && !isMob)  tickerEl2.style.display  = 'flex';
+  if (mobBarEl  && isMob)   mobBarEl.style.display   = 'flex';
+  setTimeout(refreshStockTicker, 1500);
 
   const logoutBtn  = document.getElementById('logout-btn');
   const codeMgrBtn = document.getElementById('code-mgr-btn');
@@ -1999,6 +2072,8 @@ function doLogout() {
   document.getElementById('login-overlay').style.display = 'flex';
   var tickerHide = document.getElementById('stock-ticker');
   if (tickerHide) tickerHide.style.display = 'none';
+  var mobBarHide = document.getElementById('mobile-stock-bar');
+  if (mobBarHide) mobBarHide.style.display = 'none';
   const logoutBtn2 = document.getElementById('logout-btn');
   if (logoutBtn2) logoutBtn2.style.display = 'none';
   const codeMgrBtn2 = document.getElementById('code-mgr-btn');
@@ -2468,7 +2543,7 @@ document.addEventListener('click', (e) => {
 
 // ── GAS Web App URL 설정 ─────────────────────────────────────────
 // 아래 URL을 Google Apps Script 배포 후 발급받은 URL로 교체하세요
-const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbytrUYfa_keo9t0QnoZvxpoMVN4pqkKcfVPBUG0Bl2p42vVgwaV3qdQgHlmHyaKqEmB/exec';
+const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzxgqIljbfo6cGee_pCV34uONYRIc2qVgYDAf3FFGWrnm07Zi9Y36u02HPe7qO1KIJz/exec';
 
 // ── 종목코드 → Yahoo symbol 변환 유틸 ──────────────────────────────
 // 5자리는 앞에 0 패딩, 시장 구분자 자동 부여
@@ -2722,50 +2797,61 @@ const TICKER_STOCKS = [
   { code: '041920', market: 'KOSDAQ' },
 ];
 
-// 전광판 단일 종목 DOM 업데이트
+// 전광판 단일 종목 DOM 업데이트 (PC + 모바일 동시)
 function updateTickerItem(code, result) {
+  // PC 전광판
   const priceEl  = document.getElementById('tp-' + code);
   const changeEl = document.getElementById('tc-' + code);
-  if (!priceEl || !changeEl) return;
+  // 모바일 주가 바
+  const mPriceEl  = document.getElementById('mtp-' + code);
+  const mChangeEl = document.getElementById('mtc-' + code);
 
   if (!result) {
-    priceEl.textContent  = '—';
-    changeEl.textContent = '—';
-    changeEl.className   = 'ticker-change flat';
+    if (priceEl)  { priceEl.textContent  = '—'; }
+    if (changeEl) { changeEl.textContent = '—'; changeEl.className = 'ticker-change flat'; }
+    if (mPriceEl)  { mPriceEl.textContent  = '—'; }
+    if (mChangeEl) { mChangeEl.textContent = '—'; mChangeEl.className = 'mob-ticker-change flat'; }
     return;
   }
 
-  priceEl.textContent = result.price.toLocaleString() + '원';
+  const priceStr = result.price.toLocaleString() + '원';
 
+  let changeStr = '—', changeClass = 'flat';
   if (result.changeRate !== null && result.change !== null) {
-    const sign   = result.change >= 0 ? '+' : '';
-    changeEl.textContent = sign + result.change.toLocaleString() +
-                           ' (' + sign + result.changeRate.toFixed(2) + '%)';
-    changeEl.className = 'ticker-change ' +
-      (result.change > 0 ? 'up' : result.change < 0 ? 'down' : 'flat');
-  } else {
-    changeEl.textContent = '—';
-    changeEl.className   = 'ticker-change flat';
+    const sign = result.change >= 0 ? '+' : '';
+    changeStr  = sign + result.change.toLocaleString() +
+                 ' (' + sign + result.changeRate.toFixed(2) + '%)';
+    changeClass = result.change > 0 ? 'up' : result.change < 0 ? 'down' : 'flat';
   }
+
+  // PC 업데이트
+  if (priceEl)  priceEl.textContent = priceStr;
+  if (changeEl) { changeEl.textContent = changeStr; changeEl.className = 'ticker-change ' + changeClass; }
+
+  // 모바일 업데이트
+  if (mPriceEl)  mPriceEl.textContent = priceStr;
+  if (mChangeEl) { mChangeEl.textContent = changeStr; mChangeEl.className = 'mob-ticker-change ' + changeClass; }
 }
 
-// 전광판 전체 업데이트 — 3종목 병렬 조회
+// 전광판 전체 업데이트 — 3종목 병렬 조회 + marquee 자동 감지
 async function refreshStockTicker() {
-  const tickerEl = document.getElementById('stock-ticker');
-  if (!tickerEl || tickerEl.style.display === 'none') return;
+  const tickerEl  = document.getElementById('stock-ticker');
+  const innerEl   = document.getElementById('stock-ticker-inner');
+  const isMobile  = window.innerWidth <= 768;
 
-  // 로딩 상태 표시
+  // 로딩 상태
   TICKER_STOCKS.forEach(function(s) {
-    const priceEl = document.getElementById('tp-' + s.code);
-    if (priceEl) {
-      priceEl.textContent = '···';
-      priceEl.className   = 'ticker-price ticker-loading';
-    }
-    const changeEl = document.getElementById('tc-' + s.code);
-    if (changeEl) changeEl.textContent = '';
+    ['tp-', 'mtp-'].forEach(function(pfx) {
+      const el = document.getElementById(pfx + s.code);
+      if (el) { el.textContent = '···'; el.className = (pfx === 'tp-' ? 'ticker-price' : 'mob-ticker-price') + ' ticker-loading'; }
+    });
+    ['tc-', 'mtc-'].forEach(function(pfx) {
+      const el = document.getElementById(pfx + s.code);
+      if (el) el.textContent = '';
+    });
   });
 
-  // 3종목 병렬 조회 (GAS 서버 부하 고려, 순차도 가능하나 병렬 우선)
+  // 3종목 병렬 조회
   await Promise.allSettled(TICKER_STOCKS.map(async function(s) {
     const symbol = _toSymbol(s.code, s.market);
     try {
@@ -2776,9 +2862,29 @@ async function refreshStockTicker() {
       updateTickerItem(s.code, null);
     }
     // 로딩 클래스 해제
-    const priceEl = document.getElementById('tp-' + s.code);
-    if (priceEl) priceEl.className = 'ticker-price';
+    ['tp-', 'mtp-'].forEach(function(pfx) {
+      const el = document.getElementById(pfx + s.code);
+      if (el) el.className = pfx === 'tp-' ? 'ticker-price' : 'mob-ticker-price';
+    });
   }));
+
+  // ── PC: marquee 자동 감지 (콘텐츠 폭 > 컨테이너 폭이면 활성화) ──
+  if (tickerEl && innerEl && !isMobile) {
+    // 잠깐 대기 후 overflow 체크 (DOM 업데이트 반영)
+    setTimeout(function() {
+      if (innerEl.scrollWidth > tickerEl.clientWidth + 4) {
+        // 콘텐츠가 넘치면 내용을 2배 복제 후 marquee 활성화
+        if (!innerEl.dataset.doubled) {
+          innerEl.innerHTML = innerEl.innerHTML + innerEl.innerHTML;
+          innerEl.dataset.doubled = '1';
+        }
+        innerEl.classList.add('marquee');
+      } else {
+        // 공간 충분 → marquee 비활성화
+        innerEl.classList.remove('marquee');
+      }
+    }, 200);
+  }
 }
 
 
@@ -5261,9 +5367,30 @@ function updateMobileCompanyBar(user) {
   }
 }
 
-// 리사이즈 시 모바일 바 상태 갱신
+// 리사이즈 시 모바일 바 상태 + 주가 전광판 위치 갱신
 window.addEventListener('resize', function() {
   updateMobileCompanyBar(currentUser);
+
+  // 로그인 상태일 때만 전광판 위치 전환
+  if (!currentUser) return;
+  var tickerEl3 = document.getElementById('stock-ticker');
+  var mobBarEl2 = document.getElementById('mobile-stock-bar');
+  var isMob2    = window.innerWidth <= 768;
+
+  if (tickerEl3) tickerEl3.style.display  = isMob2 ? 'none' : 'flex';
+  if (mobBarEl2) mobBarEl2.style.display  = isMob2 ? 'flex' : 'none';
+
+  // PC로 전환 시 marquee 재계산
+  if (!isMob2) {
+    var innerEl2 = document.getElementById('stock-ticker-inner');
+    if (innerEl2) {
+      innerEl2.classList.remove('marquee');
+      innerEl2.dataset.doubled = '';
+      if (innerEl2.scrollWidth > tickerEl3.clientWidth + 4) {
+        innerEl2.classList.add('marquee');
+      }
+    }
+  }
 });
 
 function filterHistory() {
@@ -5324,6 +5451,27 @@ function filterHistory() {
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 
+
+<!-- 모바일 주가 바 (탭바 바로 위, 로그인 후 표시) -->
+<div id="mobile-stock-bar">
+  <div class="mob-ticker-item">
+    <span class="mob-ticker-name">셀바스AI</span>
+    <span class="mob-ticker-price" id="mtp-108860">—</span>
+    <span class="mob-ticker-change flat" id="mtc-108860">—</span>
+  </div>
+  <div class="ticker-dot" style="height:24px;width:1px;border-radius:0;background:var(--border);margin:0 2px;"></div>
+  <div class="mob-ticker-item">
+    <span class="mob-ticker-name">셀바스HC</span>
+    <span class="mob-ticker-price" id="mtp-208370">—</span>
+    <span class="mob-ticker-change flat" id="mtc-208370">—</span>
+  </div>
+  <div class="ticker-dot" style="height:24px;width:1px;border-radius:0;background:var(--border);margin:0 2px;"></div>
+  <div class="mob-ticker-item">
+    <span class="mob-ticker-name">메디아나</span>
+    <span class="mob-ticker-price" id="mtp-041920">—</span>
+    <span class="mob-ticker-change flat" id="mtc-041920">—</span>
+  </div>
+</div>
 
 <!-- 모바일 하단 탭바 -->
 <div id="mobile-tabbar">
