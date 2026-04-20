@@ -466,6 +466,24 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
     /* 하단 탭바가 있을 때 content 추가 여백 (mobile-stock-bar 높이 38px) */
     .content { padding-bottom: 122px !important; } /* 84(탭바) + 38(주가바) */
   }
+
+  /* ── 운전자금 입력 캘린더 ───────────────────────────── */
+  .input-calendar { margin-top: 12px; background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+  .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .cal-header span { font-size: 12px; font-weight: 600; color: var(--text2); }
+  .cal-header button { background: var(--bg2); border: 1px solid var(--border); color: var(--text2); padding: 2px 8px; border-radius: 6px; cursor: pointer; font-size: 11px; font-family: inherit; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .cal-dow { text-align: center; font-size: 9px; color: var(--text3); padding: 2px 0; }
+  .cal-day { text-align: center; padding: 4px 2px; border-radius: 4px; cursor: pointer; font-size: 11px; transition: background .1s; }
+  .cal-day.empty { cursor: default; }
+  .cal-day.weekend { color: var(--text3); cursor: default; }
+  .cal-day.filled { background: rgba(16,185,129,0.18); color: var(--green); font-weight: 600; }
+  .cal-day.missing { background: rgba(239,68,68,0.12); color: var(--red); }
+  .cal-day.today-mark { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .cal-day:not(.weekend):not(.empty):hover { background: rgba(59,130,246,0.2); }
+  .cal-legend { display: flex; gap: 10px; margin-top: 8px; font-size: 10px; color: var(--text3); }
+  .cal-legend span { display: flex; align-items: center; gap: 4px; }
+  .cal-legend .dot { width: 8px; height: 8px; border-radius: 2px; }
 </style>
 </head>
 <body>
@@ -907,7 +925,25 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
                 <option value="메디아나">메디아나</option>
               </select>
             </div>
-            <div class="form-group"><label>기준일자 *</label><input type="date" id="i-date"></div>
+            <div class="form-group">
+              <label>기준일자 *</label>
+              <input type="date" id="i-date">
+            </div>
+            <div class="form-group full" id="input-calendar-wrap">
+              <!-- 입력 현황 캘린더 — JS로 렌더링 -->
+              <div class="input-calendar">
+                <div class="cal-header">
+                  <button onclick="calPrevMonth()">‹</button>
+                  <span id="cal-month-title">—</span>
+                  <button onclick="calNextMonth()">›</button>
+                </div>
+                <div class="cal-grid" id="cal-grid"></div>
+                <div class="cal-legend">
+                  <span><div class="dot" style="background:rgba(16,185,129,0.4);"></div>입력 완료</span>
+                  <span><div class="dot" style="background:rgba(239,68,68,0.3);"></div>누락</span>
+                </div>
+              </div>
+            </div>
             <div class="form-group"><label>작성자</label><input type="text" id="i-writer" placeholder="홍길동"></div>
           </div>
           <div class="section-divider">원화 운전자금</div>
@@ -939,7 +975,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
               <thead>
                 <tr>
                   <th>일자</th><th>법인</th>
-                  <th class="td-num">보통예금</th><th class="td-num">국책</th><th class="td-num">CMA/RP</th>
+                  <th class="td-num">보통예금</th><th class="td-num">국책</th><th class="td-num">MMDA</th>
                   <th class="td-num">USD</th><th class="td-num">EUR</th><th class="td-num">JPY</th><th class="td-num">GBP</th><th class="td-num">CNY</th>
                   <th class="td-num">외화환산</th><th>비고</th><th></th>
                 </tr>
@@ -1161,7 +1197,12 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
             <button class="btn btn-primary" style="background:var(--pink);" onclick="saveEquity()">지분 기록 및 저장</button>
           </div>
         </div>
-        <div class="card"><div class="card-title">보유 지분투자 현황</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;">
+        <div class="card"><div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>보유 지분투자 현황</span>
+            <button id="btn-bulk-equity" class="btn btn-ghost"
+              style="font-size:11px;padding:4px 10px;color:var(--pink);border-color:rgba(236,72,153,0.4);display:none;"
+              onclick="runBulkEquityRefresh()">↻ 전체 종목 시세 일괄 갱신</button>
+          </div><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;">
               <div>
                 <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;">보유 종목 현황 <span style="font-weight:400;color:var(--text3);">(행 클릭 → 우측에 이력 표시)</span></div>
                 <div class="table-wrap"><table>
@@ -1177,7 +1218,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
                 <div class="table-wrap"><table>
                   <thead><tr>
                     <th>기준일</th><th class="td-num">주가</th><th class="td-num">주식수</th>
-                    <th class="td-num">평가금액</th><th>수정</th>
+                    <th class="td-num">평가금액</th><th>수정</th><th>삭제</th>
                   </tr></thead>
                   <tbody id="equity-history-tbody"></tbody>
                 </table></div>
@@ -1475,8 +1516,117 @@ function formatNumericInput(el, allowDecimal = false) {
   const formattedInt = intPart ? intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
   el.value = fracPart !== undefined ? `${formattedInt}.${fracPart}` : formattedInt;
 }
+
+// ══════════════════════════════════════════════════════════════════
+// 운전자금 미입력 현황 미니 캘린더
+// 시작일: 2026-04-13 / 주말 제외 영업일 기준 입력 여부 색상 표시
+// ══════════════════════════════════════════════════════════════════
+var calYear  = 0;
+var calMonth = 0; // 0-based
+
+function initInputCalendar() {
+  var now = new Date();
+  calYear  = now.getFullYear();
+  calMonth = now.getMonth();
+  renderInputCalendar();
+}
+
+function calPrevMonth() {
+  calMonth--;
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  renderInputCalendar();
+}
+function calNextMonth() {
+  calMonth++;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  renderInputCalendar();
+}
+
+function renderInputCalendar() {
+  var titleEl = document.getElementById('cal-month-title');
+  var gridEl  = document.getElementById('cal-grid');
+  if (!titleEl || !gridEl) return;
+
+  var SYSTEM_START = '2026-04-13'; // 시스템 시작일
+  var today = new Date().toISOString().slice(0, 10);
+
+  titleEl.textContent = calYear + '년 ' + (calMonth + 1) + '월';
+
+  // 해당 월 입력 완료 날짜 셋
+  var company = currentCompany !== 'TOTAL' ? currentCompany
+    : ((document.getElementById('i-company') || {}).value || '셀바스에이아이');
+  var inputDates = new Set(
+    DB.get('daily').filter(function(r) { return r.company === company; }).map(function(r) { return r.date; })
+  );
+
+  var firstDay = new Date(calYear, calMonth, 1);
+  var lastDay  = new Date(calYear, calMonth + 1, 0);
+  var startDow = firstDay.getDay(); // 0=일
+
+  var html = '';
+  // 요일 헤더
+  ['일','월','화','수','목','금','토'].forEach(function(d) {
+    html += '<div class="cal-dow">' + d + '</div>';
+  });
+
+  // 빈 칸 (월 시작 전)
+  for (var b = 0; b < startDow; b++) {
+    html += '<div class="cal-day empty"></div>';
+  }
+
+  // 날짜 칸
+  for (var d = 1; d <= lastDay.getDate(); d++) {
+    var m   = calMonth + 1;
+    var ds  = calYear + '-' + (m < 10 ? '0' + m : m) + '-' + (d < 10 ? '0' + d : d);
+    var dow = new Date(calYear, calMonth, d).getDay();
+    var cls = 'cal-day';
+    var title = '';
+
+    if (dow === 0 || dow === 6) {
+      cls += ' weekend';
+    } else if (ds < SYSTEM_START || ds > today) {
+      cls += ' empty'; // 시스템 시작 전 또는 미래
+    } else if (inputDates.has(ds)) {
+      cls += ' filled'; title = '입력 완료';
+    } else {
+      cls += ' missing'; title = '미입력';
+    }
+    if (ds === today) cls += ' today-mark';
+
+    var onclick = (dow !== 0 && dow !== 6)
+      ? 'onclick="calSelectDate(\''+ds+'\')"'
+      : '';
+    html += '<div class="' + cls + '" title="' + title + '" ' + onclick + '>' + d + '</div>';
+  }
+
+  gridEl.innerHTML = html;
+}
+
+function calSelectDate(ds) {
+  var el = document.getElementById('i-date');
+  if (el) { el.value = ds; el.dispatchEvent(new Event('change')); }
+}
+
 function parseNum(val) { return parseFloat((val || '').toString().replace(/,/g, '')) || 0; }
-function fmtKRW(n) { if(!n&&n!==0) return '0'; const a=Math.abs(n); if(a>=1e12) return (n/1e12).toFixed(1)+'조원'; if(a>=1e8) return (n/1e8).toFixed(1)+'억원'; if(a>=1e4) return (n/1e4).toFixed(0)+'만원'; return n.toLocaleString()+'원'; }
+function fmtKRW(n) {
+  if (!n && n !== 0) return '0';
+  const a = Math.abs(n);
+  // 억/조 단위: 앞 숫자에 3자리 콤마 적용 (예: 1,677.5억원)
+  if (a >= 1e12) {
+    const v = (n / 1e12).toFixed(1);
+    const [int, dec] = v.split('.');
+    return int.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (dec ? '.' + dec : '') + '조원';
+  }
+  if (a >= 1e8) {
+    const v = (n / 1e8).toFixed(1);
+    const [int, dec] = v.split('.');
+    return int.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (dec ? '.' + dec : '') + '억원';
+  }
+  if (a >= 1e4) {
+    return Math.round(n / 1e4).toLocaleString() + '만원';
+  }
+  return n.toLocaleString() + '원';
+}
 function showToast(msg, type='') { const t = document.getElementById('toast'); t.textContent = msg; t.className = 'show '+type; setTimeout(()=>t.className='',3000); }
 
 // ══════════════════════════════════════════════════════
@@ -1997,6 +2147,9 @@ function applyAccessControl(user) {
       adminNav.removeAttribute('hidden');
     }
     currentCompany = '셀바스에이아이';
+    // 전체 종목 시세 일괄 갱신 버튼 — 마스터만 표시
+    var bulkBtn = document.getElementById('btn-bulk-equity');
+    if (bulkBtn) bulkBtn.style.display = '';
     ['i-company','v-company','l-company','e-company'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
@@ -2097,6 +2250,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const today = new Date().toISOString().slice(0, 10);
   document.getElementById('today-badge').textContent = today.replace(/-/g, '.');
   document.getElementById('i-date').value = today;
+  initInputCalendar();
   document.getElementById('e-date').value = today;
 
   const from = new Date(); from.setDate(from.getDate() - 30);
@@ -2247,6 +2401,7 @@ function goto(page) {
     else if (page === 'input') {
       DB.load('daily').catch(function(){}).then(function() {
         try { renderDailyHistory(1); } catch(e) { console.error('renderDailyHistory:', e); }
+        try { renderInputCalendar(); } catch(e) {}
       });
     }
     else if (page === 'invest') {
@@ -2563,7 +2718,7 @@ document.addEventListener('click', (e) => {
 
 // ── GAS Web App URL 설정 ─────────────────────────────────────────
 // 아래 URL을 Google Apps Script 배포 후 발급받은 URL로 교체하세요
-const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxUIRDZP5HxsztzaCjemyv_4eE46Y_2sr3VwOYALitnl3rVTpTjcY6eGs-p2PX_F04x/exec';
+const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwZJSscSxlVz29qyYqduYQJ29NAVofeq6Qw67EPB6WTzcR86l6ubrbBmcqOZxPhxNH3/exec';
 
 // ── 종목코드 → Yahoo symbol 변환 유틸 ──────────────────────────────
 // 5자리는 앞에 0 패딩, 시장 구분자 자동 부여
@@ -2717,33 +2872,38 @@ async function refreshEquityPrice(id, ticker, market) {
 
   let result = null;
   try {
-    result = await _fetchStockViaGAS(symbol);
+    result = await _fetchStockViaGAS(symbol, null); // 실시간(날짜 없음)
   } catch(e) {
     console.error('[refreshEquityPrice]', symbol, e?.message);
   }
 
   if (result) {
+    const today   = new Date().toISOString().slice(0, 10);
     const allEqs  = DB.get('equities');
     const current = allEqs.find(e => String(e.id) === String(id));
     if (current) {
-      // Upsert: 결과 날짜 동일 레코드가 있으면 그 레코드 업데이트 (중복 방지)
-      const sameDay = allEqs.find(e =>
-        e.company === current.company && e.name === current.name && e.date === result.date &&
-        String(e.id) !== String(id)
+      // 오늘 날짜로 Upsert (폼을 거치지 않고 즉시 저장)
+      const todayRec = allEqs.find(e =>
+        e.company === current.company && e.name === current.name && e.date === today
       );
-      if (sameDay) {
-        sameDay.price       = result.price;
-        sameDay.total_value = current.shares * result.price;
-        await DB.updateOne('equities', sameDay);
+      if (todayRec) {
+        // 오늘 이미 있으면 덮어쓰기
+        todayRec.price       = result.price;
+        todayRec.total_value = current.shares * result.price;
+        await DB.updateOne('equities', todayRec);
       } else {
-        current.price       = result.price;
-        current.total_value = current.shares * result.price;
-        current.date        = result.date;
-        await DB.updateOne('equities', current);
+        // 오늘 새 레코드 추가
+        const newRec = Object.assign({}, current, {
+          id:          crypto.randomUUID(),
+          date:        today,
+          price:       result.price,
+          total_value: current.shares * result.price,
+        });
+        await DB.append('equities', newRec);
       }
       renderEquity();
       renderDashboard();
-      showToast(current.name + ' ' + result.price.toLocaleString() + '원 (' + result.date + ')', 'success');
+      showToast(current.name + ' ' + result.price.toLocaleString() + '원 (' + today + ') 저장', 'success');
     }
   } else {
     showToast(symbol + ' 시세 조회 실패 — 직접 수정하세요', 'error');
@@ -2820,6 +2980,64 @@ async function updateAllEvaluation() {
   } else {
     showToast('전체 시세 업데이트 완료 — ' + updated + '종목 반영', 'success');
   }
+}
+
+// ── 전체 종목 시세 일괄 갱신 (마스터 전용) ────────────────────────
+async function runBulkEquityRefresh() {
+  const btn = document.getElementById('btn-bulk-equity');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 갱신 중...'; }
+
+  const today    = new Date().toISOString().slice(0, 10);
+  const allEqs   = DB.get('equities');
+  // 3개 법인 전체 상장 종목 대상
+  const targets  = allEqs.filter(eq => eq.ticker && eq.market !== '비상장');
+  // 종목별 최신 이력 1건만 추출
+  const latestMap = {};
+  targets.forEach(eq => {
+    const key = eq.company + '_' + eq.name;
+    if (!latestMap[key] || eq.date > latestMap[key].date) latestMap[key] = eq;
+  });
+  const latestList = Object.values(latestMap);
+
+  if (!latestList.length) {
+    showToast('갱신할 상장 종목이 없습니다', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '↻ 전체 종목 시세 일괄 갱신'; }
+    return;
+  }
+
+  showToast('전체 ' + latestList.length + '종목 일괄 갱신 시작...');
+  let ok = 0, fail = 0;
+  const failNames = [];
+
+  for (const eq of latestList) {
+    try {
+      const symbol = _toSymbol(eq.ticker, eq.market);
+      const result = await _fetchStockViaGAS(symbol, null);
+      if (result) {
+        // 오늘 날짜로 Upsert
+        const todayRec = DB.get('equities').find(e =>
+          e.company === eq.company && e.name === eq.name && e.date === today
+        );
+        if (todayRec) {
+          todayRec.price       = result.price;
+          todayRec.total_value = eq.shares * result.price;
+          await DB.updateOne('equities', todayRec);
+        } else {
+          const newRec = Object.assign({}, eq, {
+            id: crypto.randomUUID(), date: today,
+            price: result.price, total_value: eq.shares * result.price,
+          });
+          await DB.append('equities', newRec);
+        }
+        ok++;
+      } else { fail++; failNames.push(eq.name); }
+    } catch(e) { fail++; failNames.push(eq.name); }
+  }
+
+  renderEquity(); renderDashboard();
+  if (btn) { btn.disabled = false; btn.textContent = '↻ 전체 종목 시세 일괄 갱신'; }
+  showToast('일괄 갱신 완료: ' + ok + '성공' + (fail ? ' / ' + fail + '실패(' + failNames.join(',') + ')' : ''),
+    fail ? 'error' : 'success');
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -3133,6 +3351,15 @@ async function deleteEquity(id) {
   showToast('삭제 완료', 'success');
 }
 
+async function deleteEquityHistory(id) {
+  if (!confirm('이 이력 항목을 삭제하시겠습니까?')) return;
+  await DB.deleteOne('equities', id);
+  showToast('이력 삭제 완료', 'success');
+  // 이력 패널 갱신 (현재 선택 종목 유지)
+  renderEquity();
+  renderDashboard();
+}
+
 function renderEquity() {
   const allEq = getFiltered('equities').sort((a,b) => b.date.localeCompare(a.date));
   const latestMap = {};
@@ -3155,8 +3382,8 @@ function renderEquity() {
     const key = e.company + '_' + e.name;
     const isSelected = selectedEquityKey === key;
     return `<tr style="cursor:pointer;background:${isSelected?'rgba(236,72,153,0.08)':''};"
-      onclick="selectEquityForHistory('${key}','${e.name.replace(/'/g,'\'')}')"
-      title="클릭하면 이력 표시">
+      onclick="selectEquityForHistory('${key}','${e.name.replace(/'/g,"\\'")}'); loadEquityToForm('${e.id}')"
+      title="클릭: 이력 표시 + 폼 자동 채우기">
       <td style="font-size:11px;">${e.date}</td>
       <td style="font-size:11px;color:var(--text3);">${e.company}</td>
       <td>
@@ -4062,6 +4289,7 @@ async function saveDaily() {
   }
 
   showToast('[' + company + '] ' + d + ' 운전자금 저장 완료', 'success');
+  try { renderInputCalendar(); } catch(e) {}
   ['i-krw-demand','i-krw-govt','i-krw-mmda','i-fx-usd','i-fx-eur','i-fx-jpy','i-fx-gbp','i-fx-cny','i-memo'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = '';
@@ -4602,9 +4830,8 @@ function getMissingBusinessDays(company) {
 function renderDailyHistory(page) {
   currentDailyPage = page || 1;
 
-  // Master/CEO는 전체, 담당자는 자사 데이터만
-  const isMasterOrCeo = currentUser && (currentUser.role === 'master' || currentUser.role === 'ceo');
-  const all = isMasterOrCeo
+  // TOTAL 탭이면 전체, 특정 법인 선택 시 해당 법인 데이터만 표시
+  const all = (currentCompany === 'TOTAL')
     ? DB.get('daily').sort((a,b) => b.date.localeCompare(a.date))
     : DB.get('daily').filter(r => r.company === currentCompany).sort((a,b) => b.date.localeCompare(a.date));
 
@@ -4653,11 +4880,11 @@ function renderDailyHistory(page) {
       <td class="td-num">${fmtKRW(r.krw_demand)}</td>
       <td class="td-num">${fmtKRW(r.krw_govt)}</td>
       <td class="td-num">${fmtKRW(r.krw_mmda)}</td>
-      <td class="td-num">${r.fx_usd > 0 ? r.fx_usd.toLocaleString()+'$' : '—'}</td>
-      <td class="td-num">${r.fx_eur > 0 ? r.fx_eur.toLocaleString()+'€' : '—'}</td>
-      <td class="td-num">${r.fx_jpy > 0 ? r.fx_jpy.toLocaleString()+'¥' : '—'}</td>
-      <td class="td-num">${(r.fx_gbp||0) > 0 ? (r.fx_gbp).toLocaleString()+'£' : '—'}</td>
-      <td class="td-num">${(r.fx_cny||0) > 0 ? (r.fx_cny).toLocaleString()+'¥₁' : '—'}</td>
+      <td class="td-num">${r.fx_usd > 0 ? '$'+r.fx_usd.toLocaleString() : '—'}</td>
+      <td class="td-num">${r.fx_eur > 0 ? '€'+r.fx_eur.toLocaleString() : '—'}</td>
+      <td class="td-num">${r.fx_jpy > 0 ? '¥'+r.fx_jpy.toLocaleString() : '—'}</td>
+      <td class="td-num">${(r.fx_gbp||0) > 0 ? '£'+(r.fx_gbp).toLocaleString() : '—'}</td>
+      <td class="td-num">${(r.fx_cny||0) > 0 ? '¥₁'+(r.fx_cny).toLocaleString() : '—'}</td>
       <td class="td-num" style="color:var(--accent2);font-weight:600;">${fmtKRW(r.fx_krw||0)}</td>
       <td style="font-size:11px;color:var(--text3);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.memo||''}</td>
       <td>
@@ -5322,7 +5549,8 @@ function selectEquityForHistory(key, name) {
       <td class="td-num">${(e.price||0).toLocaleString()}원</td>
       <td class="td-num">${(e.shares||0).toLocaleString()}주</td>
       <td class="td-num" style="color:var(--pink);font-weight:600;">${fmtKRW(e.total_value)}</td>
-      <td><button class="btn btn-ghost" style="padding:2px 7px;font-size:10px;color:var(--amber);" onclick="event.stopPropagation();loadEquityHistoryToForm('${e.id}')">수정</button></td>
+      <td onclick="event.stopPropagation()"><button class="btn btn-ghost" style="padding:2px 7px;font-size:10px;color:var(--amber);" onclick="loadEquityHistoryToForm('${e.id}')">수정</button></td>
+      <td onclick="event.stopPropagation()"><button class="btn btn-ghost" style="padding:2px 7px;font-size:10px;color:var(--red);" onclick="deleteEquityHistory('${e.id}')">삭제</button></td>
     </tr>`).join('');
 }
 
