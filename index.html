@@ -661,7 +661,8 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
     </nav>
     
     <div class="sidebar-bottom">
-      <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">실시간 환율 <span id="sidebar-fx-source" style="font-size:9px;opacity:0.6;">(ExchangeRate-API)</span></div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:2px;">실시간 환율</div>
+      <div id="sidebar-fx-source" style="font-size:9px;color:var(--text3);opacity:0.7;margin-bottom:7px;line-height:1.4;word-break:keep-all;">하나은행 환율</div>
       <div class="fx-mini" id="sidebar-fx">
         <div class="fx-row"><span class="fx-label">USD</span><span class="fx-val" id="sf-usd">—</span></div>
         <div class="fx-row"><span class="fx-label">EUR</span><span class="fx-val" id="sf-eur">—</span></div>
@@ -2301,21 +2302,54 @@ function goto(page) {
 }
 
 async function refreshFX() {
-  // 로딩 표시
+  // ── 로딩 표시 ────────────────────────────────────────────────
   ['usd','eur','jpy','gbp','cny'].forEach(c => {
     const el = document.getElementById('sf-'+c);
-    if(el) el.textContent = '조회중...';
+    if (el) el.textContent = '조회중...';
   });
 
+  // ── GAS ?type=fx 호출 (네이버 금융 하나은행 환율) ────────────
+  if (GAS_API_URL && !GAS_API_URL.includes('여기에_웹앱')) {
+    try {
+      const url  = new URL(GAS_API_URL);
+      url.searchParams.set('type', 'fx');
+      const resp = await fetch(url.toString(), {
+        method: 'GET',
+        signal: AbortSignal.timeout(20000),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.success && data.rates) {
+          const r = data.rates;
+          // null 값은 기존 FX 유지 (파싱 실패한 통화 방어)
+          FX = {
+            KRW: 1,
+            USD: r.USD || FX.USD,
+            EUR: r.EUR || FX.EUR,
+            JPY: r.JPY || FX.JPY,  // GAS에서 이미 1엔 기준으로 반환
+            GBP: r.GBP || FX.GBP,
+            CNY: r.CNY || FX.CNY,
+          };
+          // 고시정보를 FX_SOURCE로 저장 → sidebar에 표시
+          FX_SOURCE = data.sourceInfo || '하나은행 환율';
+          console.log('[refreshFX] GAS 성공:', FX, '|', FX_SOURCE);
+          updateFXDisplay();
+          return FX;
+        }
+      }
+    } catch(e) {
+      console.warn('[refreshFX] GAS 호출 실패:', e.message);
+    }
+  }
+
+  // ── 폴백: 외부 환율 API (GAS 미설정 또는 실패 시) ────────────
   let success = false;
 
-  // 1순위: exchangerate-api.com (CORS 허용, 무료)
   if (!success) {
     try {
       const resp = await fetch('https://v6.exchangerate-api.com/v6/latest/KRW', { mode: 'cors' });
       if (resp.ok) {
         const data = await resp.json();
-        // KRW 기준으로 각 통화 역산
         if (data.conversion_rates) {
           const r = data.conversion_rates;
           FX = {
@@ -2324,23 +2358,21 @@ async function refreshFX() {
             EUR: 1 / r.EUR,
             JPY: 1 / r.JPY,
             GBP: 1 / r.GBP,
-            CNY: 1 / r.CNY
+            CNY: 1 / r.CNY,
           };
-          success = true;
-          FX_SOURCE = 'ExchangeRate-API';
-          console.log('환율 조회 성공 (v6.exchangerate-api)', FX);
+          success    = true;
+          FX_SOURCE  = 'ExchangeRate-API (폴백)';
         }
       }
-    } catch(e) { console.log('1순위 실패:', e.message); }
+    } catch(e) { console.warn('[FX 폴백 1]', e.message); }
   }
 
-  // 2순위: open.er-api.com (USD 기준 → KRW 역산)
   if (!success) {
     try {
       const resp = await fetch('https://open.er-api.com/v6/latest/USD');
       if (resp.ok) {
         const data = await resp.json();
-        if (data.result === 'success' && data.rates && data.rates.KRW) {
+        if (data.result === 'success' && data.rates?.KRW) {
           const k = data.rates.KRW;
           FX = {
             KRW: 1,
@@ -2348,35 +2380,23 @@ async function refreshFX() {
             EUR: k / data.rates.EUR,
             JPY: k / data.rates.JPY,
             GBP: k / data.rates.GBP,
-            CNY: k / data.rates.CNY
+            CNY: k / data.rates.CNY,
           };
-          success = true;
-          FX_SOURCE = 'ExchangeRate-API';
-          console.log('환율 조회 성공 (open.er-api)', FX);
+          success   = true;
+          FX_SOURCE = 'ExchangeRate-API (폴백)';
         }
       }
-    } catch(e) { console.log('2순위 실패:', e.message); }
+    } catch(e) { console.warn('[FX 폴백 2]', e.message); }
   }
 
-  // 3순위: currencyapi.com (무료 플랜)
   if (!success) {
-    try {
-      const resp = await fetch('https://api.currencyapi.com/v3/latest?apikey=fca_live_xxxxxxxx&currencies=USD,EUR,JPY,GBP&base_currency=KRW');
-      // ※ 실제 사용 시 apikey를 발급받아 교체 필요 (https://currencyapi.com - 무료)
-    } catch(e) {}
-  }
-
-  // 최종 폴백: 기본값 (어느 API도 실패한 경우)
-  if (!success) {
-    console.warn('모든 환율 API 실패 — 기본값 적용 (실제 환율과 다를 수 있음)');
-    FX = { KRW: 1, USD: 1378, EUR: 1492, JPY: 9.21, GBP: 1748, CNY: 190 };
+    FX        = { KRW: 1, USD: 1378, EUR: 1492, JPY: 9.21, GBP: 1748, CNY: 190 };
     FX_SOURCE = '기본값(오프라인)';
   }
 
   updateFXDisplay();
   return FX;
 }
-
 function updateFXDisplay() {
   ['usd','eur','jpy','gbp','cny'].forEach(c => {
     const val = FX[c.toUpperCase()];
@@ -2388,9 +2408,9 @@ function updateFXDisplay() {
   // 환율 업데이트 시각 + 출처
   const el = document.getElementById('fx-last-update');
   if (el) el.textContent = '업데이트: ' + new Date().toLocaleTimeString('ko-KR');
-  // 사이드바 출처 업데이트
+  // 사이드바 출처 업데이트 (FX_SOURCE에 고시정보 포함)
   const srcEl = document.getElementById('sidebar-fx-source');
-  if (srcEl) srcEl.textContent = '(' + (typeof FX_SOURCE !== 'undefined' ? FX_SOURCE : 'ExchangeRate-API') + ')';
+  if (srcEl) srcEl.textContent = typeof FX_SOURCE !== 'undefined' ? FX_SOURCE : '하나은행 환율';
   renderFXEquivTable();
 }
 function calcKRW(amount, currency) { return amount * (FX[currency] || 1); }
@@ -2548,7 +2568,7 @@ document.addEventListener('click', (e) => {
 
 // ── GAS Web App URL 설정 ─────────────────────────────────────────
 // 아래 URL을 Google Apps Script 배포 후 발급받은 URL로 교체하세요
-const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxkrRK0xbb8wb8vubFcpCHWnzMCzJi-gmr5kVmfx22x1SPtsuaEjn1EZXLdNE_YlOGh/exec';
+const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyzFVRz-01okxJeRN67qItaSXTZN9zHmE5m3ddf6X5by_RI8FqVRZa1LUYt-dNuABju/exec';
 
 // ── 종목코드 → Yahoo symbol 변환 유틸 ──────────────────────────────
 // 5자리는 앞에 0 패딩, 시장 구분자 자동 부여
