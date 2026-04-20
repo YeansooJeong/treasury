@@ -939,7 +939,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
               <thead>
                 <tr>
                   <th>일자</th><th>법인</th>
-                  <th class="td-num">보통예금</th><th class="td-num">국책</th><th class="td-num">CMA/RP</th>
+                  <th class="td-num">보통예금</th><th class="td-num">국책</th><th class="td-num">MMDA</th>
                   <th class="td-num">USD</th><th class="td-num">EUR</th><th class="td-num">JPY</th><th class="td-num">GBP</th><th class="td-num">CNY</th>
                   <th class="td-num">외화환산</th><th>비고</th><th></th>
                 </tr>
@@ -1969,7 +1969,11 @@ function applyAccessControl(user) {
   var isMob       = window.innerWidth <= 768;
   if (tickerEl2 && !isMob)  tickerEl2.style.display  = 'flex';
   if (mobBarEl  && isMob)   mobBarEl.style.display   = 'flex';
-  setTimeout(refreshStockTicker, 1500);
+  // 최초 조회 (1.5초 후) + 1분 주기 자동 갱신 시작
+  setTimeout(function() {
+    refreshStockTicker(false); // 최초: 로딩 표시 포함
+    startTickerPolling();      // 이후: 60초마다 silent 갱신
+  }, 1500);
 
   const logoutBtn  = document.getElementById('logout-btn');
   const codeMgrBtn = document.getElementById('code-mgr-btn');
@@ -2074,6 +2078,7 @@ function doLogout() {
   if (tickerHide) tickerHide.style.display = 'none';
   var mobBarHide = document.getElementById('mobile-stock-bar');
   if (mobBarHide) mobBarHide.style.display = 'none';
+  stopTickerPolling(); // 자동 갱신 중지
   const logoutBtn2 = document.getElementById('logout-btn');
   if (logoutBtn2) logoutBtn2.style.display = 'none';
   const codeMgrBtn2 = document.getElementById('code-mgr-btn');
@@ -2543,7 +2548,7 @@ document.addEventListener('click', (e) => {
 
 // ── GAS Web App URL 설정 ─────────────────────────────────────────
 // 아래 URL을 Google Apps Script 배포 후 발급받은 URL로 교체하세요
-const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzxgqIljbfo6cGee_pCV34uONYRIc2qVgYDAf3FFGWrnm07Zi9Y36u02HPe7qO1KIJz/exec';
+const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxkrRK0xbb8wb8vubFcpCHWnzMCzJi-gmr5kVmfx22x1SPtsuaEjn1EZXLdNE_YlOGh/exec';
 
 // ── 종목코드 → Yahoo symbol 변환 유틸 ──────────────────────────────
 // 5자리는 앞에 0 패딩, 시장 구분자 자동 부여
@@ -2556,21 +2561,24 @@ function _toSymbol(ticker, market) {
 // ── GAS Web App 주가 조회 핵심 헬퍼 ─────────────────────────────────
 // 모든 주가 조회는 이 함수 1개로 통일
 // symbol: '108860.KQ', '005930.KS' 형태 (GAS에서 ticker만 추출)
-async function _fetchStockViaGAS(symbol) {
+// ── GAS Web App 주가 조회 헬퍼 ─────────────────────────────────────
+// symbol: '108860.KQ' 형태
+// date:   'YYYY-MM-DD' (과거 종가 조회 시) 또는 null/''(실시간)
+async function _fetchStockViaGAS(symbol, date) {
   if (!GAS_API_URL || GAS_API_URL.includes('여기에_웹앱')) {
     throw new Error('GAS_API_URL이 설정되지 않았습니다. 코드 상단의 GAS_API_URL을 설정하세요.');
   }
 
-  // ticker 추출: '108860.KQ' → '108860'
   const ticker = symbol.replace(/\.(KS|KQ)$/i, '');
 
-  // GAS Web App은 GET 방식, CORS 자동 허용
   const url = new URL(GAS_API_URL);
   url.searchParams.set('ticker', ticker);
+  // 과거 날짜가 있을 때만 date 파라미터 추가
+  if (date) url.searchParams.set('date', date);
 
   const resp = await fetch(url.toString(), {
     method: 'GET',
-    signal: AbortSignal.timeout(15000), // GAS 콜드 스타트 포함 15초
+    signal: AbortSignal.timeout(20000), // GAS 콜드 스타트 + 과거 조회 여유
   });
 
   if (!resp.ok) {
@@ -2579,10 +2587,7 @@ async function _fetchStockViaGAS(symbol) {
   }
 
   const data = await resp.json();
-
-  if (!data.success) {
-    throw new Error(data.error || '주가 조회 실패');
-  }
+  if (!data.success) throw new Error(data.error || '주가 조회 실패');
 
   return {
     price:      data.price,
@@ -2631,15 +2636,25 @@ async function fetchStockPrice() {
     fetchBtn.textContent = '⏳ 조회중...';
     fetchBtn.style.opacity = '0.6';
   }
-  statusEl.textContent = symbol + ' — GAS 서버에서 주가 수신 중...';
   statusEl.style.color = 'var(--text3)';
   if (sourceEl) sourceEl.textContent = '';
+
+  // ── 과거 날짜 여부 판단 ──────────────────────────────────────────
+  // 기준일자가 오늘보다 과거면 GAS에 date 파라미터 전달
+  const today2     = new Date().toISOString().slice(0, 10);
+  const targetDate = (baseDate && baseDate < today2) ? baseDate : null;
+
+  if (targetDate) {
+    statusEl.textContent = symbol + ' — ' + targetDate + ' 과거 종가 조회 중...';
+  } else {
+    statusEl.textContent = symbol + ' — GAS 서버에서 주가 수신 중...';
+  }
 
   let result = null;
   let errMsg  = '';
 
   try {
-    result = await _fetchStockViaGAS(symbol);
+    result = await _fetchStockViaGAS(symbol, targetDate);
   } catch(e) {
     errMsg = e?.message || String(e);
     console.error('[fetchStockPrice]', symbol, errMsg);
@@ -2652,8 +2667,10 @@ async function fetchStockPrice() {
   }
 
   if (result) {
-    if (baseDate && result.date > baseDate) {
-      statusEl.textContent = '⚠ ' + baseDate + ' 기준 종가 없음 — 최근 종가 (' + result.date + ') 적용';
+    // 반환된 날짜가 요청 날짜와 다르면 → 주말/공휴일 소급 안내
+    if (targetDate && result.date !== targetDate) {
+      statusEl.textContent = '⚠ ' + targetDate + '는 휴장일 — ' +
+        result.date + ' 직전 영업일 종가 적용';
       statusEl.style.color = 'var(--amber)';
     } else {
       statusEl.textContent = '✅ ' + result.date + ' 종가: ' + result.price.toLocaleString() + '원';
@@ -2797,26 +2814,31 @@ const TICKER_STOCKS = [
   { code: '041920', market: 'KOSDAQ' },
 ];
 
+// 전광판 자동 갱신 타이머 ID (clearInterval용)
+let tickerIntervalId = null;
+// 마지막 갱신 시각 (중복 요청 방지)
+let tickerLastFetch  = 0;
+
 // 전광판 단일 종목 DOM 업데이트 (PC + 모바일 동시)
-function updateTickerItem(code, result) {
-  // PC 전광판
-  const priceEl  = document.getElementById('tp-' + code);
-  const changeEl = document.getElementById('tc-' + code);
-  // 모바일 주가 바
+// silent=true 이면 로딩 표시 없이 숫자만 부드럽게 교체 (자동 갱신 시 사용)
+function updateTickerItem(code, result, silent) {
+  const priceEl   = document.getElementById('tp-'  + code);
+  const changeEl  = document.getElementById('tc-'  + code);
   const mPriceEl  = document.getElementById('mtp-' + code);
   const mChangeEl = document.getElementById('mtc-' + code);
 
   if (!result) {
-    if (priceEl)  { priceEl.textContent  = '—'; }
-    if (changeEl) { changeEl.textContent = '—'; changeEl.className = 'ticker-change flat'; }
-    if (mPriceEl)  { mPriceEl.textContent  = '—'; }
-    if (mChangeEl) { mChangeEl.textContent = '—'; mChangeEl.className = 'mob-ticker-change flat'; }
+    if (!silent) {
+      if (priceEl)   priceEl.textContent  = '—';
+      if (changeEl)  { changeEl.textContent = '—'; changeEl.className = 'ticker-change flat'; }
+      if (mPriceEl)  mPriceEl.textContent  = '—';
+      if (mChangeEl) { mChangeEl.textContent = '—'; mChangeEl.className = 'mob-ticker-change flat'; }
+    }
     return;
   }
 
   const priceStr = result.price.toLocaleString() + '원';
-
-  let changeStr = '—', changeClass = 'flat';
+  let changeStr  = '—', changeClass = 'flat';
   if (result.changeRate !== null && result.change !== null) {
     const sign = result.change >= 0 ? '+' : '';
     changeStr  = sign + result.change.toLocaleString() +
@@ -2824,66 +2846,109 @@ function updateTickerItem(code, result) {
     changeClass = result.change > 0 ? 'up' : result.change < 0 ? 'down' : 'flat';
   }
 
-  // PC 업데이트
-  if (priceEl)  priceEl.textContent = priceStr;
-  if (changeEl) { changeEl.textContent = changeStr; changeEl.className = 'ticker-change ' + changeClass; }
+  // ── 부드러운 업데이트: 값이 바뀐 경우에만 DOM 갱신 (깜빡임 방지) ──
+  function softSet(el, text, cls) {
+    if (!el) return;
+    if (el.textContent !== text) {
+      el.style.transition = 'opacity 0.15s';
+      el.style.opacity    = '0.5';
+      requestAnimationFrame(function() {
+        el.textContent = text;
+        if (cls !== undefined) el.className = cls;
+        el.style.opacity = '1';
+      });
+    } else if (cls !== undefined && el.className !== cls) {
+      el.className = cls;
+    }
+  }
 
-  // 모바일 업데이트
-  if (mPriceEl)  mPriceEl.textContent = priceStr;
-  if (mChangeEl) { mChangeEl.textContent = changeStr; mChangeEl.className = 'mob-ticker-change ' + changeClass; }
+  softSet(priceEl,   priceStr,  'ticker-price');
+  softSet(changeEl,  changeStr, 'ticker-change ' + changeClass);
+  softSet(mPriceEl,  priceStr,  'mob-ticker-price');
+  softSet(mChangeEl, changeStr, 'mob-ticker-change ' + changeClass);
 }
 
 // 전광판 전체 업데이트 — 3종목 병렬 조회 + marquee 자동 감지
-async function refreshStockTicker() {
-  const tickerEl  = document.getElementById('stock-ticker');
-  const innerEl   = document.getElementById('stock-ticker-inner');
-  const isMobile  = window.innerWidth <= 768;
+// silent: true → 로딩 표시 없이 숫자만 부드럽게 교체 (setInterval 자동 갱신 시)
+async function refreshStockTicker(silent) {
+  const tickerEl = document.getElementById('stock-ticker');
+  const innerEl  = document.getElementById('stock-ticker-inner');
+  const isMobile = window.innerWidth <= 768;
 
-  // 로딩 상태
-  TICKER_STOCKS.forEach(function(s) {
-    ['tp-', 'mtp-'].forEach(function(pfx) {
-      const el = document.getElementById(pfx + s.code);
-      if (el) { el.textContent = '···'; el.className = (pfx === 'tp-' ? 'ticker-price' : 'mob-ticker-price') + ' ticker-loading'; }
-    });
-    ['tc-', 'mtc-'].forEach(function(pfx) {
-      const el = document.getElementById(pfx + s.code);
-      if (el) el.textContent = '';
-    });
-  });
+  // ── 중복 요청 방지: 직전 갱신 후 30초 이내면 스킵 (silent 모드) ──
+  if (silent) {
+    const now = Date.now();
+    if (now - tickerLastFetch < 30000) return;
+    tickerLastFetch = now;
+  } else {
+    tickerLastFetch = Date.now();
+  }
 
-  // 3종목 병렬 조회
+  // 최초 로드(silent=false)일 때만 로딩 표시
+  if (!silent) {
+    TICKER_STOCKS.forEach(function(s) {
+      ['tp-', 'mtp-'].forEach(function(pfx) {
+        const el = document.getElementById(pfx + s.code);
+        if (el) {
+          el.textContent = '···';
+          el.className   = (pfx === 'tp-' ? 'ticker-price' : 'mob-ticker-price') + ' ticker-loading';
+        }
+      });
+      ['tc-', 'mtc-'].forEach(function(pfx) {
+        const el = document.getElementById(pfx + s.code);
+        if (el) el.textContent = '';
+      });
+    });
+  }
+
+  // 3종목 병렬 조회 (date 파라미터 없음 → 실시간)
   await Promise.allSettled(TICKER_STOCKS.map(async function(s) {
     const symbol = _toSymbol(s.code, s.market);
     try {
-      const result = await _fetchStockViaGAS(symbol);
-      updateTickerItem(s.code, result);
+      const result = await _fetchStockViaGAS(symbol, null);
+      updateTickerItem(s.code, result, silent);
     } catch(e) {
       console.warn('[Ticker]', s.code, e?.message);
-      updateTickerItem(s.code, null);
+      if (!silent) updateTickerItem(s.code, null, false);
     }
-    // 로딩 클래스 해제
-    ['tp-', 'mtp-'].forEach(function(pfx) {
-      const el = document.getElementById(pfx + s.code);
-      if (el) el.className = pfx === 'tp-' ? 'ticker-price' : 'mob-ticker-price';
-    });
+    // 로딩 클래스 해제 (최초 로드 시)
+    if (!silent) {
+      ['tp-', 'mtp-'].forEach(function(pfx) {
+        const el = document.getElementById(pfx + s.code);
+        if (el) el.className = pfx === 'tp-' ? 'ticker-price' : 'mob-ticker-price';
+      });
+    }
   }));
 
-  // ── PC: marquee 자동 감지 (콘텐츠 폭 > 컨테이너 폭이면 활성화) ──
-  if (tickerEl && innerEl && !isMobile) {
-    // 잠깐 대기 후 overflow 체크 (DOM 업데이트 반영)
+  // ── PC marquee 자동 감지 (최초 로드 시만) ───────────────────────
+  if (!silent && tickerEl && innerEl && !isMobile) {
     setTimeout(function() {
       if (innerEl.scrollWidth > tickerEl.clientWidth + 4) {
-        // 콘텐츠가 넘치면 내용을 2배 복제 후 marquee 활성화
         if (!innerEl.dataset.doubled) {
           innerEl.innerHTML = innerEl.innerHTML + innerEl.innerHTML;
           innerEl.dataset.doubled = '1';
         }
         innerEl.classList.add('marquee');
       } else {
-        // 공간 충분 → marquee 비활성화
         innerEl.classList.remove('marquee');
       }
     }, 200);
+  }
+}
+
+// ── 전광판 자동 갱신 시작/중지 ─────────────────────────────────────
+function startTickerPolling() {
+  if (tickerIntervalId) clearInterval(tickerIntervalId);
+  // 1분(60초) 주기 자동 갱신 (silent=true: 깜빡임 없이 숫자만 교체)
+  tickerIntervalId = setInterval(function() {
+    refreshStockTicker(true);
+  }, 60000);
+}
+
+function stopTickerPolling() {
+  if (tickerIntervalId) {
+    clearInterval(tickerIntervalId);
+    tickerIntervalId = null;
   }
 }
 
