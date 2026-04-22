@@ -607,9 +607,24 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
   .comp-panel {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 14px;
-    margin-bottom: 14px;
+    gap: 12px;
+    margin-bottom: 12px;
   }
+  /* 스크롤 영역 공통 스타일 */
+  #comp-cash-list::-webkit-scrollbar,
+  #comp-inv-list::-webkit-scrollbar,
+  #comp-loan-list::-webkit-scrollbar,
+  #d-eq-list::-webkit-scrollbar {
+    width: 3px;
+  }
+  #comp-cash-list::-webkit-scrollbar-track,
+  #comp-inv-list::-webkit-scrollbar-track,
+  #comp-loan-list::-webkit-scrollbar-track,
+  #d-eq-list::-webkit-scrollbar-track { background: transparent; }
+  #comp-cash-list::-webkit-scrollbar-thumb,
+  #comp-inv-list::-webkit-scrollbar-thumb,
+  #comp-loan-list::-webkit-scrollbar-thumb,
+  #d-eq-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
   .comp-section { margin-bottom: 10px; }
   .comp-section-head {
     display: flex; justify-content: space-between; align-items: center;
@@ -647,7 +662,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
   }
   .metric-v2 {
     background: var(--card); border: 1px solid var(--border);
-    border-radius: 10px; padding: 12px 14px;
+    border-radius: 10px; padding: 10px 12px;
     cursor: pointer; transition: border-color .15s, background .15s;
   }
   .metric-v2:hover { background: var(--bg3); }
@@ -926,7 +941,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
       <div class="page active" id="page-dashboard">
 
         <!-- ── 법인 탭 ── -->
-        <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;">
+        <div style="display:flex;gap:10px;margin-bottom:14px;align-items:center;">
           <div class="ci-tab active" onclick="setCompany('셀바스에이아이',this)" title="셀바스에이아이"><img src="selvasai.png" alt="셀바스에이아이" onerror="this.parentElement.textContent='Selvas AI'"></div>
           <div class="ci-tab" onclick="setCompany('셀바스헬스케어',this)" title="셀바스헬스케어"><img src="selvashealthcare.png" alt="셀바스헬스케어" onerror="this.parentElement.textContent='Selvas HC'"></div>
           <div class="ci-tab" onclick="setCompany('메디아나',this)" title="메디아나"><img src="mediana.png" alt="메디아나" onerror="this.parentElement.textContent='Mediana'"></div>
@@ -934,37 +949,55 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
         </div>
 
         <!-- ── Alert Strip ── -->
-        <div id="dash-alert-banner" style="display:none;margin-bottom:14px;"></div>
+        <div id="dash-alert-banner" style="display:none;margin-bottom:12px;"></div>
         <div id="dash-alert-strip" class="alert-strip" style="display:none;"></div>
 
-        <!-- ── Hero: 순현금 포지션 ── -->
-        <div class="hero-card">
-          <div class="hero-label" id="hero-label">순현금 포지션 — 셀바스에이아이</div>
-          <div class="hero-value" id="hero-net-value">—</div>
-          <div class="hero-sub" id="hero-net-sub">운전자금 + 운용자금 − 차입금</div>
-          <div class="hero-meta">
-            <div class="hero-meta-item">
-              <span class="lbl">운전+운용</span>
-              <span class="val" style="color:#60a5fa;" id="hero-avail">—</span>
+        <!-- ══ ROW 1: Hero(좌) + 원형비율(우) ══ -->
+        <div style="display:grid;grid-template-columns:1fr 200px;gap:12px;margin-bottom:12px;align-items:stretch;">
+
+          <!-- Hero: 순현금 포지션 (컴팩트) -->
+          <div class="hero-card" style="padding:16px 20px;margin-bottom:0;">
+            <div class="hero-label" id="hero-label">순현금 포지션 — 셀바스에이아이</div>
+            <div class="hero-value" id="hero-net-value" style="font-size:30px;">—</div>
+            <div class="hero-sub" id="hero-net-sub" style="margin-bottom:10px;">운전+운용 − 차입금</div>
+            <div class="hero-meta" style="gap:14px;">
+              <div class="hero-meta-item">
+                <span class="lbl">운전+운용</span>
+                <span class="val" style="color:#60a5fa;" id="hero-avail">—</span>
+              </div>
+              <div class="hero-meta-item">
+                <span class="lbl">차입금</span>
+                <span class="val" style="color:#f87171;" id="hero-loan">—</span>
+              </div>
+              <div class="hero-meta-item">
+                <span class="lbl">주식 포함</span>
+                <span class="val" style="color:#c084fc;" id="hero-with-stock">—</span>
+              </div>
+              <div class="hero-meta-item">
+                <span class="lbl">기준일</span>
+                <span class="val" style="color:var(--text3);" id="hero-date">—</span>
+              </div>
             </div>
-            <div class="hero-meta-item">
-              <span class="lbl">차입금</span>
-              <span class="val" style="color:#f87171;" id="hero-loan">—</span>
+          </div>
+
+          <!-- 원화/외화 도넛 차트 -->
+          <div class="card" style="margin-bottom:0;padding:14px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+            <div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:8px;text-align:center;">원화 / 외화</div>
+            <canvas id="ratioDonut" width="100" height="100" style="max-width:100px;"></canvas>
+            <div style="margin-top:8px;display:flex;gap:10px;font-size:10px;">
+              <span style="display:flex;align-items:center;gap:3px;"><span style="width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;"></span><span id="s-ratio-krw-pct-txt" style="color:var(--text2);">—</span></span>
+              <span style="display:flex;align-items:center;gap:3px;"><span style="width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;"></span><span id="s-ratio-fx-pct-txt" style="color:var(--text2);">—</span></span>
             </div>
-            <div class="hero-meta-item">
-              <span class="lbl">주식 포함</span>
-              <span class="val" style="color:#c084fc;" id="hero-with-stock">—</span>
-            </div>
-            <div class="hero-meta-item">
-              <span class="lbl">기준일</span>
-              <span class="val" style="color:var(--text3);" id="hero-date">—</span>
-            </div>
+            <div style="font-size:9px;color:var(--text3);margin-top:4px;text-align:center;" id="s-ratio-text">—</div>
+            <!-- 기존 id 유지 (JS 참조용 hidden) -->
+            <span id="s-ratio-krw-bar" style="display:none;"></span>
+            <span id="s-ratio-fx-bar" style="display:none;"></span>
+            <span id="s-ratio-krw-pct" style="display:none;"></span>
           </div>
         </div>
 
-        <!-- ── KPI Strip 5개 ── -->
-        <div class="kpi-strip">
-          <!-- 운전자금 -->
+        <!-- ══ ROW 2: KPI Strip 5개 ══ -->
+        <div class="kpi-strip" style="margin-bottom:12px;">
           <div class="kpi-card" style="border-color:rgba(59,130,246,0.3);">
             <div class="kpi-lbl">운전자금</div>
             <div class="kpi-val"><span class="ku">억원</span><span id="kpi-op">—</span></div>
@@ -972,7 +1005,6 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
             <div class="kpi-sub" id="kpi-op-sub">보통예금·국책·CMA</div>
             <svg class="kpi-spark" id="spark-op" viewBox="0 0 72 36" preserveAspectRatio="none"></svg>
           </div>
-          <!-- 운용자금 -->
           <div class="kpi-card" style="border-color:rgba(16,185,129,0.3);">
             <div class="kpi-lbl">운용자금</div>
             <div class="kpi-val"><span class="ku">억원</span><span id="kpi-inv">—</span></div>
@@ -980,23 +1012,20 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
             <div class="kpi-sub" id="kpi-inv-sub">예금·채권 상품</div>
             <svg class="kpi-spark" id="spark-inv" viewBox="0 0 72 36" preserveAspectRatio="none"></svg>
           </div>
-          <!-- 차입금 -->
-          <div class="kpi-card" style="border-color:rgba(245,158,11,0.3);">
-            <div class="kpi-lbl">차입금</div>
+          <div class="kpi-card" style="border-color:rgba(245,158,11,0.3);cursor:pointer;" onclick="goto('loan')" title="차입금 상세 보기">
+            <div class="kpi-lbl">차입금 <span style="font-size:9px;color:var(--text3);">↗</span></div>
             <div class="kpi-val"><span class="ku">억원</span><span id="kpi-loan">—</span></div>
             <div class="kpi-delta flat" id="kpi-loan-delta">없음</div>
             <div class="kpi-sub" id="kpi-loan-sub">—</div>
             <svg class="kpi-spark" id="spark-loan" viewBox="0 0 72 36" preserveAspectRatio="none"></svg>
           </div>
-          <!-- 주식평가 -->
-          <div class="kpi-card" style="border-color:rgba(192,132,252,0.3);">
-            <div class="kpi-lbl">주식평가액</div>
+          <div class="kpi-card" style="border-color:rgba(192,132,252,0.3);cursor:pointer;" onclick="goto('equity')" title="지분투자 상세 보기">
+            <div class="kpi-lbl">주식평가액 <span style="font-size:9px;color:var(--text3);">↗</span></div>
             <div class="kpi-val"><span class="ku">억원</span><span id="kpi-eq">—</span></div>
             <div class="kpi-delta flat" id="kpi-eq-delta">—</div>
             <div class="kpi-sub" id="kpi-eq-sub">지분투자 종목</div>
             <svg class="kpi-spark" id="spark-eq" viewBox="0 0 72 36" preserveAspectRatio="none"></svg>
           </div>
-          <!-- 외화환산 -->
           <div class="kpi-card" style="border-color:rgba(251,191,36,0.3);">
             <div class="kpi-lbl">외화(원화환산)</div>
             <div class="kpi-val"><span class="ku">억원</span><span id="kpi-fx">—</span></div>
@@ -1006,128 +1035,124 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
           </div>
         </div>
 
-        <!-- ── 자금 구성 상세 + 차입금 현황 ── -->
-        <div class="comp-panel">
-          <!-- 좌: 자금 구성 -->
-          <div class="card" style="margin-bottom:0;padding:16px 18px;">
-            <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);">자금 구성 상세</div>
-            <div id="comp-cash-section" class="comp-section">
+        <!-- ══ ROW 3: 자금구성(좌) + 차입금현황(우) ══ -->
+        <div class="comp-panel" style="margin-bottom:12px;">
+          <!-- 좌: 자금 구성 상세 (스크롤 가능) -->
+          <div class="card" style="margin-bottom:0;padding:14px 16px;">
+            <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--border);">자금 구성 상세</div>
+
+            <!-- 운전자금 섹션 -->
+            <div class="comp-section">
               <div class="comp-section-head">
-                <span class="comp-section-lbl" style="color:#3b82f6;">▸ 운전자금 (현금성)</span>
+                <span class="comp-section-lbl" style="color:#3b82f6;">▸ 운전자금</span>
                 <span class="comp-section-total" id="comp-cash-total">—</span>
               </div>
-              <div id="comp-cash-list"></div>
+              <div id="comp-cash-list" style="max-height:88px;overflow-y:auto;scrollbar-width:thin;"></div>
             </div>
-            <div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px;">
+
+            <!-- 운용자금 섹션 -->
+            <div style="border-top:1px solid var(--border);padding-top:8px;margin-top:6px;">
               <div class="comp-section-head">
-                <span class="comp-section-lbl" style="color:#0ea5e9;">▸ 운용자금 (투자)</span>
+                <span class="comp-section-lbl" style="color:#0ea5e9;">▸ 운용자금</span>
                 <span class="comp-section-total" id="comp-inv-total">—</span>
               </div>
-              <div id="comp-inv-list"></div>
+              <div id="comp-inv-list" style="max-height:110px;overflow-y:auto;scrollbar-width:thin;"></div>
             </div>
           </div>
-          <!-- 우: 차입금 + 원화/외화 비율 -->
-          <div class="card" style="margin-bottom:0;padding:16px 18px;">
-            <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);">차입금 현황</div>
-            <div id="comp-loan-list" style="margin-bottom:12px;"></div>
-            <!-- 원화/외화 비율 -->
-            <div style="border-top:1px solid var(--border);padding-top:10px;">
-              <div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:8px;">원화 / 외화 비율</div>
-              <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;margin-bottom:6px;">
-                <div style="background:var(--accent);transition:flex .4s;" id="s-ratio-krw-bar">
-                  <span style="display:none;" id="s-ratio-krw-pct"></span>
+
+          <!-- 우: 차입금 현황 (스크롤 가능) -->
+          <div class="card" style="margin-bottom:0;padding:14px 16px;">
+            <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--border);">차입금 현황</div>
+            <div id="comp-loan-list" style="max-height:200px;overflow-y:auto;scrollbar-width:thin;"></div>
+          </div>
+        </div>
+
+        <!-- ══ ROW 4: 차트 연동 지표(좌) + 현금흐름 차트(우) ══ -->
+        <div style="display:grid;grid-template-columns:240px 1fr;gap:12px;margin-bottom:12px;align-items:start;">
+
+          <!-- 차트 선택 지표 카드 (세로 스택) -->
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="font-size:10px;color:var(--text3);padding:0 2px;">클릭으로 차트 전환 (Ctrl+클릭 복수)</div>
+            <div class="metric-v2 sel-op" data-key="op" onclick="toggleMetricV2('op',this)">
+              <div class="mv-lbl">운전자금 <span style="color:#3b82f6;">●</span></div>
+              <div class="mv-val" style="color:#60a5fa;" id="d-op-total">0원</div>
+              <div class="m-row" style="margin-top:4px;"><span class="lbl">원화</span><span class="val" id="d-op-krw">0</span></div>
+              <div class="m-row"><span class="lbl">외화환산</span><span class="val" id="d-op-fx">0</span></div>
+            </div>
+            <div class="metric-v2" data-key="inv" onclick="toggleMetricV2('inv',this)">
+              <div class="mv-lbl">운용자금 <span style="color:#10b981;">●</span></div>
+              <div class="mv-val" style="color:#34d399;" id="d-inv-total">0원</div>
+              <div class="m-row" style="margin-top:4px;"><span class="lbl">원화</span><span class="val" id="d-inv-krw">0</span></div>
+              <div class="m-row"><span class="lbl">외화환산</span><span class="val" id="d-inv-fx">0</span></div>
+            </div>
+            <div class="metric-v2" data-key="loan" onclick="toggleMetricV2('loan',this)">
+              <div class="mv-lbl">차입금 <span style="color:#f59e0b;">●</span></div>
+              <div class="mv-val" style="color:#fbbf24;" id="d-loan-total">0원</div>
+              <div class="m-row" style="margin-top:4px;"><span class="lbl">원화</span><span class="val" id="d-loan-krw">0</span></div>
+              <div class="m-row"><span class="lbl">외화환산</span><span class="val" id="d-loan-fx">0</span></div>
+            </div>
+            <div class="metric-v2" data-key="net" onclick="toggleMetricV2('net',this)">
+              <div class="mv-lbl">순현금 <span style="color:#8b5cf6;">●</span></div>
+              <div class="mv-val" id="d-net-total">0원</div>
+              <div style="margin-top:4px;font-size:11px;color:var(--text3);">운전+운용−차입</div>
+              <div id="d-net-bar" style="display:none;margin-top:4px;">
+                <div style="height:3px;border-radius:2px;background:var(--border);overflow:hidden;margin-bottom:3px;">
+                  <div id="d-net-bar-fill" style="height:3px;border-radius:2px;transition:width .4s;"></div>
                 </div>
-                <div style="background:var(--green);transition:flex .4s;" id="s-ratio-fx-bar">
-                  <span style="display:none;" id="s-ratio-fx-pct"></span>
-                </div>
-              </div>
-              <div style="display:flex;justify-content:space-between;font-size:11px;">
-                <span style="color:var(--accent);">원화 <b id="s-ratio-krw-pct-txt">—</b></span>
-                <span style="color:var(--text3);" id="s-ratio-text">—</span>
-                <span style="color:var(--green);">외화 <b id="s-ratio-fx-pct-txt">—</b></span>
+                <div style="font-size:10px;color:var(--text3);" id="d-net-bar-label"></div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- ── 차트 연동 지표 카드 (기존 metric 역할 유지) ── -->
-        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">카드 클릭으로 하단 그래프를 전환합니다</div>
-        <div class="metrics-v2">
-          <div class="metric-v2 sel-op" data-key="op" onclick="toggleMetricV2('op',this)">
-            <div class="mv-lbl">운전자금 <span style="color:#3b82f6;">●</span></div>
-            <div class="mv-val" style="color:#60a5fa;" id="d-op-total">0원</div>
-            <div class="m-row" style="margin-top:6px;"><span class="lbl">원화</span><span class="val" id="d-op-krw">0</span></div>
-            <div class="m-row"><span class="lbl">외화환산</span><span class="val" id="d-op-fx">0</span></div>
-          </div>
-          <div class="metric-v2" data-key="inv" onclick="toggleMetricV2('inv',this)">
-            <div class="mv-lbl">운용자금 <span style="color:#10b981;">●</span></div>
-            <div class="mv-val" style="color:#34d399;" id="d-inv-total">0원</div>
-            <div class="m-row" style="margin-top:6px;"><span class="lbl">원화</span><span class="val" id="d-inv-krw">0</span></div>
-            <div class="m-row"><span class="lbl">외화환산</span><span class="val" id="d-inv-fx">0</span></div>
-          </div>
-          <div class="metric-v2" data-key="loan" onclick="toggleMetricV2('loan',this)">
-            <div class="mv-lbl">차입금 <span style="color:#f59e0b;">●</span></div>
-            <div class="mv-val" style="color:#fbbf24;" id="d-loan-total">0원</div>
-            <div class="m-row" style="margin-top:6px;"><span class="lbl">원화</span><span class="val" id="d-loan-krw">0</span></div>
-            <div class="m-row"><span class="lbl">외화환산</span><span class="val" id="d-loan-fx">0</span></div>
-          </div>
-          <div class="metric-v2" data-key="net" onclick="toggleMetricV2('net',this)">
-            <div class="mv-lbl">순현금 Net Cash <span style="color:#8b5cf6;">●</span></div>
-            <div class="mv-val" id="d-net-total">0원</div>
-            <div style="margin-top:6px;font-size:11px;color:var(--text3);">운전+운용−차입금</div>
-            <div id="d-net-bar" style="display:none;margin-top:6px;">
-              <div style="height:4px;border-radius:2px;background:var(--border);overflow:hidden;margin-bottom:4px;">
-                <div id="d-net-bar-fill" style="height:4px;border-radius:2px;transition:width .4s;"></div>
-              </div>
-              <div style="font-size:10px;color:var(--text3);" id="d-net-bar-label"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ── 현금흐름 차트 (전폭) ── -->
-        <div class="card" style="margin-bottom:14px;">
-          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-size:12px;">현금흐름 추이</span>
-            <div style="display:flex;gap:3px;">
-              <button class="btn btn-ghost chart-period-btn active" onclick="setChartPeriod(7,this)" style="padding:3px 8px;font-size:10px;">7일</button>
-              <button class="btn btn-ghost chart-period-btn" onclick="setChartPeriod(30,this)" style="padding:3px 8px;font-size:10px;">30일</button>
-              <button class="btn btn-ghost chart-period-btn" onclick="setChartPeriod(90,this)" style="padding:3px 8px;font-size:10px;">90일</button>
-              <button class="btn btn-ghost chart-period-btn" onclick="setChartPeriod(365,this)" style="padding:3px 8px;font-size:10px;">1년</button>
-            </div>
-          </div>
-          <div class="chart-area" id="chart-area" style="height:220px;"><canvas id="mainChart"></canvas></div>
-        </div>
-
-        <!-- ── 지분투자 자산 ── -->
-        <div class="equity-metric">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-            <div style="font-size:12px;color:var(--pink);font-weight:600;">지분투자 자산 (순현금 제외)</div>
-            <button class="btn btn-ghost" onclick="goto('equity')" style="font-size:11px;padding:4px 10px;border-color:rgba(236,72,153,0.3);color:var(--pink);">상세 보기 →</button>
-          </div>
-          <div id="d-eq-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;"></div>
-          <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid rgba(236,72,153,0.2);">
-            <span style="font-size:12px;color:var(--text2);">합계</span>
-            <span style="font-size:18px;font-weight:700;color:var(--pink);" id="d-eq-total">0원</span>
-          </div>
-        </div>
-
-        <!-- ── 지분투자 평가 추이 차트 ── -->
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
-            <span class="card-title" style="margin:0;">지분투자 평가 추이</span>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <select id="dash-equity-filter" onchange="onEquityFilterChange()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:3px 8px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;">
-                <option value="">전체 종목</option>
-              </select>
+          <!-- 현금흐름 차트 -->
+          <div class="card" style="margin-bottom:0;">
+            <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:12px;">현금흐름 추이</span>
               <div style="display:flex;gap:3px;">
-                <button class="btn btn-ghost eq-period-btn active" onclick="setEquityPeriod(14,this)" style="padding:3px 8px;font-size:10px;">14일</button>
-                <button class="btn btn-ghost eq-period-btn" onclick="setEquityPeriod(30,this)" style="padding:3px 8px;font-size:10px;">30일</button>
-                <button class="btn btn-ghost eq-period-btn" onclick="setEquityPeriod(90,this)" style="padding:3px 8px;font-size:10px;">90일</button>
-                <button class="btn btn-ghost eq-period-btn" onclick="setEquityPeriod(365,this)" style="padding:3px 8px;font-size:10px;">1년</button>
+                <button class="btn btn-ghost chart-period-btn active" onclick="setChartPeriod(7,this)" style="padding:3px 7px;font-size:10px;">7일</button>
+                <button class="btn btn-ghost chart-period-btn" onclick="setChartPeriod(30,this)" style="padding:3px 7px;font-size:10px;">30일</button>
+                <button class="btn btn-ghost chart-period-btn" onclick="setChartPeriod(90,this)" style="padding:3px 7px;font-size:10px;">90일</button>
+                <button class="btn btn-ghost chart-period-btn" onclick="setChartPeriod(365,this)" style="padding:3px 7px;font-size:10px;">1년</button>
               </div>
             </div>
+            <div class="chart-area" id="chart-area" style="height:280px;"><canvas id="mainChart"></canvas></div>
           </div>
-          <div class="chart-area" style="height:200px;"><canvas id="equityChart"></canvas></div>
+        </div>
+
+        <!-- ══ ROW 5: 지분투자 자산(좌) + 지분투자 추이 차트(우) ══ -->
+        <div style="display:grid;grid-template-columns:240px 1fr;gap:12px;">
+
+          <!-- 지분투자 자산 목록 (스크롤) -->
+          <div class="equity-metric" style="margin-bottom:0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <div style="font-size:12px;color:var(--pink);font-weight:600;">지분투자 자산</div>
+              <button class="btn btn-ghost" onclick="goto('equity')" style="font-size:10px;padding:3px 8px;border-color:rgba(236,72,153,0.3);color:var(--pink);">상세 →</button>
+            </div>
+            <div id="d-eq-list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;max-height:220px;overflow-y:auto;scrollbar-width:thin;"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid rgba(236,72,153,0.2);">
+              <span style="font-size:11px;color:var(--text2);">합계</span>
+              <span style="font-size:16px;font-weight:700;color:var(--pink);" id="d-eq-total">0원</span>
+            </div>
+          </div>
+
+          <!-- 지분투자 평가 추이 차트 -->
+          <div class="card" style="margin-bottom:0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+              <span class="card-title" style="margin:0;font-size:12px;">지분투자 평가 추이</span>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <select id="dash-equity-filter" onchange="onEquityFilterChange()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:3px 7px;border-radius:6px;font-size:10px;cursor:pointer;font-family:inherit;">
+                  <option value="">전체 종목</option>
+                </select>
+                <div style="display:flex;gap:2px;">
+                  <button class="btn btn-ghost eq-period-btn active" onclick="setEquityPeriod(14,this)" style="padding:3px 7px;font-size:10px;">14일</button>
+                  <button class="btn btn-ghost eq-period-btn" onclick="setEquityPeriod(30,this)" style="padding:3px 7px;font-size:10px;">30일</button>
+                  <button class="btn btn-ghost eq-period-btn" onclick="setEquityPeriod(90,this)" style="padding:3px 7px;font-size:10px;">90일</button>
+                  <button class="btn btn-ghost eq-period-btn" onclick="setEquityPeriod(365,this)" style="padding:3px 7px;font-size:10px;">1년</button>
+                </div>
+              </div>
+            </div>
+            <div class="chart-area" style="height:240px;"><canvas id="equityChart"></canvas></div>
+          </div>
         </div>
       </div>
 
@@ -3662,6 +3687,61 @@ function toggleMetricV2(key, btnEl) {
   updateMainChart(dailyRecords);
 }
 
+// ── 원화/외화 도넛 차트 ──────────────────────────────────────────
+let ratioDonutChart = null;
+function drawRatioDonut(krw, fx, total) {
+  const canvas = document.getElementById('ratioDonut');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  if (ratioDonutChart) { ratioDonutChart.destroy(); ratioDonutChart = null; }
+
+  const krwPct = total > 0 ? Math.round(krw / total * 100) : 0;
+  const fxPct  = 100 - krwPct;
+
+  // 텍스트 업데이트
+  const ktEl = document.getElementById('s-ratio-krw-pct-txt');
+  const ftEl = document.getElementById('s-ratio-fx-pct-txt');
+  const rtEl = document.getElementById('s-ratio-text');
+  if (ktEl) ktEl.textContent = '원화 ' + krwPct + '%';
+  if (ftEl) ftEl.textContent = '외화 ' + fxPct  + '%';
+  if (rtEl) rtEl.textContent = fmtKRW(krw) + ' / ' + fmtKRW(fx);
+
+  if (total <= 0) return;
+
+  if (typeof Chart === 'undefined') return;
+  ratioDonutChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      datasets: [{
+        data: [krw, fx],
+        backgroundColor: ['rgba(59,130,246,0.75)', 'rgba(16,185,129,0.75)'],
+        borderColor:      ['rgba(59,130,246,0.9)',  'rgba(16,185,129,0.9)'],
+        borderWidth: 1.5,
+        hoverOffset: 3,
+      }]
+    },
+    options: {
+      responsive: false,
+      cutout: '68%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(c) {
+              const labels = ['원화','외화'];
+              const pcts   = [krwPct, fxPct];
+              return labels[c.dataIndex] + ': ' + pcts[c.dataIndex] + '%';
+            }
+          }
+        }
+      },
+      animation: { duration: 400 }
+    }
+  });
+}
+
+
 // ── Phase1: Alert Strip (차입금 만기 경고) ───────────────────────────
 function renderAlertStrip(loans, today) {
   const strip = document.getElementById('dash-alert-strip');
@@ -4169,7 +4249,7 @@ function renderDashboard() {
   const heroDate  = document.getElementById('hero-date');
 
   if (heroNet) {
-    heroNet.textContent = (netTotal >= 0 ? '+' : '') + fmtKRW(Math.abs(netTotal));
+    heroNet.textContent = (netTotal >= 0 ? '+' : '-') + fmtKRW(Math.abs(netTotal));
     heroNet.className   = 'hero-value ' + (netTotal >= 0 ? 'positive' : 'negative');
   }
   if (heroLbl)  heroLbl.textContent  = '순현금 포지션 — ' + (currentCompany === 'TOTAL' ? '통합 3사' : currentCompany);
@@ -4262,7 +4342,7 @@ function renderDashboard() {
       listEl.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:4px 0;">없음</div>';
       return;
     }
-    listEl.innerHTML = items.slice(0, 5).map(item => {
+    listEl.innerHTML = items.map(item => {
       const pct = totalVal > 0 ? Math.min(100, (item.amt / totalVal) * 100) : 0;
       return '<div class="comp-row">' +
         '<span class="comp-row-name">' + (item.name||'') + '</span>' +
@@ -4284,7 +4364,7 @@ function renderDashboard() {
   renderCompList('comp-cash-list', cashItems, 'comp-cash-total', opTotal, 'var(--accent)', '#3b82f6');
 
   // 운용자금 상품 분해
-  const invItems = invs.slice(0, 5).map(i => ({
+  const invItems = invs.map(i => ({
     name: (i.bank||'') + ' ' + (i.product||''),
     amt:  calcKRW(i.amount, i.currency),
     rate: i.rate,
@@ -4297,7 +4377,7 @@ function renderDashboard() {
     if (!loans.length) {
       loanListEl.innerHTML = '<div style="font-size:11px;color:var(--text3);">차입금 없음</div>';
     } else {
-      loanListEl.innerHTML = loans.slice(0, 5).map(l => {
+      loanListEl.innerHTML = loans.map(l => {
         const days = l.maturity ? Math.ceil((new Date(l.maturity) - new Date()) / 86400000) : null;
         const ddayStr = days !== null ? (days < 0 ? '<span style="color:var(--red)">만기경과</span>' :
           (days < 90 ? '<span style="color:var(--amber)">D-' + days + '</span>' : 'D-' + days)) : '—';
@@ -4312,21 +4392,8 @@ function renderDashboard() {
     }
   }
 
-  // ── 원화/외화 비율 바 ────────────────────────────────────────
-  if (grandTotal > 0) {
-    const krwPct = Math.round(totalKrw / grandTotal * 100);
-    const fxPct  = 100 - krwPct;
-    const krwBar = document.getElementById('s-ratio-krw-bar');
-    const fxBar  = document.getElementById('s-ratio-fx-bar');
-    if (krwBar) krwBar.style.flex = krwPct.toString();
-    if (fxBar)  fxBar.style.flex  = fxPct.toString();
-    const ktEl = document.getElementById('s-ratio-krw-pct-txt');
-    const ftEl = document.getElementById('s-ratio-fx-pct-txt');
-    const rtEl = document.getElementById('s-ratio-text');
-    if (ktEl) ktEl.textContent = krwPct + '%';
-    if (ftEl) ftEl.textContent = fxPct  + '%';
-    if (rtEl) rtEl.textContent = fmtKRW(totalKrw) + ' / ' + fmtKRW(totalFx);
-  }
+  // ── 원화/외화 도넛 차트 ───────────────────────────────────────
+  drawRatioDonut(totalKrw, totalFx, grandTotal);
 
   // ── 차트 연동 지표 카드 ──────────────────────────────────────
   const sd = (id, val) => { const e = document.getElementById(id); if(e) e.textContent = fmtKRW(val); };
