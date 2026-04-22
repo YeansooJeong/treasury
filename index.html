@@ -367,7 +367,69 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
     #add-user-modal > div, #code-change-modal > div {
       width: 94vw !important; max-width: 94vw !important; padding: 20px 16px !important;
     }
-  }
+  
+    /* ═══════════════════════════════════════════════════════════
+       대시보드 모바일 최적화 (Phase1 신규 레이아웃)
+    ═══════════════════════════════════════════════════════════ */
+
+    /* ROW A: Hero + 현금흐름 차트 → 세로 1열 */
+    #dash-row-a { grid-template-columns: 1fr !important; }
+
+    /* ROW B: KPI 6열 → 3열 (3+3 = 읽기 편함) */
+    #dash-row-b { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
+
+    /* ROW C: 지표2×2 + 상세패널 → 세로 1열 */
+    #dash-row-c { grid-template-columns: 1fr !important; align-items: start !important; }
+
+    /* ROW C 내 2×2 카드 그리드 → 2열 유지 */
+    #dash-card-grid { grid-template-columns: 1fr 1fr !important; }
+
+    /* ROW D: 지분투자 → 세로 1열 */
+    #dash-row-d { grid-template-columns: 1fr !important; }
+
+    /* 상세 패널: 1열로 풀릴 때 height 고정 */
+    #detail-panel {
+      height: auto !important;
+      min-height: 240px !important;
+    }
+    #detail-panel-body {
+      max-height: 180px !important;
+    }
+
+    /* hero-card 패딩 축소 */
+    .hero-card { padding: 14px 16px !important; }
+    .hero-value { font-size: 26px !important; }
+    .hero-meta { gap: 10px !important; flex-wrap: wrap; }
+
+    /* KPI 카드 — 텍스트 크기 축소 */
+    .kpi-card { padding: 10px 10px !important; }
+    .kpi-lbl  { font-size: 9.5px !important; }
+    .kpi-val  { font-size: 14px !important; }
+    .kpi-spark { width: 56px !important; height: 28px !important; }
+
+    /* metric-v2 카드 패딩 */
+    .metric-v2 { padding: 9px 10px !important; }
+    .metric-v2 .mv-val { font-size: 14px !important; }
+
+    /* comp-panel (ROW 3) → 1열 */
+    .comp-panel { grid-template-columns: 1fr !important; }
+
+    /* 지분투자 패널 스크롤 높이 축소 */
+    #d-eq-list { max-height: 140px !important; }
+
+    /* 차트 높이 */
+    .chart-area { height: 180px !important; }
+    #chart-area  { min-height: 180px !important; }
+
+    /* detail-tab 패딩 축소 */
+    .detail-tab { padding: 8px 10px !important; font-size: 10.5px !important; }
+
+    /* 법인 탭 */
+    .ci-tab { padding: 6px 10px !important; height: 36px !important; }
+
+    /* 카드 패딩 */
+    .card { padding: 12px 12px !important; }
+}
 
   @media (max-width: 480px) {
     /* 소형 폰: 카드 1열 */
@@ -681,6 +743,26 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
   @media (max-width: 480px) {
     .kpi-strip { grid-template-columns: 1fr 1fr !important; }
   }
+  @media (max-width: 480px) {
+    /* 소형 폰 추가 최적화 */
+    #dash-row-b { grid-template-columns: repeat(2, 1fr) !important; gap: 6px !important; }
+    .kpi-strip { grid-template-columns: repeat(2, 1fr) !important; gap: 6px !important; }
+    .kpi-card  { padding: 8px 8px !important; }
+    .kpi-val   { font-size: 13px !important; }
+    .hero-value { font-size: 22px !important; }
+    .mv-val { font-size: 13px !important; }
+    .metric-v2 { padding: 8px 8px !important; }
+    /* 상세 패널 탭 — 4개 균등 */
+    .detail-tab { flex: 1 !important; text-align: center !important; padding: 7px 4px !important; font-size: 10px !important; }
+    #detail-panel-body { max-height: 160px !important; }
+    .hero-meta-item .val { font-size: 11px !important; }
+    /* 법인 탭 1행 스크롤 */
+    .page#page-dashboard > div:first-child {
+      overflow-x: auto !important;
+      flex-wrap: nowrap !important;
+    }
+  }
+
 
   /* ── 통합 상세 패널 ─────────────────────────────────────────── */
   #detail-panel {
@@ -1003,7 +1085,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
         <div id="dash-alert-strip" class="alert-strip" style="display:none;margin-bottom:10px;"></div>
 
         <!-- ══ ROW A: Hero(좌) | 현금흐름 차트(우) ══ -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;align-items:stretch;">
+        <div id="dash-row-a" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;align-items:stretch;">
 
           <!-- 좌: Hero 순현금 포지션 -->
           <div class="hero-card" style="padding:18px 22px;margin-bottom:0;display:flex;flex-direction:column;justify-content:center;">
@@ -1046,7 +1128,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
         </div>
 
         <!-- ══ ROW B: KPI Strip 6개 (운전·운용·차입·주식·외화·원화/외화) ══ -->
-        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:12px;">
+        <div id="dash-row-b" style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:12px;">
 
           <!-- 운전자금 -->
           <div class="kpi-card" style="border-color:rgba(59,130,246,0.3);">
@@ -1121,10 +1203,10 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
         </div>
 
         <!-- ══ ROW C: 지표 카드 2×2(좌) | 통합 상세 패널(우) ══ -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;align-items:stretch;">
+        <div id="dash-row-c" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;align-items:stretch;">
 
           <!-- 좌: 4개 지표 카드 2×2 -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch;">
+          <div id="dash-card-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch;">
 
             <div class="metric-v2 sel-op" data-key="op"
               onclick="selectDetailCard('op', this)"
@@ -1206,7 +1288,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
         </div>
 
         <!-- ══ ROW D<!-- ══ ROW D: 지분투자 자산(좌) | 지분투자 평가 추이(우) ══ -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div id="dash-row-d" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
 
           <!-- 좌: 지분투자 자산 목록 -->
           <div class="equity-metric" style="margin-bottom:0;padding:14px 16px;">
