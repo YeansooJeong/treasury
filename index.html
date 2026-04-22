@@ -661,6 +661,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
     background: var(--card); border: 1px solid var(--border);
     border-radius: 10px; padding: 10px 12px;
     cursor: pointer; transition: border-color .15s, background .15s;
+    display: flex; flex-direction: column; justify-content: flex-start;
   }
   .metric-v2:hover { background: var(--bg3); }
   .metric-v2.sel-op   { border-color: #3b82f6; background: rgba(59,130,246,0.06); }
@@ -682,7 +683,21 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
   }
 
   /* ── 통합 상세 패널 ─────────────────────────────────────────── */
-  #detail-panel { transition: all .2s; }
+  #detail-panel {
+    display: flex; flex-direction: column;
+    height: 100%;              /* ROW C align-items:stretch로 부모 높이 채움 */
+    overflow: hidden;
+  }
+  #detail-panel-tabs {
+    flex-shrink: 0;            /* 탭 헤더는 고정 높이 */
+  }
+  #detail-panel-body {
+    flex: 1;                   /* 나머지 공간 전부 차지 */
+    overflow-y: auto;
+    scrollbar-width: thin;
+    padding: 12px 16px;
+    min-height: 0;             /* flex child 스크롤 버그 방지 */
+  }
   .detail-tab:hover { color: var(--text) !important; background: rgba(255,255,255,0.04); }
   .detail-tab.active { font-weight: 600 !important; }
 
@@ -1106,10 +1121,10 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
         </div>
 
         <!-- ══ ROW C: 지표 카드 2×2(좌) | 통합 상세 패널(우) ══ -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;align-items:start;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;align-items:stretch;">
 
           <!-- 좌: 4개 지표 카드 2×2 -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch;">
 
             <div class="metric-v2 sel-op" data-key="op"
               onclick="selectDetailCard('op', this)"
@@ -1154,7 +1169,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
           </div>
 
           <!-- 우: 통합 상세 패널 -->
-          <div class="card" id="detail-panel" style="margin-bottom:0;padding:0;overflow:hidden;min-height:200px;">
+          <div class="card" id="detail-panel" style="margin-bottom:0;padding:0;">
 
             <!-- 패널 탭 헤더 -->
             <div id="detail-panel-tabs" style="display:flex;border-bottom:1px solid var(--border);background:var(--bg3);">
@@ -1177,7 +1192,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
             </div>
 
             <!-- 패널 본문 -->
-            <div id="detail-panel-body" style="padding:14px 16px;max-height:240px;overflow-y:auto;scrollbar-width:thin;"></div>
+            <div id="detail-panel-body" style=""></div>
           </div>
         </div>
 
