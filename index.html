@@ -484,6 +484,190 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
   .cal-legend { display: flex; gap: 10px; margin-top: 8px; font-size: 10px; color: var(--text3); }
   .cal-legend span { display: flex; align-items: center; gap: 4px; }
   .cal-legend .dot { width: 8px; height: 8px; border-radius: 2px; }
+
+  /* ══ Phase 1 Dashboard Redesign CSS ══════════════════════════════ */
+
+  /* Hero 카드 — 순현금 포지션 */
+  .hero-card {
+    background: linear-gradient(135deg, #1e2a42 0%, #1a2035 100%);
+    border: 1px solid rgba(99,130,200,0.2);
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin-bottom: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-card::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 160px; height: 160px;
+    border-radius: 50%;
+    background: rgba(59,130,246,0.06);
+    pointer-events: none;
+  }
+  .hero-label {
+    font-size: 10px; color: var(--text3);
+    text-transform: uppercase; letter-spacing: .08em;
+    margin-bottom: 8px;
+  }
+  .hero-value {
+    font-size: 38px; font-weight: 800;
+    line-height: 1; margin-bottom: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .hero-value.positive { color: #34d399; }
+  .hero-value.negative { color: #f87171; }
+  .hero-sub {
+    font-size: 12px; color: var(--text3); margin-bottom: 14px;
+  }
+  .hero-meta {
+    display: flex; gap: 20px; flex-wrap: wrap;
+  }
+  .hero-meta-item {
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .hero-meta-item .lbl { font-size: 10px; color: var(--text3); }
+  .hero-meta-item .val { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* Alert Strip */
+  .alert-strip {
+    display: flex; flex-direction: column; gap: 6px;
+    margin-bottom: 14px;
+  }
+  .alert-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 9px 14px; border-radius: 8px;
+    font-size: 12px; line-height: 1.5;
+  }
+  .alert-item.danger {
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.25);
+    color: #fca5a5;
+  }
+  .alert-item.warning {
+    background: rgba(245,158,11,0.08);
+    border: 1px solid rgba(245,158,11,0.25);
+    color: #fcd34d;
+  }
+  .alert-item.info {
+    background: rgba(96,165,250,0.07);
+    border: 1px solid rgba(96,165,250,0.2);
+    color: #93c5fd;
+  }
+  .alert-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
+  .alert-dot.red    { background: #ef4444; }
+  .alert-dot.amber  { background: #f59e0b; }
+  .alert-dot.blue   { background: #3b82f6; }
+
+  /* KPI Strip — 5개 카드 */
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .kpi-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-lbl {
+    font-size: 10.5px; color: var(--text2); font-weight: 600;
+    margin-bottom: 6px; white-space: nowrap;
+  }
+  .kpi-val {
+    font-size: 16px; font-weight: 700; color: var(--text);
+    line-height: 1; margin-bottom: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+  .kpi-val .ku { font-size: 10px; color: var(--text3); margin-right: 2px; }
+  .kpi-delta {
+    font-size: 11px; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    display: flex; align-items: center; gap: 3px;
+  }
+  .kpi-delta.up   { color: #34d399; }
+  .kpi-delta.down { color: #f87171; }
+  .kpi-delta.flat { color: var(--text3); }
+  .kpi-spark {
+    position: absolute; bottom: 0; right: 0;
+    width: 72px; height: 36px; opacity: 0.4;
+  }
+  .kpi-sub {
+    font-size: 10px; color: var(--text3);
+    margin-top: 2px; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* 자금 구성 상세 패널 */
+  .comp-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .comp-section { margin-bottom: 10px; }
+  .comp-section-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 6px;
+  }
+  .comp-section-lbl {
+    font-size: 9.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em;
+  }
+  .comp-section-total { font-size: 11px; color: var(--text2); font-weight: 600; }
+  .comp-row {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 5px;
+  }
+  .comp-row-name {
+    font-size: 11px; color: var(--text2); flex: 1;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .comp-row-amt {
+    font-size: 11.5px; font-weight: 600; color: var(--text);
+    min-width: 50px; text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .comp-pbar {
+    width: 44px; height: 4px; background: var(--border);
+    border-radius: 2px; overflow: hidden; flex-shrink: 0;
+  }
+  .comp-pbar-fill { height: 4px; border-radius: 2px; transition: width .4s; }
+
+  /* 기존 metric 카드 → 간소화 버전 유지 (chart 연동용) */
+  .metrics-v2 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .metric-v2 {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px;
+    cursor: pointer; transition: border-color .15s, background .15s;
+  }
+  .metric-v2:hover { background: var(--bg3); }
+  .metric-v2.sel-op   { border-color: #3b82f6; background: rgba(59,130,246,0.06); }
+  .metric-v2.sel-inv  { border-color: #10b981; background: rgba(16,185,129,0.06); }
+  .metric-v2.sel-loan { border-color: #f59e0b; background: rgba(245,158,11,0.06); }
+  .metric-v2.sel-net  { border-color: #8b5cf6; background: rgba(139,92,246,0.06); }
+  .metric-v2 .mv-lbl { font-size: 10px; color: var(--text3); font-weight: 600; margin-bottom: 4px; }
+  .metric-v2 .mv-val { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* 모바일 반응형 */
+  @media (max-width: 768px) {
+    .kpi-strip { grid-template-columns: repeat(2, 1fr) !important; }
+    .comp-panel { grid-template-columns: 1fr !important; }
+    .hero-value { font-size: 28px; }
+    .metrics-v2 { grid-template-columns: repeat(2, 1fr) !important; }
+  }
+  @media (max-width: 480px) {
+    .kpi-strip { grid-template-columns: 1fr 1fr !important; }
+  }
 </style>
 </head>
 <body>
@@ -740,148 +924,181 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
     <div class="content">
 
       <div class="page active" id="page-dashboard">
-        <div style="display:flex; gap:10px; margin-bottom:20px; align-items:center;">
-          <div class="ci-tab active" onclick="setCompany('셀바스에이아이', this)" title="셀바스에이아이"><img src="selvasai.png" alt="셀바스에이아이" onerror="this.parentElement.textContent='Selvas AI'"></div>
-          <div class="ci-tab" onclick="setCompany('셀바스헬스케어', this)" title="셀바스헬스케어"><img src="selvashealthcare.png" alt="셀바스헬스케어" onerror="this.parentElement.textContent='Selvas HC'"></div>
-          <div class="ci-tab" onclick="setCompany('메디아나', this)" title="메디아나"><img src="mediana.png" alt="메디아나" onerror="this.parentElement.textContent='Mediana'"></div>
-          <button class="btn btn-ghost" id="tab-total" onclick="setCompany('TOTAL', this)" style="display:none;">통합 현황 (3사)</button>
+
+        <!-- ── 법인 탭 ── -->
+        <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;">
+          <div class="ci-tab active" onclick="setCompany('셀바스에이아이',this)" title="셀바스에이아이"><img src="selvasai.png" alt="셀바스에이아이" onerror="this.parentElement.textContent='Selvas AI'"></div>
+          <div class="ci-tab" onclick="setCompany('셀바스헬스케어',this)" title="셀바스헬스케어"><img src="selvashealthcare.png" alt="셀바스헬스케어" onerror="this.parentElement.textContent='Selvas HC'"></div>
+          <div class="ci-tab" onclick="setCompany('메디아나',this)" title="메디아나"><img src="mediana.png" alt="메디아나" onerror="this.parentElement.textContent='Mediana'"></div>
+          <button class="btn btn-ghost" id="tab-total" onclick="setCompany('TOTAL',this)" style="display:none;">통합 현황 (3사)</button>
         </div>
 
-        <div style="font-size:12px; color:var(--text3); margin-bottom:8px;">※ 현금흐름 (순현금에 반영됨) - 카드를 클릭하면 하단 그래프가 변경됩니다.</div>
+        <!-- ── Alert Strip ── -->
+        <div id="dash-alert-banner" style="display:none;margin-bottom:14px;"></div>
+        <div id="dash-alert-strip" class="alert-strip" style="display:none;"></div>
 
-        <!-- 원화/외화 구분 요약 카드 -->
-        <!-- 미입력/누락 알림 배너 -->
-        <div id="dash-alert-banner" style="display:none;margin-bottom:12px;"></div>
-
-        <!-- 요약 카드 4개: 합계 / 원화 / 외화 / 비율 -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
-
-          <!-- 운전+운용 합계 -->
-          <div class="card" style="margin-bottom:0;padding:14px 18px;border-color:rgba(59,130,246,0.25);">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
-              <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">운전 + 운용 합계</div>
-              <button onclick="goto('input')" style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.25);color:var(--accent2);padding:3px 8px;border-radius:6px;font-size:10px;cursor:pointer;font-family:inherit;">+ 입력</button>
+        <!-- ── Hero: 순현금 포지션 ── -->
+        <div class="hero-card">
+          <div class="hero-label" id="hero-label">순현금 포지션 — 셀바스에이아이</div>
+          <div class="hero-value" id="hero-net-value">—</div>
+          <div class="hero-sub" id="hero-net-sub">운전자금 + 운용자금 − 차입금</div>
+          <div class="hero-meta">
+            <div class="hero-meta-item">
+              <span class="lbl">운전+운용</span>
+              <span class="val" style="color:#60a5fa;" id="hero-avail">—</span>
             </div>
-            <div style="font-size:22px;font-weight:700;color:var(--accent2);" id="s-op-inv-total">—</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:5px;">
-              운전 <span style="color:var(--accent2);" id="s-op-sub">—</span>&nbsp; 운용 <span style="color:var(--green);" id="s-inv-sub">—</span>
+            <div class="hero-meta-item">
+              <span class="lbl">차입금</span>
+              <span class="val" style="color:#f87171;" id="hero-loan">—</span>
             </div>
-          </div>
-
-          <!-- 원화 자금 합계 -->
-          <div class="card" style="margin-bottom:0;padding:14px 18px;">
-            <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">원화 자금 합계</div>
-            <div style="font-size:22px;font-weight:700;color:var(--accent2);" id="s-krw-total">—</div>
-            <div style="display:flex;justify-content:space-between;margin-top:6px;">
-              <span style="font-size:11px;color:var(--text3);">가용</span>
-              <span style="font-size:11px;color:var(--green);font-weight:600;" id="s-krw-avail">—</span>
+            <div class="hero-meta-item">
+              <span class="lbl">주식 포함</span>
+              <span class="val" style="color:#c084fc;" id="hero-with-stock">—</span>
             </div>
-            <div style="display:flex;justify-content:space-between;">
-              <span style="font-size:11px;color:var(--text3);">불가용</span>
-              <span style="font-size:11px;color:var(--red);font-weight:600;" id="s-krw-unavail">—</span>
+            <div class="hero-meta-item">
+              <span class="lbl">기준일</span>
+              <span class="val" style="color:var(--text3);" id="hero-date">—</span>
             </div>
-          </div>
-
-          <!-- 외화 원화환산 합계 -->
-          <div class="card" style="margin-bottom:0;padding:14px 18px;">
-            <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">외화 원화환산액</div>
-            <div style="font-size:22px;font-weight:700;color:var(--green);" id="s-fx-total">—</div>
-            <div style="display:flex;justify-content:space-between;margin-top:6px;">
-              <span style="font-size:11px;color:var(--text3);">가용</span>
-              <span style="font-size:11px;color:var(--green);font-weight:600;" id="s-fx-avail">—</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;">
-              <span style="font-size:11px;color:var(--text3);">불가용</span>
-              <span style="font-size:11px;color:var(--red);font-weight:600;" id="s-fx-unavail">—</span>
-            </div>
-          </div>
-
-          <!-- 원화/외화 비율 -->
-          <div class="card" style="margin-bottom:0;padding:14px 18px;">
-            <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">원화 / 외화 비율</div>
-            <div style="display:flex;height:14px;border-radius:7px;overflow:hidden;margin-bottom:8px;">
-              <div style="height:14px;background:var(--accent);transition:flex .4s;flex:70;display:flex;align-items:center;justify-content:center;" id="s-ratio-krw-bar">
-                <span style="font-size:9px;color:#fff;font-weight:600;" id="s-ratio-krw-pct"></span>
-              </div>
-              <div style="height:14px;background:var(--green);transition:flex .4s;flex:30;display:flex;align-items:center;justify-content:center;" id="s-ratio-fx-bar">
-                <span style="font-size:9px;color:#fff;font-weight:600;" id="s-ratio-fx-pct"></span>
-              </div>
-            </div>
-            <div style="display:flex;justify-content:space-between;">
-              <div style="display:flex;align-items:center;gap:4px;"><div style="width:8px;height:8px;border-radius:50%;background:var(--accent);"></div><span style="font-size:11px;color:var(--text2);">원화</span></div>
-              <div style="display:flex;align-items:center;gap:4px;"><div style="width:8px;height:8px;border-radius:50%;background:var(--green);"></div><span style="font-size:11px;color:var(--text2);">외화</span></div>
-            </div>
-            <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:4px;" id="s-ratio-text">—</div>
           </div>
         </div>
-        <div class="metrics">
-          <div class="metric selected" data-key="op" onclick="toggleMetric('op', event)">
-            <span class="metric-click-hint">그래프 선택</span><div class="metric-label">운전자금 <span class="color-op">●</span></div>
-            <div class="metric-total" id="d-op-total">0원</div>
-            <div class="metric-details">
-              <div class="m-row"><span class="lbl">원화 (보통예금/MMDA·국책 등)</span><span class="val" id="d-op-krw">0</span></div>
-              <div class="m-row"><span class="lbl">외화환산액</span><span class="val" id="d-op-fx">0</span></div>
+
+        <!-- ── KPI Strip 5개 ── -->
+        <div class="kpi-strip">
+          <!-- 운전자금 -->
+          <div class="kpi-card" style="border-color:rgba(59,130,246,0.3);">
+            <div class="kpi-lbl">운전자금</div>
+            <div class="kpi-val"><span class="ku">억원</span><span id="kpi-op">—</span></div>
+            <div class="kpi-delta flat" id="kpi-op-delta">—</div>
+            <div class="kpi-sub" id="kpi-op-sub">보통예금·국책·CMA</div>
+            <svg class="kpi-spark" id="spark-op" viewBox="0 0 72 36" preserveAspectRatio="none"></svg>
+          </div>
+          <!-- 운용자금 -->
+          <div class="kpi-card" style="border-color:rgba(16,185,129,0.3);">
+            <div class="kpi-lbl">운용자금</div>
+            <div class="kpi-val"><span class="ku">억원</span><span id="kpi-inv">—</span></div>
+            <div class="kpi-delta flat" id="kpi-inv-delta">—</div>
+            <div class="kpi-sub" id="kpi-inv-sub">예금·채권 상품</div>
+            <svg class="kpi-spark" id="spark-inv" viewBox="0 0 72 36" preserveAspectRatio="none"></svg>
+          </div>
+          <!-- 차입금 -->
+          <div class="kpi-card" style="border-color:rgba(245,158,11,0.3);">
+            <div class="kpi-lbl">차입금</div>
+            <div class="kpi-val"><span class="ku">억원</span><span id="kpi-loan">—</span></div>
+            <div class="kpi-delta flat" id="kpi-loan-delta">없음</div>
+            <div class="kpi-sub" id="kpi-loan-sub">—</div>
+            <svg class="kpi-spark" id="spark-loan" viewBox="0 0 72 36" preserveAspectRatio="none"></svg>
+          </div>
+          <!-- 주식평가 -->
+          <div class="kpi-card" style="border-color:rgba(192,132,252,0.3);">
+            <div class="kpi-lbl">주식평가액</div>
+            <div class="kpi-val"><span class="ku">억원</span><span id="kpi-eq">—</span></div>
+            <div class="kpi-delta flat" id="kpi-eq-delta">—</div>
+            <div class="kpi-sub" id="kpi-eq-sub">지분투자 종목</div>
+            <svg class="kpi-spark" id="spark-eq" viewBox="0 0 72 36" preserveAspectRatio="none"></svg>
+          </div>
+          <!-- 외화환산 -->
+          <div class="kpi-card" style="border-color:rgba(251,191,36,0.3);">
+            <div class="kpi-lbl">외화(원화환산)</div>
+            <div class="kpi-val"><span class="ku">억원</span><span id="kpi-fx">—</span></div>
+            <div class="kpi-delta flat" id="kpi-fx-delta">—</div>
+            <div class="kpi-sub" id="kpi-fx-sub">—</div>
+            <svg class="kpi-spark" id="spark-fx" viewBox="0 0 72 36" preserveAspectRatio="none"></svg>
+          </div>
+        </div>
+
+        <!-- ── 자금 구성 상세 + 차입금 현황 ── -->
+        <div class="comp-panel">
+          <!-- 좌: 자금 구성 -->
+          <div class="card" style="margin-bottom:0;padding:16px 18px;">
+            <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);">자금 구성 상세</div>
+            <div id="comp-cash-section" class="comp-section">
+              <div class="comp-section-head">
+                <span class="comp-section-lbl" style="color:#3b82f6;">▸ 운전자금 (현금성)</span>
+                <span class="comp-section-total" id="comp-cash-total">—</span>
+              </div>
+              <div id="comp-cash-list"></div>
+            </div>
+            <div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px;">
+              <div class="comp-section-head">
+                <span class="comp-section-lbl" style="color:#0ea5e9;">▸ 운용자금 (투자)</span>
+                <span class="comp-section-total" id="comp-inv-total">—</span>
+              </div>
+              <div id="comp-inv-list"></div>
             </div>
           </div>
-          <div class="metric" data-key="inv" onclick="toggleMetric('inv', event); toggleInvDetail(event)">
-            <span class="metric-click-hint">그래프 선택</span><div class="metric-label">운용자금 (단기투자) <span class="color-inv">●</span> <span style="font-size:10px;color:var(--text3);" id="inv-detail-hint">클릭 시 목록</span></div>
-            <div class="metric-total" id="d-inv-total">0원</div>
-            <div class="metric-details">
-              <div class="m-row"><span class="lbl">원화 자금</span><span class="val" id="d-inv-krw">0</span></div>
-              <div class="m-row"><span class="lbl">외화환산액</span><span class="val" id="d-inv-fx">0</span></div>
-            </div>
-          </div>
-          <div class="metric" data-key="loan" onclick="toggleMetric('loan', event)">
-            <span class="metric-click-hint">그래프 선택</span><div class="metric-label">차입금 (대출) <span class="color-loan">●</span></div>
-            <div class="metric-total" id="d-loan-total">0원</div>
-            <div class="metric-details">
-              <div class="m-row"><span class="lbl">원화 차입금</span><span class="val" id="d-loan-krw">0</span></div>
-              <div class="m-row"><span class="lbl">외화환산액</span><span class="val" id="d-loan-fx">0</span></div>
-            </div>
-          </div>
-          <div class="metric" data-key="net" onclick="toggleMetric('net', event)" id="metric-net">
-            <span class="metric-click-hint">그래프 선택</span>
-            <div class="metric-label">순현금 (Net Cash) <span class="color-net">●</span></div>
-            <div class="metric-total" id="d-net-total">0원</div>
-            <div class="metric-details">
-              <div class="m-row"><span class="lbl" style="color:var(--text3);">운전 + 운용 − 차입금</span></div>
-              <div id="d-net-bar" style="margin-top:8px;display:none;">
-                <div style="height:4px;border-radius:2px;background:var(--border);overflow:hidden;margin-bottom:4px;">
-                  <div id="d-net-bar-fill" style="height:4px;border-radius:2px;transition:width .4s;"></div>
+          <!-- 우: 차입금 + 원화/외화 비율 -->
+          <div class="card" style="margin-bottom:0;padding:16px 18px;">
+            <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);">차입금 현황</div>
+            <div id="comp-loan-list" style="margin-bottom:12px;"></div>
+            <!-- 원화/외화 비율 -->
+            <div style="border-top:1px solid var(--border);padding-top:10px;">
+              <div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:8px;">원화 / 외화 비율</div>
+              <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;margin-bottom:6px;">
+                <div style="background:var(--accent);transition:flex .4s;" id="s-ratio-krw-bar">
+                  <span style="display:none;" id="s-ratio-krw-pct"></span>
                 </div>
-                <div style="font-size:10px;color:var(--text3);" id="d-net-bar-label"></div>
+                <div style="background:var(--green);transition:flex .4s;" id="s-ratio-fx-bar">
+                  <span style="display:none;" id="s-ratio-fx-pct"></span>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;">
+                <span style="color:var(--accent);">원화 <b id="s-ratio-krw-pct-txt">—</b></span>
+                <span style="color:var(--text3);" id="s-ratio-text">—</span>
+                <span style="color:var(--green);">외화 <b id="s-ratio-fx-pct-txt">—</b></span>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- 차트 + 상세카드 2단 레이아웃 -->
-        <div id="dash-chart-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
-          <!-- 좌: 차트 -->
-          <div class="card" style="margin-bottom:0;">
-            <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
-              <span style="font-size:12px;">현금흐름 추이</span>
-              <div style="display:flex;gap:3px;">
-                <button class="btn btn-ghost chart-period-btn active" onclick="setChartPeriod(7, this)" style="padding:3px 8px;font-size:10px;">7일</button>
-                <button class="btn btn-ghost chart-period-btn" onclick="setChartPeriod(30, this)" style="padding:3px 8px;font-size:10px;">30일</button>
-                <button class="btn btn-ghost chart-period-btn" onclick="setChartPeriod(90, this)" style="padding:3px 8px;font-size:10px;">90일</button>
-                <button class="btn btn-ghost chart-period-btn" onclick="setChartPeriod(365, this)" style="padding:3px 8px;font-size:10px;">1년</button>
-              </div>
-            </div>
-            <div class="chart-area" id="chart-area" style="height:240px;"><canvas id="mainChart"></canvas></div>
+        <!-- ── 차트 연동 지표 카드 (기존 metric 역할 유지) ── -->
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">카드 클릭으로 하단 그래프를 전환합니다</div>
+        <div class="metrics-v2">
+          <div class="metric-v2 sel-op" data-key="op" onclick="toggleMetricV2('op',this)">
+            <div class="mv-lbl">운전자금 <span style="color:#3b82f6;">●</span></div>
+            <div class="mv-val" style="color:#60a5fa;" id="d-op-total">0원</div>
+            <div class="m-row" style="margin-top:6px;"><span class="lbl">원화</span><span class="val" id="d-op-krw">0</span></div>
+            <div class="m-row"><span class="lbl">외화환산</span><span class="val" id="d-op-fx">0</span></div>
           </div>
-
-          <!-- 우: 선택 카드별 상세 목록 -->
-          <div class="card" id="dash-detail-card" style="margin-bottom:0;padding:16px 18px;">
-            <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);">
-              선택 카드 상세내역
-            </div>
-            <div id="dash-detail-list" style="display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:240px;">
-              <div style="font-size:12px;color:var(--text3);text-align:center;padding:20px 0;">카드를 선택하면 상세내역이 표시됩니다</div>
+          <div class="metric-v2" data-key="inv" onclick="toggleMetricV2('inv',this)">
+            <div class="mv-lbl">운용자금 <span style="color:#10b981;">●</span></div>
+            <div class="mv-val" style="color:#34d399;" id="d-inv-total">0원</div>
+            <div class="m-row" style="margin-top:6px;"><span class="lbl">원화</span><span class="val" id="d-inv-krw">0</span></div>
+            <div class="m-row"><span class="lbl">외화환산</span><span class="val" id="d-inv-fx">0</span></div>
+          </div>
+          <div class="metric-v2" data-key="loan" onclick="toggleMetricV2('loan',this)">
+            <div class="mv-lbl">차입금 <span style="color:#f59e0b;">●</span></div>
+            <div class="mv-val" style="color:#fbbf24;" id="d-loan-total">0원</div>
+            <div class="m-row" style="margin-top:6px;"><span class="lbl">원화</span><span class="val" id="d-loan-krw">0</span></div>
+            <div class="m-row"><span class="lbl">외화환산</span><span class="val" id="d-loan-fx">0</span></div>
+          </div>
+          <div class="metric-v2" data-key="net" onclick="toggleMetricV2('net',this)">
+            <div class="mv-lbl">순현금 Net Cash <span style="color:#8b5cf6;">●</span></div>
+            <div class="mv-val" id="d-net-total">0원</div>
+            <div style="margin-top:6px;font-size:11px;color:var(--text3);">운전+운용−차입금</div>
+            <div id="d-net-bar" style="display:none;margin-top:6px;">
+              <div style="height:4px;border-radius:2px;background:var(--border);overflow:hidden;margin-bottom:4px;">
+                <div id="d-net-bar-fill" style="height:4px;border-radius:2px;transition:width .4s;"></div>
+              </div>
+              <div style="font-size:10px;color:var(--text3);" id="d-net-bar-label"></div>
             </div>
           </div>
         </div>
 
+        <!-- ── 현금흐름 차트 (전폭) ── -->
+        <div class="card" style="margin-bottom:14px;">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:12px;">현금흐름 추이</span>
+            <div style="display:flex;gap:3px;">
+              <button class="btn btn-ghost chart-period-btn active" onclick="setChartPeriod(7,this)" style="padding:3px 8px;font-size:10px;">7일</button>
+              <button class="btn btn-ghost chart-period-btn" onclick="setChartPeriod(30,this)" style="padding:3px 8px;font-size:10px;">30일</button>
+              <button class="btn btn-ghost chart-period-btn" onclick="setChartPeriod(90,this)" style="padding:3px 8px;font-size:10px;">90일</button>
+              <button class="btn btn-ghost chart-period-btn" onclick="setChartPeriod(365,this)" style="padding:3px 8px;font-size:10px;">1년</button>
+            </div>
+          </div>
+          <div class="chart-area" id="chart-area" style="height:220px;"><canvas id="mainChart"></canvas></div>
+        </div>
+
+        <!-- ── 지분투자 자산 ── -->
         <div class="equity-metric">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
             <div style="font-size:12px;color:var(--pink);font-weight:600;">지분투자 자산 (순현금 제외)</div>
@@ -893,7 +1110,8 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
             <span style="font-size:18px;font-weight:700;color:var(--pink);" id="d-eq-total">0원</span>
           </div>
         </div>
-        
+
+        <!-- ── 지분투자 평가 추이 차트 ── -->
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
             <span class="card-title" style="margin:0;">지분투자 평가 추이</span>
@@ -909,7 +1127,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
               </div>
             </div>
           </div>
-          <div class="chart-area" style="height:220px;"><canvas id="equityChart"></canvas></div>
+          <div class="chart-area" style="height:200px;"><canvas id="equityChart"></canvas></div>
         </div>
       </div>
 
@@ -3422,6 +3640,65 @@ function toggleMetric(key, event) {
 }
 
 
+// ── Phase1: 새 metric 카드 선택 (차트 연동) ─────────────────────────
+function toggleMetricV2(key, btnEl) {
+  if (window.event && (window.event.ctrlKey || window.event.metaKey)) {
+    if (selectedChartMetrics.includes(key)) {
+      selectedChartMetrics = selectedChartMetrics.filter(k => k !== key);
+    } else {
+      selectedChartMetrics.push(key);
+    }
+  } else {
+    selectedChartMetrics = [key];
+  }
+  if (selectedChartMetrics.length === 0) selectedChartMetrics = ['op', 'inv', 'loan'];
+  // 선택 스타일 반영
+  document.querySelectorAll('.metric-v2').forEach(el => {
+    const k = el.dataset.key;
+    el.className = 'metric-v2' + (selectedChartMetrics.includes(k) ? ' sel-' + k : '');
+  });
+  // 차트 갱신
+  const dailyRecords = getFiltered('daily').sort((a, b) => b.date.localeCompare(a.date));
+  updateMainChart(dailyRecords);
+}
+
+// ── Phase1: Alert Strip (차입금 만기 경고) ───────────────────────────
+function renderAlertStrip(loans, today) {
+  const strip = document.getElementById('dash-alert-strip');
+  if (!strip) return;
+
+  const alerts = [];
+
+  // 차입금 만기 D-90 이하
+  const urgentLoans = loans.filter(l => {
+    if (!l.maturity) return false;
+    const days = Math.ceil((new Date(l.maturity) - new Date()) / 86400000);
+    return days <= 90;
+  }).sort((a, b) => new Date(a.maturity) - new Date(b.maturity));
+
+  urgentLoans.forEach(l => {
+    const days = Math.ceil((new Date(l.maturity) - new Date()) / 86400000);
+    const cls  = days <= 30 ? 'danger' : 'warning';
+    const dot  = days <= 30 ? 'red'    : 'amber';
+    alerts.push(
+      '<div class="alert-item ' + cls + '">' +
+        '<div class="alert-dot ' + dot + '"></div>' +
+        '<span><b>' + (l.lender||'') + ' ' + (l.type||'') + '</b> 만기 ' +
+        (days < 0 ? '<b>만기경과</b>' : '<b>D-' + days + '</b>') +
+        ' (' + (l.maturity||'') + ') — 갱신/상환 검토 필요</span>' +
+      '</div>'
+    );
+  });
+
+  if (alerts.length) {
+    strip.innerHTML = alerts.join('');
+    strip.style.display = 'flex';
+  } else {
+    strip.style.display = 'none';
+  }
+}
+
+
 // ── 카드 선택 시 우측 상세내역 목록 렌더링 ──────────────────────
 
 // ══════════════════════════════════════════════════════
@@ -3830,164 +4107,281 @@ function renderDetailCard() {
 }
 
 function renderDashboard() {
-  const dailyRecords = getFiltered('daily').sort((a,b)=>b.date.localeCompare(a.date));
-  let opKrw=0, opFx=0;
-  if(currentCompany === 'TOTAL') {
-    const latestDate = dailyRecords[0]?.date;
-    if(latestDate) {
-       const latests = dailyRecords.filter(r=>r.date===latestDate);
-       latests.forEach(r=>{ opKrw += (r.krw_demand+r.krw_govt+r.krw_mmda); opFx += (r.fx_krw||0); });
-    }
-  } else if(dailyRecords[0]) {
-    const r = dailyRecords[0]; opKrw = r.krw_demand+r.krw_govt+r.krw_mmda; opFx = r.fx_krw||0;
-  }
-  const opTotal = opKrw + opFx;
+  // ── 데이터 계산 ──────────────────────────────────────────────────
+  const dailyRecords = getFiltered('daily').sort((a,b) => b.date.localeCompare(a.date));
+  let opKrw = 0, opFx = 0;
+  const today = new Date().toISOString().slice(0, 10);
 
-  const invs = getFiltered('investments').filter(i=>i.active);
-  const invKrw = invs.filter(i=>i.currency==='KRW').reduce((s,i)=>s+i.amount,0);
-  const invFx = invs.filter(i=>i.currency!=='KRW').reduce((s,i)=>s+calcKRW(i.amount, i.currency),0);
+  if (currentCompany === 'TOTAL') {
+    const latestDate = dailyRecords[0]?.date;
+    if (latestDate) {
+      dailyRecords.filter(r => r.date === latestDate).forEach(r => {
+        opKrw += r.krw_demand + r.krw_govt + r.krw_mmda;
+        opFx  += r.fx_krw || 0;
+      });
+    }
+  } else if (dailyRecords[0]) {
+    const r = dailyRecords[0];
+    opKrw = r.krw_demand + r.krw_govt + r.krw_mmda;
+    opFx  = r.fx_krw || 0;
+  }
+  const opTotal  = opKrw + opFx;
+  const latestRec = dailyRecords[0] || null;
+
+  // 전일 대비 계산 (운전자금)
+  const prevRec = dailyRecords[1] || null;
+  const prevOpTotal = prevRec
+    ? (prevRec.krw_demand + prevRec.krw_govt + prevRec.krw_mmda + (prevRec.fx_krw || 0))
+    : null;
+  const opDelta = prevOpTotal !== null ? opTotal - prevOpTotal : null;
+
+  const invs    = getFiltered('investments').filter(i => i.active);
+  const invKrw  = invs.filter(i => i.currency === 'KRW').reduce((s, i) => s + i.amount, 0);
+  const invFx   = invs.filter(i => i.currency !== 'KRW').reduce((s, i) => s + calcKRW(i.amount, i.currency), 0);
   const invTotal = invKrw + invFx;
 
-  const loans = getFiltered('loans').filter(l=>l.active);
-  const loanKrw = loans.filter(l=>l.currency==='KRW').reduce((s,l)=>s+l.amount,0);
-  const loanFx = loans.filter(l=>l.currency!=='KRW').reduce((s,l)=>s+calcKRW(l.amount, l.currency),0);
+  const loans    = getFiltered('loans').filter(l => l.active);
+  const loanKrw  = loans.filter(l => l.currency === 'KRW').reduce((s, l) => s + l.amount, 0);
+  const loanFx   = loans.filter(l => l.currency !== 'KRW').reduce((s, l) => s + calcKRW(l.amount, l.currency), 0);
   const loanTotal = loanKrw + loanFx;
+  const netTotal  = opTotal + invTotal - loanTotal;
 
-  const netTotal = opTotal + invTotal - loanTotal;
+  const allEq     = getFiltered('equities').sort((a, b) => b.date.localeCompare(a.date));
+  const eqLatestMap = {};
+  allEq.forEach(e => {
+    const key = e.company + '_' + e.name;
+    if (!eqLatestMap[key]) eqLatestMap[key] = e;
+  });
+  const latestEqArr = Object.values(eqLatestMap);
+  const eqTotal = latestEqArr.reduce((s, e) => s + e.total_value, 0);
 
-  document.getElementById('d-op-total').textContent = fmtKRW(opTotal);
-  document.getElementById('d-op-krw').textContent = fmtKRW(opKrw); document.getElementById('d-op-fx').textContent = fmtKRW(opFx);
-  document.getElementById('d-inv-total').textContent = fmtKRW(invTotal);
-  document.getElementById('d-inv-krw').textContent = fmtKRW(invKrw); document.getElementById('d-inv-fx').textContent = fmtKRW(invFx);
-  document.getElementById('d-loan-total').textContent = fmtKRW(loanTotal);
-  document.getElementById('d-loan-krw').textContent = fmtKRW(loanKrw); document.getElementById('d-loan-fx').textContent = fmtKRW(loanFx);
-  document.getElementById('d-net-total').textContent = fmtKRW(netTotal);
-  document.getElementById('d-net-total').style.color = netTotal >= 0 ? 'var(--green)' : 'var(--red)';
-  // 순현금 바 업데이트
-  const netBarWrap = document.getElementById('d-net-bar');
-  const netBarFill = document.getElementById('d-net-bar-fill');
-  const netBarLabel = document.getElementById('d-net-bar-label');
-  if (netBarWrap && netBarFill) {
-    const totalAsset = opTotal + invTotal;
-    if (totalAsset > 0 && loanTotal > 0) {
-      netBarWrap.style.display = '';
-      const loanPct = Math.min(Math.round(loanTotal / totalAsset * 100), 100);
-      netBarFill.style.width = loanPct + '%';
-      netBarFill.style.background = loanPct > 80 ? 'var(--red)' : loanPct > 50 ? 'var(--amber)' : 'var(--green)';
-      if (netBarLabel) netBarLabel.textContent = '자산 대비 차입 비율 ' + loanPct + '%' + (netTotal < 0 ? ' — 차입금 > 보유자금' : '');
+  const grandTotal = opTotal + invTotal;
+  const totalKrw   = opKrw + invKrw;
+  const totalFx    = opFx  + invFx;
+
+  // ── Hero 카드 업데이트 ──────────────────────────────────────────
+  const heroNet   = document.getElementById('hero-net-value');
+  const heroLbl   = document.getElementById('hero-label');
+  const heroSub   = document.getElementById('hero-net-sub');
+  const heroAvail = document.getElementById('hero-avail');
+  const heroLoan  = document.getElementById('hero-loan');
+  const heroWS    = document.getElementById('hero-with-stock');
+  const heroDate  = document.getElementById('hero-date');
+
+  if (heroNet) {
+    heroNet.textContent = (netTotal >= 0 ? '+' : '') + fmtKRW(Math.abs(netTotal));
+    heroNet.className   = 'hero-value ' + (netTotal >= 0 ? 'positive' : 'negative');
+  }
+  if (heroLbl)  heroLbl.textContent  = '순현금 포지션 — ' + (currentCompany === 'TOTAL' ? '통합 3사' : currentCompany);
+  if (heroSub)  heroSub.textContent  = (netTotal >= 0 ? '▲ 현금우위' : '▼ 차입초과');
+  if (heroAvail) heroAvail.textContent = fmtKRW(grandTotal);
+  if (heroLoan)  heroLoan.textContent  = fmtKRW(loanTotal);
+  if (heroWS)    heroWS.textContent    = (netTotal + eqTotal >= 0 ? '+' : '') + fmtKRW(netTotal + eqTotal);
+  if (heroDate)  heroDate.textContent  = latestRec ? latestRec.date : '—';
+
+  // ── KPI Strip 업데이트 ────────────────────────────────────────
+  function setKPI(id, deltaId, subId, val, delta, sub) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = (val / 1e8).toFixed(1);
+    const dEl = document.getElementById(deltaId);
+    if (dEl) {
+      if (delta === null) { dEl.textContent = '—'; dEl.className = 'kpi-delta flat'; }
+      else {
+        const sign = delta >= 0 ? '+' : '';
+        dEl.textContent = sign + (delta / 1e8).toFixed(1) + '억원';
+        dEl.className   = 'kpi-delta ' + (delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat');
+      }
+    }
+    const sEl = document.getElementById(subId);
+    if (sEl && sub) sEl.textContent = sub;
+  }
+
+  setKPI('kpi-op',   'kpi-op-delta',   'kpi-op-sub',   opTotal,   opDelta,   '보통예금·국책·CMA/RP');
+  setKPI('kpi-inv',  'kpi-inv-delta',  'kpi-inv-sub',  invTotal,  null, invs.length + '개 상품');
+  setKPI('kpi-eq',   'kpi-eq-delta',   'kpi-eq-sub',   eqTotal,   null, latestEqArr.length + '종목');
+  setKPI('kpi-fx',   'kpi-fx-delta',   'kpi-fx-sub',   totalFx,   null,
+    latestRec ? ['USD','EUR','JPY','GBP','CNY'].filter(c => (latestRec['fx_'+c.toLowerCase()]||0)>0).join('·')||'외화없음' : '—'
+  );
+
+  // 차입금 KPI
+  const loanEl = document.getElementById('kpi-loan');
+  if (loanEl) loanEl.textContent = (loanTotal / 1e8).toFixed(1);
+  const loanSubEl = document.getElementById('kpi-loan-sub');
+  if (loanSubEl) {
+    const urgentCount = loans.filter(l => {
+      if (!l.maturity) return false;
+      return Math.ceil((new Date(l.maturity) - new Date()) / 86400000) < 90;
+    }).length;
+    loanSubEl.textContent = loans.length + '건' + (urgentCount > 0 ? ' · ⚠ 만기임박 ' + urgentCount + '건' : '');
+    if (urgentCount > 0) loanSubEl.style.color = 'var(--amber)';
+  }
+
+  // ── 스파크라인 업데이트 ──────────────────────────────────────
+  // 운전자금 7일 스파크라인
+  function drawSpark(svgId, records, extractFn, color) {
+    const svg = document.getElementById(svgId);
+    if (!svg) return;
+    const vals = records.slice(0, 7).reverse().map(r => extractFn(r));
+    if (vals.length < 2) { svg.innerHTML = ''; return; }
+    const min = Math.min(...vals), max = Math.max(...vals);
+    const range = max - min || 1;
+    const W = 72, H = 36, pad = 4;
+    const pts = vals.map((v, i) => {
+      const x = pad + (i / (vals.length - 1)) * (W - pad * 2);
+      const y = H - pad - ((v - min) / range) * (H - pad * 2);
+      return x + ',' + y;
+    });
+    svg.innerHTML = '<polyline points="' + pts.join(' ') +
+      '" fill="none" stroke="' + color + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
+  }
+
+  const allDaily = getFiltered('daily').sort((a, b) => b.date.localeCompare(a.date));
+  drawSpark('spark-op',  allDaily, r => r.krw_demand + r.krw_govt + r.krw_mmda + (r.fx_krw||0), '#60a5fa');
+  drawSpark('spark-fx',  allDaily, r => r.fx_krw||0, '#fbbf24');
+
+  // 지분투자 스파크 (날짜별 합계)
+  const eqByDate = {};
+  allEq.forEach(e => { eqByDate[e.date] = (eqByDate[e.date]||0) + e.total_value; });
+  const eqSpark7 = Object.entries(eqByDate).sort((a,b)=>a[0].localeCompare(b[0])).slice(-7);
+  if (eqSpark7.length >= 2) {
+    const eqSparkRecs = eqSpark7.map(([, v]) => ({ v }));
+    drawSpark('spark-eq', eqSparkRecs, r => r.v, '#c084fc');
+  }
+
+  // ── Alert Strip ───────────────────────────────────────────────
+  renderDashboardAlerts();
+  renderAlertStrip(loans, today);
+
+  // ── 자금 구성 상세 패널 ──────────────────────────────────────
+  function renderCompList(listId, items, totalId, totalVal, color, pbarColor) {
+    const listEl  = document.getElementById(listId);
+    const totalEl = document.getElementById(totalId);
+    if (totalEl) totalEl.textContent = fmtKRW(totalVal);
+    if (!listEl) return;
+    if (!items.length) {
+      listEl.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:4px 0;">없음</div>';
+      return;
+    }
+    listEl.innerHTML = items.slice(0, 5).map(item => {
+      const pct = totalVal > 0 ? Math.min(100, (item.amt / totalVal) * 100) : 0;
+      return '<div class="comp-row">' +
+        '<span class="comp-row-name">' + (item.name||'') + '</span>' +
+        (item.rate ? '<span style="font-size:10px;color:var(--amber);min-width:32px;text-align:right;">' + item.rate.toFixed(2) + '%</span>' : '') +
+        '<span class="comp-row-amt">' + fmtKRW(item.amt) + '</span>' +
+        '<div class="comp-pbar"><div class="comp-pbar-fill" style="width:' + pct + '%;background:' + pbarColor + ';"></div></div>' +
+        '</div>';
+    }).join('');
+  }
+
+  // 운전자금 계좌 분해 (daily 최신 레코드 기반)
+  const cashItems = [];
+  if (latestRec) {
+    if ((latestRec.krw_demand||0) > 0) cashItems.push({ name: '보통예금/CMA', amt: latestRec.krw_demand });
+    if ((latestRec.krw_govt||0)   > 0) cashItems.push({ name: '국책자금',      amt: latestRec.krw_govt });
+    if ((latestRec.krw_mmda||0)   > 0) cashItems.push({ name: 'CMA/RP',       amt: latestRec.krw_mmda });
+    if ((latestRec.fx_krw||0)     > 0) cashItems.push({ name: '외화환산액',   amt: latestRec.fx_krw });
+  }
+  renderCompList('comp-cash-list', cashItems, 'comp-cash-total', opTotal, 'var(--accent)', '#3b82f6');
+
+  // 운용자금 상품 분해
+  const invItems = invs.slice(0, 5).map(i => ({
+    name: (i.bank||'') + ' ' + (i.product||''),
+    amt:  calcKRW(i.amount, i.currency),
+    rate: i.rate,
+  }));
+  renderCompList('comp-inv-list', invItems, 'comp-inv-total', invTotal, 'var(--green)', '#0ea5e9');
+
+  // 차입금 분해
+  const loanListEl = document.getElementById('comp-loan-list');
+  if (loanListEl) {
+    if (!loans.length) {
+      loanListEl.innerHTML = '<div style="font-size:11px;color:var(--text3);">차입금 없음</div>';
     } else {
-      netBarWrap.style.display = 'none';
+      loanListEl.innerHTML = loans.slice(0, 5).map(l => {
+        const days = l.maturity ? Math.ceil((new Date(l.maturity) - new Date()) / 86400000) : null;
+        const ddayStr = days !== null ? (days < 0 ? '<span style="color:var(--red)">만기경과</span>' :
+          (days < 90 ? '<span style="color:var(--amber)">D-' + days + '</span>' : 'D-' + days)) : '—';
+        const pct = loanTotal > 0 ? Math.min(100, (calcKRW(l.amount, l.currency) / loanTotal) * 100) : 0;
+        return '<div class="comp-row">' +
+          '<span class="comp-row-name">' + (l.lender||'') + '</span>' +
+          '<span style="font-size:10px;min-width:36px;text-align:right;">' + ddayStr + '</span>' +
+          '<span class="comp-row-amt" style="color:var(--amber);">' + fmtKRW(calcKRW(l.amount, l.currency)) + '</span>' +
+          '<div class="comp-pbar"><div class="comp-pbar-fill" style="width:' + pct + '%;background:#f59e0b;"></div></div>' +
+          '</div>';
+      }).join('');
     }
   }
 
-  // ── 원화/외화 요약 카드 업데이트 ──────────────────────────
-  // 운전자금 + 운용자금 합산 기준
-  // 차입금은 자금조달 수단이므로 총자금 합산에서 제외
-  const totalKrw = opKrw + invKrw;   // 원화 합계 (운전+운용)
-  const totalFx  = opFx  + invFx;    // 외화환산 합계 (운전+운용)
-  const grandTotal = totalKrw + totalFx; // 총자금 (운전+운용, 차입금 제외)
-
-  const skrw = document.getElementById('s-krw-total');
-  const sfx  = document.getElementById('s-fx-total');
-  const srat = document.getElementById('s-ratio-text');
-  const srkb = document.getElementById('s-ratio-krw-bar');
-  const sfxb = document.getElementById('s-ratio-fx-bar');
-
-  // 원화 카드 = 운전+운용 원화 합계
-  if (skrw) skrw.textContent = fmtKRW(totalKrw);
-  // 외화 카드 = 운전+운용 외화환산 합계
-  if (sfx)  sfx.textContent  = fmtKRW(totalFx);
-
-  // 운전+운용 합계 카드
-  const soiTotal = document.getElementById('s-op-inv-total');
-  const soSub    = document.getElementById('s-op-sub');
-  const siSub    = document.getElementById('s-inv-sub');
-  if (soiTotal) soiTotal.textContent = fmtKRW(grandTotal);
-  if (soSub)    soSub.textContent    = fmtKRW(opTotal);
-  if (siSub)    siSub.textContent    = fmtKRW(invTotal);
-
-  // ── 가용/불가용 분리 계산 ──────────────────────────────────
-  // 운용자금 가용/불가용 분리
-  const invAvail   = invs.filter(i => (i.available || '가용') === '가용');
-  const invUnavail = invs.filter(i => (i.available || '가용') === '불가용');
-  const invAvailKrw   = invAvail.filter(i=>i.currency==='KRW').reduce((s,i)=>s+i.amount,0)
-                      + invAvail.filter(i=>i.currency!=='KRW').reduce((s,i)=>s+calcKRW(i.amount,i.currency),0);
-  const invUnavailKrw = invUnavail.filter(i=>i.currency==='KRW').reduce((s,i)=>s+i.amount,0)
-                      + invUnavail.filter(i=>i.currency!=='KRW').reduce((s,i)=>s+calcKRW(i.amount,i.currency),0);
-
-  // 원화: 운전자금 전체는 가용, 운용자금 가용 합산
-  const krwAvail   = totalKrw + invAvailKrw   - invKrw; // 운전원화 + 운용가용원화
-  // (totalKrw = opKrw+invKrw이므로 opKrw + invAvailKrw)
-  const krwAvailAmt   = opKrw + invAvailKrw;
-  const krwUnavailAmt = invUnavailKrw;
-
-  // 외화: 운전자금 외화는 가용, 운용자금 외화 가용/불가용 분리
-  const invAvailFx   = invAvail.filter(i=>i.currency!=='KRW').reduce((s,i)=>s+calcKRW(i.amount,i.currency),0);
-  const invUnavailFx = invUnavail.filter(i=>i.currency!=='KRW').reduce((s,i)=>s+calcKRW(i.amount,i.currency),0);
-  const fxAvailAmt   = opFx + invAvailFx;
-  const fxUnavailAmt = invUnavailFx;
-
-  // 원화/외화 카드 업데이트
-  const skrwAvail   = document.getElementById('s-krw-avail');
-  const skrwUnavail = document.getElementById('s-krw-unavail');
-  const sfxAvail    = document.getElementById('s-fx-avail');
-  const sfxUnavail  = document.getElementById('s-fx-unavail');
-  if (skrwAvail)   skrwAvail.textContent   = fmtKRW(krwAvailAmt);
-  if (skrwUnavail) skrwUnavail.textContent = fmtKRW(krwUnavailAmt);
-  if (sfxAvail)    sfxAvail.textContent    = fmtKRW(fxAvailAmt);
-  if (sfxUnavail)  sfxUnavail.textContent  = fmtKRW(fxUnavailAmt);
-
-  // 원화/외화 비율 — 총자금(운전+운용) 기준
-  if (grandTotal > 0 && srkb && sfxb) {
+  // ── 원화/외화 비율 바 ────────────────────────────────────────
+  if (grandTotal > 0) {
     const krwPct = Math.round(totalKrw / grandTotal * 100);
     const fxPct  = 100 - krwPct;
-    srkb.style.flex = krwPct.toString();
-    sfxb.style.flex = fxPct.toString();
-    const krwPctEl = document.getElementById('s-ratio-krw-pct');
-    const fxPctEl  = document.getElementById('s-ratio-fx-pct');
-    if (krwPctEl) krwPctEl.textContent = krwPct > 10 ? krwPct + '%' : '';
-    if (fxPctEl)  fxPctEl.textContent  = fxPct  > 10 ? fxPct  + '%' : '';
-    if (srat) srat.textContent = `원화 ${krwPct}% · 외화 ${fxPct}%`;
-  } else if (srat) {
-    srat.textContent = '데이터 없음';
+    const krwBar = document.getElementById('s-ratio-krw-bar');
+    const fxBar  = document.getElementById('s-ratio-fx-bar');
+    if (krwBar) krwBar.style.flex = krwPct.toString();
+    if (fxBar)  fxBar.style.flex  = fxPct.toString();
+    const ktEl = document.getElementById('s-ratio-krw-pct-txt');
+    const ftEl = document.getElementById('s-ratio-fx-pct-txt');
+    const rtEl = document.getElementById('s-ratio-text');
+    if (ktEl) ktEl.textContent = krwPct + '%';
+    if (ftEl) ftEl.textContent = fxPct  + '%';
+    if (rtEl) rtEl.textContent = fmtKRW(totalKrw) + ' / ' + fmtKRW(totalFx);
   }
 
-  document.querySelectorAll('.metric').forEach(el => {
-    if(selectedChartMetrics.includes(el.dataset.key)) el.classList.add('selected'); else el.classList.remove('selected');
-  });
+  // ── 차트 연동 지표 카드 ──────────────────────────────────────
+  const sd = (id, val) => { const e = document.getElementById(id); if(e) e.textContent = fmtKRW(val); };
+  sd('d-op-total',  opTotal);  sd('d-op-krw', fmtKRW(opKrw));   sd('d-op-fx',  fmtKRW(opFx));
+  sd('d-inv-total', invTotal); sd('d-inv-krw', fmtKRW(invKrw)); sd('d-inv-fx', fmtKRW(invFx));
+  sd('d-loan-total',loanTotal);sd('d-loan-krw',fmtKRW(loanKrw));sd('d-loan-fx',fmtKRW(loanFx));
 
-  const allEq = getFiltered('equities').sort((a,b)=>b.date.localeCompare(a.date));
-  const latestMap = {};
-  allEq.forEach(e => { const key = e.company+'_'+e.name; if(!latestMap[key]) latestMap[key] = e; });
-  const latestEqArr = Object.values(latestMap);
-  const eqTotal = latestEqArr.reduce((s,e)=>s+e.total_value, 0);
+  const netEl = document.getElementById('d-net-total');
+  if (netEl) {
+    netEl.textContent = fmtKRW(netTotal);
+    netEl.style.color = netTotal >= 0 ? 'var(--green)' : 'var(--red)';
+  }
+  const netBarWrap = document.getElementById('d-net-bar');
+  const netBarFill = document.getElementById('d-net-bar-fill');
+  const netBarLbl  = document.getElementById('d-net-bar-label');
+  if (netBarWrap && netBarFill && grandTotal > 0 && loanTotal > 0) {
+    netBarWrap.style.display = '';
+    const lPct = Math.min(100, Math.round(loanTotal / grandTotal * 100));
+    netBarFill.style.width      = lPct + '%';
+    netBarFill.style.background = lPct > 80 ? 'var(--red)' : lPct > 50 ? 'var(--amber)' : 'var(--green)';
+    if (netBarLbl) netBarLbl.textContent = '자산 대비 차입 ' + lPct + '%';
+  } else if (netBarWrap) {
+    netBarWrap.style.display = 'none';
+  }
+
+  // ── 지분투자 카드 ────────────────────────────────────────────
   document.getElementById('d-eq-total').textContent = fmtKRW(eqTotal);
-
-  // 지분투자 종목별 상세 카드
   const eqListEl = document.getElementById('d-eq-list');
   if (eqListEl) {
     if (!latestEqArr.length) {
       eqListEl.innerHTML = '<div style="font-size:12px;color:var(--text3);">등록된 지분증권이 없습니다</div>';
     } else {
-      eqListEl.innerHTML = latestEqArr.map(e => `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid rgba(236,72,153,0.15);">
-          <div>
-            <span style="font-size:13px;font-weight:500;color:var(--text);">${e.name}</span>
-            <span style="font-size:10px;color:var(--text3);margin-left:6px;">${e.company} · ${e.market}</span>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-size:13px;font-weight:600;color:var(--pink);">${fmtKRW(e.total_value)}</div>
-            <div style="font-size:10px;color:var(--text3);">${e.date} · ${e.shares.toLocaleString()}주 × ${e.price.toLocaleString()}원</div>
-          </div>
-        </div>
-      `).join('');
+      eqListEl.innerHTML = latestEqArr.map(e =>
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid rgba(236,72,153,0.12);">' +
+          '<div>' +
+            '<span style="font-size:13px;font-weight:500;color:var(--text);">' + e.name + '</span>' +
+            '<span style="font-size:10px;color:var(--text3);margin-left:6px;">' + e.company + ' · ' + e.market + '</span>' +
+          '</div>' +
+          '<div style="text-align:right;">' +
+            '<div style="font-size:13px;font-weight:600;color:var(--pink);">' + fmtKRW(e.total_value) + '</div>' +
+            '<div style="font-size:10px;color:var(--text3);">' + e.date + ' · ' + e.shares.toLocaleString() + '주</div>' +
+          '</div>' +
+        '</div>'
+      ).join('');
     }
   }
 
+  // ── chart 선택 상태 반영 ─────────────────────────────────────
+  document.querySelectorAll('.metric-v2').forEach(el => {
+    const key = el.dataset.key;
+    el.className = 'metric-v2' + (selectedChartMetrics.includes(key) ? ' sel-' + key : '');
+  });
+
   updateMainChart(dailyRecords);
   updateEquityChart(allEq);
-  renderDetailCard();
-  renderDashboardAlerts();
 }
 
 // ── 차트 기간 설정 ─────────────────────────────────────────
