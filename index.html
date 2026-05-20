@@ -1418,6 +1418,41 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
   .upd-change::before { content:"▸"; color:#f59e0b; }
   .upd-keep::before   { content:"✓"; color:#34d399; }
 
+  /* ══ 이슈 이력 페이지 ══ */
+  .ih-filter-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+  .ih-filter-row select, .ih-filter-row input { font-size:12px; padding:5px 10px; border:1px solid var(--border2); border-radius:7px; background:var(--bg3); color:var(--text); font-family:inherit; }
+  .ih-empty { text-align:center; padding:40px 0; color:var(--text3); font-size:13px; }
+  .ih-card { background:var(--fp-card); border:1px solid var(--fp-kpi-border); border-radius:10px; margin-bottom:10px; overflow:hidden; }
+  .ih-card:last-child { margin-bottom:0; }
+  .ih-card-head { display:flex; align-items:stretch; gap:0; border-bottom:1px solid var(--fp-kpi-border); }
+  .ih-card-bar { width:4px; flex-shrink:0; }
+  .ih-card-bar-open   { background:#E24B4A; }
+  .ih-card-bar-review { background:#F59E0B; }
+  .ih-card-bar-done   { background:#10B981; }
+  .ih-card-head > div:last-child { padding:12px 16px; flex:1; min-width:0; }
+  .ih-issue-title { font-size:13px; font-weight:600; color:var(--text); display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:3px; }
+  .ih-issue-desc { font-size:11px; color:var(--text3); }
+  .ih-meta { display:flex; gap:6px; align-items:center; flex-wrap:wrap; padding:7px 16px; background:var(--bg3); border-bottom:1px solid var(--fp-kpi-border); }
+  .ih-meta-tag { font-size:10px; padding:2px 9px; border-radius:10px; background:var(--fp-card); border:1px solid var(--fp-kpi-border); color:var(--text3); }
+  .ih-thread { display:flex; flex-direction:column; gap:0; padding:10px 16px 14px 28px; position:relative; }
+  .ih-thread::before { content:''; position:absolute; left:20px; top:16px; bottom:16px; width:1.5px; background:var(--border); }
+  .ih-comment { position:relative; padding:0 0 10px 16px; }
+  .ih-comment:last-child { padding-bottom:0; }
+  .ih-comment::before { content:''; position:absolute; left:-5px; top:10px; width:10px; height:10px; border-radius:50%; border:2px solid var(--border); background:var(--fp-card); }
+  .ih-comment:first-child::before { background:var(--accent2); border-color:var(--accent2); }
+  .ih-comment-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; flex-wrap:wrap; gap:4px; }
+  .ih-comment-user { font-size:11px; font-weight:600; color:var(--text); display:flex; align-items:center; gap:5px; }
+  .ih-comment-time { font-size:10px; color:var(--text3); }
+  .ih-comment-body { font-size:12px; color:var(--text2); line-height:1.6; background:var(--bg3); border-radius:6px; padding:8px 11px; border:0.5px solid var(--fp-kpi-border); }
+
+  /* ══ 팝업 스레드 코멘트 ══ */
+  .issue-comment { border-radius:8px; overflow:hidden; border:1px solid var(--fp-kpi-border); margin-bottom:8px; }
+  .issue-comment:last-child { margin-bottom:0; }
+  .issue-comment-head { display:flex; justify-content:space-between; align-items:center; padding:7px 12px; border-bottom:1px solid var(--fp-kpi-border); flex-wrap:wrap; gap:4px; }
+  .issue-comment-user { font-size:11px; font-weight:600; color:var(--text); display:flex; align-items:center; gap:5px; }
+  .issue-comment-time { font-size:10px; color:var(--text3); white-space:nowrap; }
+  .issue-comment-body { font-size:13px; color:var(--text2); line-height:1.6; padding:10px 12px; }
+
 </style>
 </head>
 <body>
@@ -8269,12 +8304,18 @@ async function _loadAndRenderModalThread() {
       ? new Date(cm.created_at).toLocaleString('ko-KR', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })
       : '';
     var stBadge = cm.status
-      ? '<span class="issue-status-badge ' + (stCls[cm.status]||'') + '" style="margin-left:5px;">' + (stLbl[cm.status]||cm.status) + '</span>'
+      ? '<span class="issue-status-badge ' + (stCls[cm.status]||'') + '">' + (stLbl[cm.status]||cm.status) + '</span>'
       : '';
+    // 상태별 헤더 배경색
+    var headBg = { open:'rgba(239,68,68,0.06)', review:'rgba(245,158,11,0.08)', done:'rgba(16,185,129,0.08)' };
+    var hBg = headBg[cm.status] || 'var(--bg3)';
     return '<div class="issue-comment">' +
-      '<div class="issue-comment-head">' +
-        '<span class="issue-comment-user">' + (cm.user_label||'담당자') + stBadge + '</span>' +
-        '<span class="issue-comment-time">' + dt + '</span>' +
+      '<div class="issue-comment-head" style="background:' + hBg + ';">' +
+        '<div class="issue-comment-user">' +
+          '<span style="font-size:13px;margin-right:2px;">👤</span>' +
+          (cm.user_label||'담당자') + stBadge +
+        '</div>' +
+        '<span class="issue-comment-time">🕐 ' + dt + '</span>' +
       '</div>' +
       '<div class="issue-comment-body">' + cm.body + '</div>' +
     '</div>';
@@ -8991,31 +9032,35 @@ async function renderIssueHistory() {
       ? new Date(g.items[g.items.length-1].created_at).toLocaleDateString('ko-KR')
       : '';
 
-    var commentsHTML = g.items.map(function(cm) {
+    var commentsHTML = g.items.map(function(cm, idx) {
       var dt = cm.created_at ? new Date(cm.created_at).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
-      var cStBadge = cm.status ? '<span class="issue-status-badge ' + (stCls[cm.status]||'') + '" style="margin-left:5px">' + (stLbl[cm.status]||cm.status) + '</span>' : '';
+      var cStBadge = cm.status ? '<span class="issue-status-badge ' + (stCls[cm.status]||'') + '">' + (stLbl[cm.status]||cm.status) + '</span>' : '';
       return '<div class="ih-comment">' +
         '<div class="ih-comment-head">' +
-          '<span class="ih-comment-user">' + (cm.user_label||'') + cStBadge + '</span>' +
-          '<span class="ih-comment-time">' + dt + '</span>' +
+          '<div class="ih-comment-user">' +
+            '<span style="font-size:12px;margin-right:3px;">👤</span>' + (cm.user_label||'') + cStBadge +
+          '</div>' +
+          '<span class="ih-comment-time">🕐 ' + dt + '</span>' +
         '</div>' +
         '<div class="ih-comment-body">' + cm.body + '</div>' +
         '</div>';
     }).join('');
 
+    var barCls = { open:'ih-card-bar-open', review:'ih-card-bar-review', done:'ih-card-bar-done' };
     return '<div class="ih-card">' +
       '<div class="ih-card-head">' +
-        '<div>' +
+        '<div class="ih-card-bar ' + (barCls[g.status]||'ih-card-bar-open') + '"></div>' +
+        '<div style="flex:1;min-width:0;">' +
           '<div class="ih-issue-title">' + g.title +
-            '<span class="issue-status-badge ' + (stCls[g.status]||'issue-s-open') + '" style="margin-left:8px;">' + (stLbl[g.status]||'미조치') + '</span>' +
+            '<span class="issue-status-badge ' + (stCls[g.status]||'issue-s-open') + '">' + (stLbl[g.status]||'미조치') + '</span>' +
           '</div>' +
           '<div class="ih-issue-desc">' + g.desc + '</div>' +
         '</div>' +
       '</div>' +
       '<div class="ih-meta">' +
-        '<span class="ih-meta-tag">' + g.company + '</span>' +
-        '<span class="ih-meta-tag">코멘트 ' + g.items.length + '개</span>' +
-        (lastTime ? '<span class="ih-meta-tag">최종 ' + lastTime + '</span>' : '') +
+        '<span class="ih-meta-tag">🏢 ' + g.company + '</span>' +
+        '<span class="ih-meta-tag">💬 코멘트 ' + g.items.length + '개</span>' +
+        (lastTime ? '<span class="ih-meta-tag">🕐 최종 ' + lastTime + '</span>' : '') +
       '</div>' +
       '<div class="ih-thread">' + commentsHTML + '</div>' +
     '</div>';
