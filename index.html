@@ -1557,6 +1557,13 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
         </svg>
         자금 변동 이력
       </div>
+      <div class="nav-item" onclick="goto('issue-history')" data-label="이슈 이력">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2 3h12v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3z"/>
+          <path d="M5 7h6M5 10h4M2 3l2-2h8l2 2"/>
+        </svg>
+        이슈 이력
+      </div>
       <div class="nav-item" onclick="goto('fx')" data-label="환율 현황">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
           <circle cx="8" cy="8" r="6"/><path d="M5 8h6M8 5v6"/>
@@ -2482,6 +2489,41 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
         </div>
       </div>
       
+
+      <div class="page" id="page-issue-history">
+        <div class="card">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>이슈 이력</span>
+            <span style="font-size:11px;color:var(--text3);font-weight:400;">완료 처리된 이슈와 코멘트 전체 이력</span>
+          </div>
+
+          <!-- 필터 -->
+          <div class="ih-filter-row">
+            <select id="ih-filter-status" onchange="renderIssueHistory()">
+              <option value="">전체 상태</option>
+              <option value="open">미조치</option>
+              <option value="review">검토중</option>
+              <option value="done">완료</option>
+            </select>
+            <select id="ih-filter-company" onchange="renderIssueHistory()">
+              <option value="">전체 법인</option>
+              <option value="셀바스에이아이">셀바스에이아이</option>
+              <option value="셀바스헬스케어">셀바스헬스케어</option>
+              <option value="메디아나">메디아나</option>
+            </select>
+            <input type="date" id="ih-filter-from" onchange="renderIssueHistory()" placeholder="시작일">
+            <span style="color:var(--text3);line-height:32px;">~</span>
+            <input type="date" id="ih-filter-to" onchange="renderIssueHistory()" placeholder="종료일">
+            <button class="btn btn-ghost" onclick="renderIssueHistory()" style="font-size:12px;">조회</button>
+          </div>
+
+          <!-- 이슈 목록 -->
+          <div id="ih-list">
+            <div class="ih-empty">조회 중...</div>
+          </div>
+        </div>
+      </div>
+
       <div class="page" id="page-fx">
         <div class="card">
           <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
@@ -3595,8 +3637,9 @@ function syncCompanySelect(selectId) {
   if (pageId === 'page-input')   renderDailyHistory(1);
   if (pageId === 'page-invest')  renderInvestments();
   if (pageId === 'page-loans')   renderLoans();
-  if (pageId === 'page-equity')  renderEquity();
-  if (pageId === 'page-history') filterHistory();
+  if (pageId === 'page-equity')        renderEquity();
+  if (pageId === 'page-history')       filterHistory();
+  if (pageId === 'page-issue-history') renderIssueHistory();
 }
 
 
@@ -7967,13 +8010,13 @@ function renderWaterfallDashboard(opTotal, opKrw, opFx, invAvail, invLocked,
   }
   setTxt('wf-eq-total', eqTotal > 0 ? fmtKRW(eqTotal) : '—');
 
-  // ── ⑥ 운용자금 상세 (고정 높이, 스크롤) ─────────────────────────
+  // ── ⑥ 운용자금 상세 (가용만 표시 — 불가용은 lock 드릴다운에서 별도 표시) ──
   const invList = document.getElementById('wf-inv-list');
   if (invList) {
-    const activeInvs = invs.filter(function(i) { return i.active; });
-    invList.innerHTML = !activeInvs.length
+    const availInvs = invs.filter(function(i) { return i.active && i.available !== '불가용'; });
+    invList.innerHTML = !availInvs.length
       ? '<div style="font-size:12px;color:var(--text3);padding:8px 0;">없음</div>'
-      : activeInvs.map(function(i) {
+      : availInvs.map(function(i) {
           const today2 = new Date();
           const days   = i.maturity ? Math.ceil((new Date(i.maturity)-today2)/86400000) : null;
           const ddayStr = days !== null
@@ -7981,11 +8024,9 @@ function renderWaterfallDashboard(opTotal, opKrw, opFx, invAvail, invLocked,
               : days < 90 ? '<span style="color:var(--amber)">D-' + days + '</span>'
               : 'D-' + days)
             : '—';
-          const availPill = i.available === '불가용'
-            ? '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:#FAEEDA;color:#854F0B;margin-left:4px;">불가용</span>'
-            : '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:#E1F5EE;color:#0F6E56;margin-left:4px;">가용</span>';
           return '<div class="wf-inv-item">' +
-            '<div><div class="wf-inv-nm">' + (i.bank||'') + ' ' + (i.product||'') + availPill + '</div>' +
+            '<div><div class="wf-inv-nm">' + (i.bank||'') + ' ' + (i.product||'') +
+            '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:#E1F5EE;color:#0F6E56;margin-left:4px;">가용</span></div>' +
             '<div class="wf-inv-tag">' + (i.rate||'—') + '% · ' + (i.maturity||'만기미상') + '</div></div>' +
             '<div><div class="wf-inv-val">' + fmtKRW(calcKRW(i.amount, i.currency)) + '</div>' +
             '<div class="wf-inv-dday">' + ddayStr + '</div></div></div>';
@@ -8050,7 +8091,8 @@ function renderWaterfallDashboard(opTotal, opKrw, opFx, invAvail, invLocked,
   // 오늘 운전자금 미입력 (공휴일/주말 제외)
   if (todayIsBusinessDay()) {
     if (!latestRec || latestRec.date < today3) {
-      alerts.push({ level:'danger', title:'오늘 운전자금 미입력', desc:'기준일 ' + today3 });
+      alerts.push({ level:'danger', issueKey: makeIssueKey('input', today3),
+        title:'오늘 운전자금 미입력', desc:'기준일 ' + today3 });
     }
   }
 
@@ -8059,6 +8101,7 @@ function renderWaterfallDashboard(opTotal, opKrw, opFx, invAvail, invLocked,
     const d = Math.ceil((new Date(l.maturity) - new Date()) / 86400000);
     if (d <= 90) {
       alerts.push({ level: d<=30?'danger':'warn',
+        issueKey: makeIssueKey('loan', l.id, 'D'+d),
         title: (l.lender||'') + ' ' + fmtKRW(calcKRW(l.amount,l.currency)) + ' D-' + d,
         desc: '만기 ' + l.maturity + ' — 갱신/상환 검토' });
     }
@@ -8068,7 +8111,9 @@ function renderWaterfallDashboard(opTotal, opKrw, opFx, invAvail, invLocked,
   latestEqArr.forEach(function(e) {
     if (e.market !== '비상장') {
       const diff = Math.floor((new Date(today3) - new Date(e.date)) / 86400000);
-      if (diff >= 2) alerts.push({ level:'info', title: e.name + ' 주가 미갱신', desc: '최종 ' + e.date + ' (' + diff + '일 경과)' });
+      if (diff >= 2) alerts.push({ level:'info',
+        issueKey: makeIssueKey('equity', e.name.replace(/\s/g,''), diff),
+        title: e.name + ' 주가 미갱신', desc: '최종 ' + e.date + ' (' + diff + '일 경과)' });
     }
   });
 
@@ -8080,16 +8125,56 @@ function renderWaterfallDashboard(opTotal, opKrw, opFx, invAvail, invLocked,
     alertCount.style.color      = hasDanger ? 'var(--red)' : 'var(--amber)';
   }
   if (alertList) {
-    alertList.innerHTML = !alerts.length
-      ? '<div style="font-size:12px;color:var(--text3);padding:6px 0;text-align:center;">이상 없음 ✓</div>'
-      : alerts.map(function(a) {
-          const cls  = a.level==='danger' ? 'wf-alert-danger' : a.level==='warn' ? 'wf-alert-warn' : 'wf-alert-info';
-          const dotC = a.level==='danger' ? 'var(--red)' : a.level==='warn' ? 'var(--amber)' : 'var(--accent2)';
-          return '<div class="wf-alert-item ' + cls + '">' +
-            '<div class="wf-alert-dot" style="background:' + dotC + '"></div>' +
-            '<div><div class="wf-alert-title">' + a.title + '</div>' +
-            '<div class="wf-alert-desc">' + a.desc + '</div></div></div>';
-        }).join('');
+    if (!alerts.length) {
+      alertList.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:6px 0;text-align:center;">이상 없음 ✓</div>';
+    } else {
+      // 각 이슈 key별 최신 상태 조회 (비동기 - 먼저 기본 렌더 후 상태 덮어쓰기)
+      alertList.innerHTML = alerts.map(function(a) {
+        var cls   = a.level==='danger' ? 'wf-alert-danger' : a.level==='warn' ? 'wf-alert-warn' : 'wf-alert-info';
+        var dotC  = a.level==='danger' ? 'var(--red)' : a.level==='warn' ? 'var(--amber)' : 'var(--accent2)';
+        var key   = a.issueKey || '';
+        var escKey   = key.replace(/'/g,"\\'");
+        var escTitle = (a.title||'').replace(/'/g,"\\'");
+        var escDesc  = (a.desc||'').replace(/'/g,"\\'");
+        var escCo    = currentCompany.replace(/'/g,"\\'");
+        return '<div class="wf-alert-item ' + cls + '" id="alert-item-' + key + '">' +
+          '<div class="wf-alert-dot" style="background:' + dotC + '"></div>' +
+          '<div style="flex:1">' +
+            '<div class="wf-alert-title">' + a.title +
+              '<span class="issue-status-badge issue-s-open" id="st-badge-' + key + '">미조치</span>' +
+            '</div>' +
+            '<div class="wf-alert-desc">' + a.desc + '</div>' +
+            '<button class="issue-thread-toggle" id="toggle-btn-' + key + '" ' +
+              'onclick="toggleIssueThread(\'' + escKey + '\',\'' + escTitle + '\',\'' + escDesc + '\',\'' + escCo + '\',this)">' +
+              '▼ 코멘트' +
+            '</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      // 비동기: 각 이슈 최신 상태 배지 업데이트
+      alerts.forEach(function(a) {
+        var key = a.issueKey;
+        if (!key) return;
+        loadIssueComments(key).then(function(comments) {
+          var badge = document.getElementById('st-badge-' + key);
+          if (!badge || !comments.length) return;
+          var last = comments[comments.length-1];
+          var stCls = { open:'issue-s-open', review:'issue-s-review', done:'issue-s-done' };
+          var stLbl = { open:'미조치', review:'검토중', done:'완료' };
+          badge.className = 'issue-status-badge ' + (stCls[last.status]||'issue-s-open');
+          badge.textContent = stLbl[last.status]||'미조치';
+          // 완료 이슈는 카드를 흐리게
+          if (last.status === 'done') {
+            var item = document.getElementById('alert-item-' + key);
+            if (item) item.style.opacity = '0.5';
+          }
+          // 코멘트 개수 버튼에 표시
+          var btn = document.getElementById('toggle-btn-' + key);
+          if (btn && comments.length > 0) btn.textContent = '▼ 코멘트 ' + comments.length + '개';
+        });
+      });
+    }
   }
 
   // 이슈 배지 업데이트 (드롭다운 버튼 옆)
@@ -8190,15 +8275,30 @@ function initCompanySelector(user) {
 let _wfLastData = {}; // renderWaterfallDashboard가 저장한 최신 데이터
 
 function wfDrillDown(key) {
-  // 이전 선택 복원 (불가용 → 운용자금 원상복구)
+  // 이전 선택 복원 (불가용 → 다른 항목으로 전환 시 운용자금 원상복구)
   if (_wfCurrentKey === 'lock' && key !== 'lock') restoreInvList();
   _wfCurrentKey = key;
 
   // 기능 2: 카드 하이라이트
   wfHighlightCard(key);
 
-  // 기능 3: 불가용 클릭 시 운용자금 카드에 불가용 목록
-  if (key === 'lock') { renderLockedList(); }
+  // 기능 3: 불가용 → 불가용 목록 / 가용운용 → 가용 목록 명시 렌더
+  if (key === 'lock') {
+    renderLockedList();
+  } else if (key === 'inv') {
+    // 가용 운용 선택: 운용자금 카드를 가용만 명시적으로 갱신
+    restoreInvList();
+    // 제목 하이라이트 유지 (restoreInvList가 배지를 none으로 만드므로 다시 표시)
+    var badgeInv = document.getElementById('wf-badge-inv');
+    if (badgeInv) badgeInv.style.display = '';
+    var titleInv = document.getElementById('wf-title-inv');
+    if (titleInv && !titleInv.querySelector('#wf-badge-inv')) {
+      // badge가 새로 생성된 경우 다시 표시
+    } else if (titleInv) {
+      var b = titleInv.querySelector('.wf-card-selected-badge');
+      if (b) b.style.display = '';
+    }
+  }
 
   // 자금흐름 행 선택 표시
   document.querySelectorAll('.wf-row, .wf-result-row').forEach(function(r) { r.style.outline = ''; });
@@ -8562,7 +8662,266 @@ function initSidebarState() {
   }
 }
 
-// ── 모바일 더보기 시트 ────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+//  이슈 코멘트 스레드 (issue_comments 테이블 연동)
+// ═══════════════════════════════════════════════════════════════════════
+
+// ── 이슈 key 생성 ────────────────────────────────────────────────────
+function makeIssueKey(type, id, extra) {
+  return [type, id, extra].filter(Boolean).join('_').replace(/\s/g,'');
+}
+
+// ── 이슈 comments 불러오기 (issue_key 기준) ──────────────────────────
+async function loadIssueComments(issueKey) {
+  try {
+    var data = await sbFetch(
+      '/rest/v1/issue_comments?issue_key=eq.' + encodeURIComponent(issueKey) +
+      '&order=created_at.asc'
+    );
+    return data || [];
+  } catch(e) {
+    console.warn('이슈 코멘트 로드 실패:', e);
+    return [];
+  }
+}
+
+// ── 모든 이슈 comments 불러오기 (이슈 이력 페이지용) ─────────────────
+async function loadAllIssueComments(filters) {
+  try {
+    var q = '/rest/v1/issue_comments?order=created_at.desc';
+    if (filters && filters.status)  q += '&status=eq.' + filters.status;
+    if (filters && filters.company) q += '&company=eq.' + encodeURIComponent(filters.company);
+    if (filters && filters.from)    q += '&created_at=gte.' + filters.from + 'T00:00:00';
+    if (filters && filters.to)      q += '&created_at=lte.' + filters.to   + 'T23:59:59';
+    var data = await sbFetch(q);
+    return data || [];
+  } catch(e) {
+    console.warn('이슈 이력 로드 실패:', e);
+    return [];
+  }
+}
+
+// ── 코멘트 저장 ──────────────────────────────────────────────────────
+async function saveIssueComment(issueKey, company, body, status, issueTitle, issueDesc) {
+  if (!body.trim()) return;
+  var rec = {
+    issue_key:   issueKey,
+    company:     company,
+    user_label:  (currentUser && currentUser.label) || (currentUser && currentUser.role) || '익명',
+    user_role:   (currentUser && currentUser.role) || '',
+    body:        body.trim(),
+    status:      status || 'open',
+    issue_title: issueTitle || '',
+    issue_desc:  issueDesc  || '',
+  };
+  try {
+    await sbFetch('/rest/v1/issue_comments', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Prefer':'return=minimal' },
+      body: JSON.stringify(rec)
+    });
+    return true;
+  } catch(e) {
+    showToast('코멘트 저장 실패: ' + e.message, 'error');
+    return false;
+  }
+}
+
+// ── 이슈 상태 일괄 업데이트 (해당 issue_key 최신 status 변경) ─────────
+async function updateIssueStatus(issueKey, newStatus) {
+  try {
+    await sbFetch(
+      '/rest/v1/issue_comments?issue_key=eq.' + encodeURIComponent(issueKey),
+      { method:'PATCH',
+        headers:{'Content-Type':'application/json','Prefer':'return=minimal'},
+        body: JSON.stringify({ status: newStatus }) }
+    );
+    return true;
+  } catch(e) {
+    showToast('상태 변경 실패', 'error');
+    return false;
+  }
+}
+
+// ── 스레드 HTML 렌더 (이슈 항목 내부) ───────────────────────────────
+function renderThreadHTML(issueKey, comments, currentStatus, issueTitle, issueDesc, company) {
+  var statusOpts = [
+    { v:'open',   l:'미조치',  cls:'issue-s-open'   },
+    { v:'review', l:'검토중',  cls:'issue-s-review' },
+    { v:'done',   l:'완료',    cls:'issue-s-done'   },
+  ];
+  var curSt = currentStatus || 'open';
+  var stCls = { open:'issue-s-open', review:'issue-s-review', done:'issue-s-done' };
+  var stLbl = { open:'미조치', review:'검토중', done:'완료' };
+
+  var commentsHTML = !comments.length
+    ? '<div style="font-size:11px;color:var(--text3);padding:4px 0;">첫 코멘트를 작성해보세요</div>'
+    : comments.map(function(cm) {
+        var dt = cm.created_at ? new Date(cm.created_at).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+        var stBadge = cm.status
+          ? '<span class="issue-status-badge ' + (stCls[cm.status]||'') + '">' + (stLbl[cm.status]||cm.status) + '</span>'
+          : '';
+        return '<div class="issue-comment">' +
+          '<div class="issue-comment-head">' +
+            '<span class="issue-comment-user">' + (cm.user_label||'') + stBadge + '</span>' +
+            '<span class="issue-comment-time">' + dt + '</span>' +
+          '</div>' +
+          '<div class="issue-comment-body">' + cm.body + '</div>' +
+          '</div>';
+      }).join('');
+
+  var escapedKey   = issueKey.replace(/'/g,"\\'");
+  var escapedTitle = (issueTitle||'').replace(/'/g,"\\'");
+  var escapedDesc  = (issueDesc||'').replace(/'/g,"\\'");
+  var escapedCo    = (company||'').replace(/'/g,"\\'");
+
+  return '<div class="issue-thread-wrap" id="thread-' + issueKey + '">' +
+    commentsHTML +
+    '<div class="issue-input-row">' +
+      '<select id="sel-' + issueKey + '">' +
+        statusOpts.map(function(o) {
+          return '<option value="' + o.v + '"' + (curSt===o.v?' selected':'') + '>' + o.l + '</option>';
+        }).join('') +
+      '</select>' +
+      '<input type="text" id="inp-' + issueKey + '" placeholder="처리 계획, 협의 내용 등..." ' +
+        'onkeydown="if(event.key===\'Enter\')submitIssueComment(\'' + escapedKey + '\',\'' + escapedTitle + '\',\'' + escapedDesc + '\',\'' + escapedCo + '\')">' +
+      '<button onclick="submitIssueComment(\'' + escapedKey + '\',\'' + escapedTitle + '\',\'' + escapedDesc + '\',\'' + escapedCo + '\')">등록</button>' +
+    '</div>' +
+    '</div>';
+}
+
+// ── 코멘트 등록 실행 ────────────────────────────────────────────────
+async function submitIssueComment(issueKey, issueTitle, issueDesc, company) {
+  var inp = document.getElementById('inp-' + issueKey);
+  var sel = document.getElementById('sel-' + issueKey);
+  if (!inp || !inp.value.trim()) return;
+  var body   = inp.value.trim();
+  var status = sel ? sel.value : 'open';
+  inp.value  = '';
+  inp.disabled = true;
+  var ok = await saveIssueComment(issueKey, company || currentCompany, body, status, issueTitle, issueDesc);
+  inp.disabled = false;
+  if (ok) {
+    // 스레드 갱신
+    var comments = await loadIssueComments(issueKey);
+    var wrap = document.getElementById('thread-' + issueKey);
+    if (wrap) {
+      wrap.outerHTML = renderThreadHTML(issueKey, comments, status, issueTitle, issueDesc, company || currentCompany);
+    }
+    showToast('코멘트 등록됨', 'success');
+    // 대시보드 재렌더 (상태 변경 반영)
+    try { renderDashboard(); } catch(e) {}
+  }
+}
+
+// ── 스레드 토글 ──────────────────────────────────────────────────────
+function toggleIssueThread(issueKey, issueTitle, issueDesc, company, btn) {
+  var wrap = document.getElementById('thread-' + issueKey);
+  if (wrap) {
+    var hidden = wrap.style.display === 'none';
+    wrap.style.display = hidden ? '' : 'none';
+    if (btn) btn.textContent = hidden ? '▲ 접기' : '▼ 코멘트';
+    return;
+  }
+  // 아직 로드 안 된 경우 — 비동기 로드 후 렌더
+  if (btn) btn.textContent = '로딩...';
+  loadIssueComments(issueKey).then(function(comments) {
+    var alertDiv = btn ? btn.closest('.wf-alert-item') : null;
+    if (!alertDiv) return;
+    // 최신 status
+    var lastStatus = comments.length ? comments[comments.length-1].status : 'open';
+    var html = renderThreadHTML(issueKey, comments, lastStatus, issueTitle, issueDesc, company);
+    alertDiv.insertAdjacentHTML('beforeend', html);
+    if (btn) btn.textContent = '▲ 접기';
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  이슈 이력 페이지 렌더
+// ═══════════════════════════════════════════════════════════════════════
+async function renderIssueHistory() {
+  var listEl = document.getElementById('ih-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<div class="ih-empty">조회 중...</div>';
+
+  var filters = {
+    status:  (document.getElementById('ih-filter-status')  || {}).value || '',
+    company: (document.getElementById('ih-filter-company') || {}).value || '',
+    from:    (document.getElementById('ih-filter-from')    || {}).value || '',
+    to:      (document.getElementById('ih-filter-to')      || {}).value || '',
+  };
+
+  // 권한 제한: company 계정은 자사만
+  if (currentUser && currentUser.role === 'company') {
+    filters.company = currentUser.company;
+    var sel = document.getElementById('ih-filter-company');
+    if (sel) { sel.value = currentUser.company; sel.disabled = true; }
+  }
+
+  var comments = await loadAllIssueComments(filters);
+
+  if (!comments.length) {
+    listEl.innerHTML = '<div class="ih-empty">해당 조건의 이슈 이력이 없습니다</div>';
+    return;
+  }
+
+  // issue_key 기준으로 그룹핑
+  var groups = {};
+  comments.forEach(function(cm) {
+    if (!groups[cm.issue_key]) {
+      groups[cm.issue_key] = {
+        key:    cm.issue_key,
+        title:  cm.issue_title || cm.issue_key,
+        desc:   cm.issue_desc  || '',
+        company:cm.company,
+        status: cm.status,
+        items:  []
+      };
+    }
+    groups[cm.issue_key].items.push(cm);
+    groups[cm.issue_key].status = cm.status; // 최신 상태 유지
+  });
+
+  var stCls = { open:'issue-s-open', review:'issue-s-review', done:'issue-s-done' };
+  var stLbl = { open:'미조치', review:'검토중', done:'완료' };
+
+  listEl.innerHTML = Object.values(groups).map(function(g) {
+    var lastTime = g.items[g.items.length-1] && g.items[g.items.length-1].created_at
+      ? new Date(g.items[g.items.length-1].created_at).toLocaleDateString('ko-KR')
+      : '';
+
+    var commentsHTML = g.items.map(function(cm) {
+      var dt = cm.created_at ? new Date(cm.created_at).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+      var cStBadge = cm.status ? '<span class="issue-status-badge ' + (stCls[cm.status]||'') + '" style="margin-left:5px">' + (stLbl[cm.status]||cm.status) + '</span>' : '';
+      return '<div class="ih-comment">' +
+        '<div class="ih-comment-head">' +
+          '<span class="ih-comment-user">' + (cm.user_label||'') + cStBadge + '</span>' +
+          '<span class="ih-comment-time">' + dt + '</span>' +
+        '</div>' +
+        '<div class="ih-comment-body">' + cm.body + '</div>' +
+        '</div>';
+    }).join('');
+
+    return '<div class="ih-card">' +
+      '<div class="ih-card-head">' +
+        '<div>' +
+          '<div class="ih-issue-title">' + g.title +
+            '<span class="issue-status-badge ' + (stCls[g.status]||'issue-s-open') + '" style="margin-left:8px;">' + (stLbl[g.status]||'미조치') + '</span>' +
+          '</div>' +
+          '<div class="ih-issue-desc">' + g.desc + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="ih-meta">' +
+        '<span class="ih-meta-tag">' + g.company + '</span>' +
+        '<span class="ih-meta-tag">코멘트 ' + g.items.length + '개</span>' +
+        (lastTime ? '<span class="ih-meta-tag">최종 ' + lastTime + '</span>' : '') +
+      '</div>' +
+      '<div class="ih-thread">' + commentsHTML + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// goto 분기에 issue-history 추가 (페이지 전환 시 렌더)
 function toggleMobMore(btn) {
   var sheet = document.getElementById('mob-more-sheet');
   if (!sheet) return;
@@ -8720,11 +9079,35 @@ function renderLockedList() {
 function restoreInvList() {
   var invList = document.getElementById('wf-inv-list');
   var titleEl = document.getElementById('wf-title-inv');
-  if (invList && _wfInvListOriginal !== null) {
-    invList.innerHTML = _wfInvListOriginal;
-    _wfInvListOriginal = null;
-  }
+  _wfInvListOriginal = null;
+
+  // 제목 복원
   if (titleEl) titleEl.innerHTML = '운용자금 상세<span class="wf-card-selected-badge" id="wf-badge-inv" style="display:none">선택됨</span>';
+
+  // 가용 운용자금만 다시 렌더 (_wfLastData 활용)
+  if (!invList) return;
+  var invs = (_wfLastData && _wfLastData.invs) ? _wfLastData.invs : [];
+  var availInvs = invs.filter(function(i) { return i.active && i.available !== '불가용'; });
+
+  if (!availInvs.length) {
+    invList.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0;">없음</div>';
+    return;
+  }
+  var today2 = new Date();
+  invList.innerHTML = availInvs.map(function(i) {
+    var days = i.maturity ? Math.ceil((new Date(i.maturity) - today2) / 86400000) : null;
+    var ddayStr = days !== null
+      ? (days < 0 ? '<span style="color:var(--red)">만기경과</span>'
+        : days < 90 ? '<span style="color:var(--amber)">D-' + days + '</span>'
+        : 'D-' + days)
+      : '—';
+    return '<div class="wf-inv-item">' +
+      '<div><div class="wf-inv-nm">' + (i.bank||'') + ' ' + (i.product||'') +
+      '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:#E1F5EE;color:#0F6E56;margin-left:4px;">가용</span></div>' +
+      '<div class="wf-inv-tag">' + (i.rate||'—') + '% · ' + (i.maturity||'만기미상') + '</div></div>' +
+      '<div><div class="wf-inv-val">' + fmtKRW(calcKRW(i.amount, i.currency)) + '</div>' +
+      '<div class="wf-inv-dday">' + ddayStr + '</div></div></div>';
+  }).join('');
 }
 
 // ═══════════════════════════════════════════════════════════════
