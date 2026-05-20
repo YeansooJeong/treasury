@@ -1141,13 +1141,29 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
   .wf-alert-card { margin-bottom:0; }
   .wf-alert-item { display:flex; align-items:flex-start; gap:8px; padding:8px 10px; border-radius:7px; font-size:12px; line-height:1.5; margin-bottom:5px; min-width:0; }
   .wf-alert-item:last-child { margin-bottom:0; }
-  .wf-alert-item > div { min-width:0; flex:1; word-break:keep-all; overflow-wrap:break-word; }
+  .wf-alert-item > .wf-alert-dot { flex-shrink:0; flex-grow:0; width:6px; min-width:6px; height:6px; border-radius:50%; margin-top:5px; }
+  .wf-alert-item > div:last-child { min-width:0; flex:1; word-break:keep-all; overflow-wrap:break-word; }
   .wf-alert-warn { background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.25); }
   .wf-alert-danger { background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2); }
   .wf-alert-info { background:rgba(59,130,246,0.07); border:1px solid rgba(59,130,246,0.18); }
-  .wf-alert-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; margin-top:4px; }
-  .wf-alert-title { font-weight:600; margin-bottom:1px; word-break:keep-all; }
+  .wf-alert-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; flex-grow:0; margin-top:5px; }
+  .wf-alert-title { font-weight:600; margin-bottom:2px; word-break:keep-all; }
   .wf-alert-desc { font-size:11px; opacity:.8; word-break:keep-all; }
+
+  /* 코멘트 버튼 — 운전자금 "입력 →" 버튼과 동일한 스타일 */
+  .issue-thread-toggle {
+    display: inline-flex; align-items: center; gap: 4px;
+    margin-top: 5px;
+    font-size: 10px; padding: 2px 8px;
+    border: 0.5px solid var(--border2);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text3);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .12s, color .12s;
+  }
+  .issue-thread-toggle:hover { background: var(--bg3); color: var(--text); }
 
   /* 운용자금 상세 행 */
   .wf-inv-item { display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:0.5px solid var(--fp-divider); font-size:12px; }
@@ -8139,15 +8155,15 @@ function renderWaterfallDashboard(opTotal, opKrw, opFx, invAvail, invLocked,
         var escDesc  = (a.desc||'').replace(/'/g,"\\'");
         var escCo    = currentCompany.replace(/'/g,"\\'");
         return '<div class="wf-alert-item ' + cls + '" id="alert-item-' + key + '">' +
-          '<div class="wf-alert-dot" style="background:' + dotC + '"></div>' +
-          '<div style="flex:1">' +
+          '<div class="wf-alert-dot" style="background:' + dotC + ';flex-shrink:0;flex-grow:0;width:6px;min-width:6px;height:6px;border-radius:50%;margin-top:5px;"></div>' +
+          '<div style="min-width:0;flex:1;word-break:keep-all;overflow-wrap:break-word;">' +
             '<div class="wf-alert-title">' + a.title +
-              '<span class="issue-status-badge issue-s-open" id="st-badge-' + key + '">미조치</span>' +
+              '<span class="issue-status-badge issue-s-open" id="st-badge-' + key + '" style="margin-left:6px;">미조치</span>' +
             '</div>' +
             '<div class="wf-alert-desc">' + a.desc + '</div>' +
             '<button class="issue-thread-toggle" id="toggle-btn-' + key + '" ' +
               'onclick="toggleIssueThread(\'' + escKey + '\',\'' + escTitle + '\',\'' + escDesc + '\',\'' + escCo + '\',this)">' +
-              '▼ 코멘트' +
+              '💬 코멘트' +
             '</button>' +
           '</div>' +
         '</div>';
