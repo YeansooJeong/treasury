@@ -1230,6 +1230,33 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
   .eq-tab.on .eq-tab-count { background:rgba(236,72,153,.15); color:var(--pink); }
   .eq-panel { display:block; }
 
+
+  /* ── 자동 시세 스케줄러 상태 표시 ── */
+  #auto-price-indicator {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; color: var(--text3); cursor: pointer;
+    padding: 4px 8px; border-radius: 6px; transition: background .15s;
+    border: 1px solid transparent;
+  }
+  #auto-price-indicator:hover { background: var(--bg3); border-color: var(--border); }
+  #auto-price-indicator.on { color: var(--green); }
+  #auto-price-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+  #auto-price-indicator.on #auto-price-dot { background: var(--green); animation: apulse 2s ease-in-out infinite; }
+  @keyframes apulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* ── 카드 하이라이트 (기능 2) ── */
+  .wf-card-highlight {
+    border-color: var(--accent2) !important;
+    box-shadow: 0 0 0 2px rgba(59,130,246,.18);
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .wf-card-highlight .wf-card-head { border-bottom-color: rgba(59,130,246,.2); }
+  .wf-card-selected-badge {
+    font-size: 9px; padding: 1px 6px; border-radius: 4px;
+    background: rgba(59,130,246,.15); color: var(--accent2);
+    margin-left: 6px; font-weight: 500;
+  }
+
   /* ── 자금흐름 행 호버 효과 ── */
   .wf-row { transition:background .1s; border-radius:6px; padding:2px 4px; margin:0 -4px; }
   .wf-row:hover { background:rgba(255,255,255,.04); }
@@ -1363,6 +1390,16 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
     /* 차트 높이 축소 */
     #chart-area { min-height: 140px !important; }
   }
+
+  /* ── 업데이트 팝업 스타일 ── */
+  .upd-section { margin-bottom:16px; }
+  .upd-section:last-child { margin-bottom:0; }
+  .upd-section-title { font-size:13px;font-weight:600;color:var(--text);margin-bottom:7px;padding-bottom:5px;border-bottom:0.5px solid var(--border); }
+  .upd-item { font-size:12px;padding:4px 0 4px 20px;color:var(--text2);position:relative;line-height:1.5; }
+  .upd-item::before { position:absolute;left:4px;top:5px;font-size:11px; }
+  .upd-new::before    { content:"✦"; color:#60a5fa; }
+  .upd-change::before { content:"▸"; color:#f59e0b; }
+  .upd-keep::before   { content:"✓"; color:#34d399; }
 
 </style>
 </head>
@@ -1590,6 +1627,11 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
       <div class="topbar-right">
         <div class="date-badge" id="today-badge">—</div>
         <div id="sb-save-indicator" style="display:none;font-size:11px;padding:4px 10px;border-radius:6px;font-weight:500;transition:all .3s;"></div>
+        <!-- 자동 시세 인디케이터 (로그인 후 표시) -->
+        <div id="auto-price-indicator" onclick="toggleAutoPrice()" title="자동 시세 조회 ON/OFF (9:15 · 12:15 · 15:45)" style="display:none;">
+          <span id="auto-price-dot"></span>
+          <span id="auto-price-label">자동시세</span>
+        </div>
         <div id="user-info" style="display:none;font-size:12px;color:#94a3b8;padding:4px 10px;background:#1e2535;border-radius:8px;border:1px solid rgba(255,255,255,0.08);"></div>
         <!-- PC 상단 주가 전광판 (좁은 화면: marquee 자동 활성화) -->
         <div id="stock-ticker">
@@ -1862,9 +1904,9 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
             </div>
 
             <!-- 2. 운전자금 상세 (고정 크기) -->
-            <div class="wf-card wf-detail-fixed-card" onclick="wfDrillDown('op')" style="cursor:pointer;">
+            <div class="wf-card wf-detail-fixed-card" id="wf-card-op" onclick="wfDrillDown('op')" style="cursor:pointer;">
               <div class="wf-card-head">
-                <span class="wf-card-title">운전자금 상세</span>
+                <span class="wf-card-title">운전자금 상세<span class="wf-card-selected-badge" id="wf-badge-op" style="display:none">선택됨</span></span>
                 <button class="btn btn-ghost" onclick="event.stopPropagation();goto('input')" style="font-size:10px;padding:2px 7px;">입력 →</button>
               </div>
               <div id="wf-op-detail-list" style="overflow-y:auto;max-height:150px;scrollbar-width:thin;display:flex;flex-direction:column;gap:0;">
@@ -1873,18 +1915,18 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
             </div>
 
             <!-- 3. 운용자금 상세 (고정 크기) -->
-            <div class="wf-card wf-detail-fixed-card">
+            <div class="wf-card wf-detail-fixed-card" id="wf-card-inv">
               <div class="wf-card-head">
-                <span class="wf-card-title">운용자금 상세</span>
+                <span class="wf-card-title" id="wf-title-inv">운용자금 상세<span class="wf-card-selected-badge" id="wf-badge-inv" style="display:none">선택됨</span></span>
                 <button class="btn btn-ghost" onclick="goto('invest')" style="font-size:10px;padding:2px 7px;">관리 →</button>
               </div>
               <div id="wf-inv-list" style="overflow-y:auto;max-height:150px;scrollbar-width:thin;display:flex;flex-direction:column;gap:0;"></div>
             </div>
 
             <!-- 4. 차입금 상세 (고정 크기) -->
-            <div class="wf-card wf-detail-fixed-card">
+            <div class="wf-card wf-detail-fixed-card" id="wf-card-loan">
               <div class="wf-card-head">
-                <span class="wf-card-title">차입금 상세</span>
+                <span class="wf-card-title">차입금 상세<span class="wf-card-selected-badge" id="wf-badge-loan" style="display:none">선택됨</span></span>
                 <button class="btn btn-ghost" onclick="goto('loans')" style="font-size:10px;padding:2px 7px;">관리 →</button>
               </div>
               <div id="wf-loan-detail-list" style="overflow-y:auto;max-height:150px;scrollbar-width:thin;display:flex;flex-direction:column;gap:0;"></div>
@@ -2431,6 +2473,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
                   <th class="td-num" style="color:var(--pink);">지분투자</th>
                   <th class="td-num" style="color:var(--purple);">순현금</th>
                   <th>비고</th>
+                  <th>수정</th>
                 </tr>
               </thead>
               <tbody id="history-tbody"></tbody>
@@ -3404,6 +3447,10 @@ function applyAccessControl(user) {
   setTimeout(function() { try { initCompanySelector(user); } catch(e) {} }, 100);
   // v2.0 업데이트 안내 팝업 (3일간, 다시보지않기 미선택 시)
   setTimeout(function() { try { if(window._showUpdatePopupIfNeeded) _showUpdatePopupIfNeeded(); } catch(e) {} }, 600);
+  // 자동 시세 스케줄러 시작
+  var apEl = document.getElementById('auto-price-indicator');
+  if (apEl) apEl.style.display = '';
+  setTimeout(function() { try { startAutoPriceScheduler(); } catch(e) {} }, 800);
 }
 function doLogout() {
   if (!confirm('로그아웃 하시겠습니까?')) return;
@@ -8000,9 +8047,8 @@ function renderWaterfallDashboard(opTotal, opKrw, opFx, invAvail, invLocked,
   const today3     = new Date().toISOString().slice(0,10);
   const alerts     = [];
 
-  // 오늘 운전자금 미입력
-  const todayDow = new Date().getDay();
-  if (todayDow !== 0 && todayDow !== 6) {
+  // 오늘 운전자금 미입력 (공휴일/주말 제외)
+  if (todayIsBusinessDay()) {
     if (!latestRec || latestRec.date < today3) {
       alerts.push({ level:'danger', title:'오늘 운전자금 미입력', desc:'기준일 ' + today3 });
     }
@@ -8144,23 +8190,31 @@ function initCompanySelector(user) {
 let _wfLastData = {}; // renderWaterfallDashboard가 저장한 최신 데이터
 
 function wfDrillDown(key) {
-  const title  = document.getElementById('wf-detail-title');
-  const hint   = document.getElementById('wf-detail-hint');
-  const empty  = document.getElementById('wf-detail-empty');
-  const body   = document.getElementById('wf-detail-body');
-  const fxRows = document.getElementById('wf-detail-fx-rows');
-  const fxBtn  = document.getElementById('wf-detail-fx-btn');
-  if (!body) return;
+  // 이전 선택 복원 (불가용 → 운용자금 원상복구)
+  if (_wfCurrentKey === 'lock' && key !== 'lock') restoreInvList();
+  _wfCurrentKey = key;
 
-  // 자금흐름 행 선택 표시 초기화
-  document.querySelectorAll('.wf-row, .wf-result-row').forEach(function(r) {
-    r.style.outline = '';
-  });
-  const selRow = document.getElementById('wfr-' + key) ||
-                 (key === 'net' ? document.querySelector('.wf-result-row') : null);
+  // 기능 2: 카드 하이라이트
+  wfHighlightCard(key);
+
+  // 기능 3: 불가용 클릭 시 운용자금 카드에 불가용 목록
+  if (key === 'lock') { renderLockedList(); }
+
+  // 자금흐름 행 선택 표시
+  document.querySelectorAll('.wf-row, .wf-result-row').forEach(function(r) { r.style.outline = ''; });
+  var selRow = document.getElementById('wfr-' + key) ||
+               (key === 'net' ? document.querySelector('.wf-result-row') : null);
   if (selRow) selRow.style.outline = '1.5px solid var(--accent2)';
 
-  const d = _wfLastData;
+  var d = _wfLastData;
+  // 숨김 컨테이너 참조 (기존 JS 호환)
+  var title  = document.getElementById('wf-detail-title');
+  var hint   = document.getElementById('wf-detail-hint');
+  var empty  = document.getElementById('wf-detail-empty');
+  var body   = document.getElementById('wf-detail-body');
+  var fxRows = document.getElementById('wf-detail-fx-rows');
+  var fxBtn  = document.getElementById('wf-detail-fx-btn');
+
   if (!d.latestRec && key !== 'net' && key !== 'lock' && key !== 'inv' && key !== 'loan' && key !== 'fx') {
     if (empty) empty.style.display = ''; if (body) body.style.display = 'none';
     if (fxRows) fxRows.style.display = 'none'; return;
@@ -8414,6 +8468,41 @@ function renderEqOther() {
   }).join('');
 }
 
+
+// ═══════════════════════════════════════════════════════════════
+// 기능 4: 대한민국 공휴일 목록 (2025~2027)
+// ═══════════════════════════════════════════════════════════════
+const KR_HOLIDAYS = new Set([
+  // 2025
+  '2025-01-01','2025-01-28','2025-01-29','2025-01-30',
+  '2025-03-01','2025-05-05','2025-05-06','2025-06-06',
+  '2025-08-15','2025-10-03','2025-10-05','2025-10-06','2025-10-07','2025-10-09',
+  '2025-12-25',
+  // 2026
+  '2026-01-01','2026-01-28','2026-01-29','2026-01-30',
+  '2026-03-01','2026-03-02','2026-05-05','2026-06-06',
+  '2026-08-17','2026-09-24','2026-09-25','2026-09-26',
+  '2026-10-03','2026-10-05','2026-10-09','2026-12-25',
+  // 2027
+  '2027-01-01','2027-01-15','2027-01-16','2027-01-17',
+  '2027-03-01','2027-05-05','2027-06-06',
+  '2027-08-16','2027-10-03','2027-10-04','2027-10-05','2027-10-06','2027-10-09',
+  '2027-12-25',
+]);
+
+function isBusinessDay(dateStr) {
+  if (!dateStr) dateStr = new Date().toISOString().slice(0,10);
+  const d = new Date(dateStr);
+  const dow = d.getDay();
+  if (dow === 0 || dow === 6) return false;   // 주말
+  if (KR_HOLIDAYS.has(dateStr)) return false; // 공휴일
+  return true;
+}
+
+function todayIsBusinessDay() {
+  return isBusinessDay(new Date().toISOString().slice(0,10));
+}
+
 // ── 사이드바 접기/펼치기 ────────────────────────────────────────────
 function toggleSidebar() {
   var sb = document.getElementById('main-sidebar');
@@ -8494,13 +8583,258 @@ document.addEventListener('click', function(e) {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════
+// 기능 1: 자동 시세 조회 스케줄러
+// ═══════════════════════════════════════════════════════════════
+var _autoPriceEnabled = localStorage.getItem('auto_price_on') !== '0';
+var _autoPriceTimerId = null;
+var _autoPriceLastDate = '';  // 같은 날 중복 조회 방지용
+// 조회 예정 시각 (HH:MM)
+var AUTO_PRICE_TIMES = ['09:15','12:15','15:45'];
+
+function startAutoPriceScheduler() {
+  if (_autoPriceTimerId) clearInterval(_autoPriceTimerId);
+  _autoPriceTimerId = setInterval(function() {
+    if (!_autoPriceEnabled) return;
+    var now  = new Date();
+    var hhmm = ('0'+now.getHours()).slice(-2) + ':' + ('0'+now.getMinutes()).slice(-2);
+    var dateKey = now.toISOString().slice(0,10) + '_' + hhmm;
+    if (_autoPriceLastDate === dateKey) return;       // 이미 이 분에 실행
+    if (!AUTO_PRICE_TIMES.includes(hhmm)) return;     // 조회 시각 아님
+    if (!isBusinessDay()) return;                     // 공휴일/주말 제외
+    _autoPriceLastDate = dateKey;
+    updateAutoPriceIndicator('조회 중...');
+    runBulkEquityRefresh().then(function() {
+      updateAutoPriceIndicator(hhmm + ' 자동완료');
+      showToast('🕐 ' + hhmm + ' 자동 시세 조회 완료', 'success');
+    }).catch(function() {
+      updateAutoPriceIndicator('조회 실패');
+    });
+  }, 30000); // 30초마다 체크 (분 단위 정밀도 충분)
+  updateAutoPriceIndicator(null);
+}
+
+function stopAutoPriceScheduler() {
+  if (_autoPriceTimerId) { clearInterval(_autoPriceTimerId); _autoPriceTimerId = null; }
+}
+
+function toggleAutoPrice() {
+  _autoPriceEnabled = !_autoPriceEnabled;
+  localStorage.setItem('auto_price_on', _autoPriceEnabled ? '1' : '0');
+  if (_autoPriceEnabled) startAutoPriceScheduler();
+  updateAutoPriceIndicator(null);
+  showToast('자동 시세 조회 ' + (_autoPriceEnabled ? 'ON' : 'OFF'), '');
+}
+
+function updateAutoPriceIndicator(statusText) {
+  var el = document.getElementById('auto-price-indicator');
+  if (!el) return;
+  var dot  = document.getElementById('auto-price-dot');
+  var lbl  = document.getElementById('auto-price-label');
+  if (_autoPriceEnabled) {
+    el.classList.add('on');
+    if (dot) dot.style.background = 'var(--green)';
+    var nextTime = AUTO_PRICE_TIMES.find(function(t) {
+      var now = new Date();
+      var hhmm = ('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2);
+      return t > hhmm;
+    });
+    if (lbl) lbl.textContent = statusText || (nextTime ? '다음 ' + nextTime : '장 마감');
+  } else {
+    el.classList.remove('on');
+    if (dot) dot.style.background = 'var(--text3)';
+    if (lbl) lbl.textContent = '자동시세 OFF';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 기능 2: 자금흐름 클릭 시 우측 카드 하이라이트
+// ═══════════════════════════════════════════════════════════════
+var _wfCurrentKey = null;
+
+function wfHighlightCard(key) {
+  // 모든 카드 하이라이트 해제 + 배지 숨김
+  ['op','inv','loan'].forEach(function(k) {
+    var card  = document.getElementById('wf-card-' + k);
+    var badge = document.getElementById('wf-badge-' + k);
+    if (card)  card.classList.remove('wf-card-highlight');
+    if (badge) badge.style.display = 'none';
+  });
+
+  // 선택된 카드 하이라이트 + 배지 표시
+  var targetMap = { op:'op', inv:'inv', loan:'loan', lock:'inv' };
+  var targetKey = targetMap[key];
+  if (!targetKey) return;
+  var card  = document.getElementById('wf-card-' + targetKey);
+  var badge = document.getElementById('wf-badge-' + targetKey);
+  if (card)  card.classList.add('wf-card-highlight');
+  if (badge) badge.style.display = '';
+  // 부드럽게 스크롤
+  if (card) card.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 기능 3: 불가용 클릭 시 운용자금 상세 카드에 불가용 목록
+// ═══════════════════════════════════════════════════════════════
+var _wfInvListOriginal = null; // 복원용
+
+function renderLockedList() {
+  var invList  = document.getElementById('wf-inv-list');
+  var titleEl  = document.getElementById('wf-title-inv');
+  if (!invList) return;
+
+  // 원본 저장 (최초 1회)
+  if (_wfInvListOriginal === null) {
+    _wfInvListOriginal = invList.innerHTML;
+  }
+
+  var d = _wfLastData || {};
+  var invs = (d.invs || []).filter(function(i) { return i.active && i.available === '불가용'; });
+  var eqs  = (d.latestEqArr || []).filter(function(e) { return e.available === '불가용'; });
+
+  if (titleEl) titleEl.innerHTML = '불가용 자산 <span class="wf-card-selected-badge" style="display:inline;">선택됨</span>';
+
+  if (!invs.length && !eqs.length) {
+    invList.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0;text-align:center;">불가용 자산 없음</div>';
+    return;
+  }
+
+  invList.innerHTML = [].concat(
+    invs.map(function(i) {
+      return '<div class="wf-inv-item">' +
+        '<div><div class="wf-inv-nm">' + (i.bank||'') + ' ' + (i.product||'') +
+        '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:#FAEEDA;color:#854F0B;margin-left:4px;">불가용</span></div>' +
+        '<div class="wf-inv-tag">만기 ' + (i.maturity||'—') + '</div></div>' +
+        '<div class="wf-inv-val" style="color:var(--amber);">' + fmtKRW(calcKRW(i.amount, i.currency)) + '</div></div>';
+    }),
+    eqs.map(function(e) {
+      return '<div class="wf-inv-item">' +
+        '<div><div class="wf-inv-nm">' + e.name +
+        '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:#FAEEDA;color:#854F0B;margin-left:4px;">비상장</span></div>' +
+        '<div class="wf-inv-tag">' + e.company + '</div></div>' +
+        '<div class="wf-inv-val" style="color:var(--amber);">' + fmtKRW(e.total_value) + '</div></div>';
+    })
+  ).join('');
+}
+
+function restoreInvList() {
+  var invList = document.getElementById('wf-inv-list');
+  var titleEl = document.getElementById('wf-title-inv');
+  if (invList && _wfInvListOriginal !== null) {
+    invList.innerHTML = _wfInvListOriginal;
+    _wfInvListOriginal = null;
+  }
+  if (titleEl) titleEl.innerHTML = '운용자금 상세<span class="wf-card-selected-badge" id="wf-badge-inv" style="display:none">선택됨</span>';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 기능 5: 자금 변동 이력 인라인 수정
+// ═══════════════════════════════════════════════════════════════
+var _historyEditId = null;
+
+function openHistoryEdit(id) {
+  var rec = (DB.get('daily') || []).find(function(r) { return r.id === id; });
+  if (!rec) return showToast('데이터를 찾을 수 없습니다', 'error');
+  _historyEditId = id;
+
+  // 이미 열려있으면 닫기
+  var existing = document.getElementById('history-edit-slide');
+  if (existing) { existing.remove(); _historyEditId = null; return; }
+
+  var html = '<tr id="history-edit-slide"><td colspan="15" style="padding:0;">' +
+    '<div style="padding:14px 18px;background:var(--bg3);border-top:2px solid var(--accent2);border-bottom:1px solid var(--border);">' +
+    '<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px;">' + rec.date + ' 운전자금 수정</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:12px;">' +
+    _historyEditField('보통예금/CMA (원)', 'he-demand', rec.krw_demand||0) +
+    _historyEditField('국책자금 (원)', 'he-govt', rec.krw_govt||0) +
+    _historyEditField('증권예수금 (원)', 'he-mmda', rec.krw_mmda||0) +
+    _historyEditField('USD 잔액', 'he-usd', rec.fx_usd||0, true) +
+    _historyEditField('EUR 잔액', 'he-eur', rec.fx_eur||0, true) +
+    _historyEditField('JPY 잔액', 'he-jpy', rec.fx_jpy||0, true) +
+    _historyEditField('GBP 잔액', 'he-gbp', rec.fx_gbp||0, true) +
+    _historyEditField('CNY 잔액', 'he-cny', rec.fx_cny||0, true) +
+    _historyEditFieldText('비고', 'he-memo', rec.memo||'') +
+    '</div>' +
+    '<div style="display:flex;gap:8px;">' +
+    '<button class="btn btn-ghost" onclick="closeHistoryEdit()" style="font-size:12px;">취소</button>' +
+    '<button class="btn btn-success" onclick="saveHistoryEdit()" style="font-size:12px;">수정 저장</button>' +
+    '</div></div></td></tr>';
+
+  // 해당 행 바로 다음에 삽입
+  var rows = document.querySelectorAll('#history-tbody tr');
+  var target = null;
+  rows.forEach(function(r) {
+    if (r.getAttribute('data-id') === id) target = r;
+  });
+  if (target) {
+    target.insertAdjacentHTML('afterend', html);
+    document.getElementById('history-edit-slide').scrollIntoView({ behavior:'smooth', block:'nearest' });
+  } else {
+    // fallback: tbody 맨 위에
+    var tbody = document.getElementById('history-tbody');
+    if (tbody) tbody.insertAdjacentHTML('afterbegin', html);
+  }
+}
+
+function _historyEditField(label, id, val, isFx) {
+  var displayVal = isFx ? val : Math.round(val/10000)*10000; // 원화는 만원 단위
+  return '<div><label style="font-size:10px;color:var(--text3);display:block;margin-bottom:3px;">' + label + '</label>' +
+    '<input type="text" id="' + id + '" value="' + (val||0).toLocaleString() +
+    '" oninput="formatNumericInput(this,' + (isFx?'true':'false') + ')"' +
+    ' style="width:100%;padding:5px 8px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);color:var(--text);font-size:12px;font-family:inherit;"></div>';
+}
+
+function _historyEditFieldText(label, id, val) {
+  return '<div style="grid-column:1/-1;"><label style="font-size:10px;color:var(--text3);display:block;margin-bottom:3px;">' + label + '</label>' +
+    '<input type="text" id="' + id + '" value="' + val +
+    '" style="width:100%;padding:5px 8px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);color:var(--text);font-size:12px;font-family:inherit;"></div>';
+}
+
+function closeHistoryEdit() {
+  var el = document.getElementById('history-edit-slide');
+  if (el) el.remove();
+  _historyEditId = null;
+}
+
+async function saveHistoryEdit() {
+  if (!_historyEditId) return;
+  var rec = (DB.get('daily') || []).find(function(r) { return r.id === _historyEditId; });
+  if (!rec) return;
+
+  function getNum(id) {
+    var el = document.getElementById(id);
+    return el ? parseNum(el.value) : 0;
+  }
+  rec.krw_demand = getNum('he-demand');
+  rec.krw_govt   = getNum('he-govt');
+  rec.krw_mmda   = getNum('he-mmda');
+  rec.fx_usd     = getNum('he-usd');
+  rec.fx_eur     = getNum('he-eur');
+  rec.fx_jpy     = getNum('he-jpy');
+  rec.fx_gbp     = getNum('he-gbp');
+  rec.fx_cny     = getNum('he-cny');
+  rec.memo       = (document.getElementById('he-memo')||{}).value || '';
+  // 외화 원화환산 재계산
+  rec.fx_krw = (rec.fx_usd||0)*FX.USD + (rec.fx_eur||0)*FX.EUR +
+               (rec.fx_jpy||0)*FX.JPY + (rec.fx_gbp||0)*FX.GBP + (rec.fx_cny||0)*FX.CNY;
+
+  try {
+    await DB.updateOne('daily', rec);
+    showToast(rec.date + ' 수정 완료', 'success');
+    closeHistoryEdit();
+    filterHistory();
+    if (typeof renderDashboard === 'function') renderDashboard();
+  } catch(e) {
+    showToast('저장 실패: ' + e.message, 'error');
+  }
+}
+
 function filterHistory() {
   const from = document.getElementById('h-from').value, to = document.getElementById('h-to').value;
   const records = getFiltered('daily').filter(r => (!from||r.date>=from)&&(!to||r.date<=to)).sort((a,b)=>b.date.localeCompare(a.date));
   const tbody = document.getElementById('history-tbody');
-  if (!records.length) return tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:24px;color:var(--text3);">데이터가 없습니다</td></tr>';
+  if (!records.length) return tbody.innerHTML = '<tr><td colspan="15" style="text-align:center;padding:24px;color:var(--text3);">데이터가 없습니다</td></tr>';
 
-  // 날짜별 운용자금·차입금·지분투자 스냅샷 계산
   const allInv = DB.get('investments');
   const allLoans = DB.get('loans');
   const allEq = DB.get('equities');
@@ -8510,17 +8844,14 @@ function filterHistory() {
     const fxKrw = r.fx_krw || (r.fx_usd||0)*FX.USD + (r.fx_eur||0)*FX.EUR + (r.fx_jpy||0)*FX.JPY + (r.fx_gbp||0)*FX.GBP + (r.fx_cny||0)*FX.CNY;
     const opTotal = opKrw + fxKrw;
 
-    // 해당 날짜 기준 운용자금 (active이면서 가입일 ≤ 날짜 ≤ 만기일)
     const invOnDate = allInv.filter(i => i.active && i.company === r.company &&
       (!i.start || i.start <= r.date) && (!i.maturity || i.maturity >= r.date));
     const invTotal = invOnDate.reduce((s, i) => s + calcKRW(i.amount, i.currency), 0);
 
-    // 해당 날짜 기준 차입금
     const loanOnDate = allLoans.filter(l => l.active && l.company === r.company &&
       (!l.start || l.start <= r.date) && (!l.maturity || l.maturity >= r.date));
     const loanTotal = loanOnDate.reduce((s, l) => s + calcKRW(l.amount, l.currency), 0);
 
-    // 해당 날짜 기준 지분투자 최신 평가금액
     const eqMap = {};
     allEq.filter(e => e.company === r.company && e.date <= r.date)
       .sort((a,b) => a.date.localeCompare(b.date))
@@ -8529,9 +8860,11 @@ function filterHistory() {
 
     const netCash = opTotal + invTotal - loanTotal;
     const netColor = netCash >= 0 ? 'var(--green)' : 'var(--red)';
+    const isHoliday = !isBusinessDay(r.date);
+    const rowBg = isHoliday ? 'background:rgba(245,158,11,0.05);' : '';
 
-    return '<tr>' +
-      '<td>' + r.date + '</td>' +
+    return '<tr data-id="' + r.id + '" style="' + rowBg + '">' +
+      '<td>' + r.date + (isHoliday ? ' <span style="font-size:9px;color:var(--amber);">휴일</span>' : '') + '</td>' +
       '<td style="font-size:11px;color:var(--text3);">' + r.company + '</td>' +
       '<td class="td-num">' + fmtKRW(opKrw) + '</td>' +
       '<td class="td-num">' + (r.fx_usd > 0 ? r.fx_usd.toLocaleString() + '$' : '—') + '</td>' +
@@ -8545,9 +8878,12 @@ function filterHistory() {
       '<td class="td-num" style="color:var(--pink);">' + (eqTotal > 0 ? fmtKRW(eqTotal) : '—') + '</td>' +
       '<td class="td-num" style="color:' + netColor + ';font-weight:600;">' + fmtKRW(netCash) + '</td>' +
       '<td style="font-size:11px;color:var(--text3);">' + (r.memo || '') + '</td>' +
+      '<td><button class="btn btn-ghost" style="padding:2px 8px;font-size:10px;white-space:nowrap;" ' +
+      'onclick="openHistoryEdit(\'' + r.id + '\')">수정</button></td>' +
       '</tr>';
   }).join('');
 }
+
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -8713,17 +9049,6 @@ function filterHistory() {
     </div>
   </div>
 </div>
-
-<style>
-.upd-section { margin-bottom:16px; }
-.upd-section:last-child { margin-bottom:0; }
-.upd-section-title { font-size:13px;font-weight:600;color:var(--text);margin-bottom:7px;padding-bottom:5px;border-bottom:0.5px solid var(--border); }
-.upd-item { font-size:12px;padding:4px 0 4px 20px;color:var(--text2);position:relative;line-height:1.5; }
-.upd-item::before { position:absolute;left:4px;top:5px;font-size:11px; }
-.upd-new::before    { content:"✦"; color:#60a5fa; }
-.upd-change::before { content:"▸"; color:#f59e0b; }
-.upd-keep::before   { content:"✓"; color:#34d399; }
-</style>
 
 <script>
 (function() {
