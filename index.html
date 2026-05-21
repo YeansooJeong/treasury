@@ -2359,7 +2359,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
 
                 <!-- 국채 전용 -->
                 <div class="form-group eq-field-bond" style="display:none;position:relative;">
-                  <label>채권명</label>
+                  <label>채권명 검색</label>
                   <input type="text" id="b-name" placeholder="국고채, 통안채 등 입력" oninput="searchBond(this.value)" autocomplete="off">
                   <div id="v-bond-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;max-height:180px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.4);"></div>
                 </div>
@@ -2445,7 +2445,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
                     <span class="unit">원</span>
                   </div>
                   <!-- 국채 평가금액 (숨김, b-value) -->
-                  <input type="text" id="b-value" readonly style="display:none;">
+                  <input type="text" id="b-value" readonly class="eq-field-bond eq-field-other" style="display:none;">
                 </div>
               </div>
               <div class="form-actions">
@@ -2838,15 +2838,6 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
 <div id="toast"></div>
 
 <script>
-// [BugFix] AbortSignal.timeout 폴리필 (구형 브라우저/사내망 환경 호환성)
-if (typeof AbortSignal !== 'undefined' && !AbortSignal.timeout) {
-  AbortSignal.timeout = function(ms) {
-    const controller = new AbortController();
-    setTimeout(() => controller.abort(), ms);
-    return controller.signal;
-  };
-}
-
 // ══════════════════════════════════════════════════════
 // 공통 포맷터 및 DB 유틸
 // ══════════════════════════════════════════════════════
@@ -7579,8 +7570,6 @@ function calcBondEquityValue() {
   const val   = qty * price;
   const valEl = document.getElementById('b-value');
   if (valEl) valEl.value = val ? val.toLocaleString() : '0';
-  const evalEl = document.getElementById('e-value');
-  if (evalEl) evalEl.value = val ? val.toLocaleString() : '0';
   // 상태 표시 업데이트 (기준가가 있고 좌수도 있을 때)
   const stEl = document.getElementById('b-price-status');
   if (stEl && price > 0 && qty > 0) {
@@ -8262,7 +8251,7 @@ function renderWaterfallDashboard(opTotal, opKrw, opFx, invAvail, invLocked,
   // 오늘 운전자금 미입력 (공휴일/주말 제외)
   if (todayIsBusinessDay()) {
     if (!latestRec || latestRec.date < today3) {
-      alerts.push({ level:'danger', issueKey: makeIssueKey('input', today3),
+      alerts.push({ level:'danger', issueKey: makeIssueKey('input', 'daily'),  // 날짜 제외 — 운전자금 미입력은 단일 이슈
         title:'오늘 운전자금 미입력', desc:'기준일 ' + today3 });
     }
   }
@@ -8272,7 +8261,7 @@ function renderWaterfallDashboard(opTotal, opKrw, opFx, invAvail, invLocked,
     const d = Math.ceil((new Date(l.maturity) - new Date()) / 86400000);
     if (d <= 90) {
       alerts.push({ level: d<=30?'danger':'warn',
-        issueKey: makeIssueKey('loan', l.id),
+        issueKey: makeIssueKey('loan', l.id),  // D-day 제외 — 키가 매일 바뀌면 스레드 연속성 깨짐
         title: (l.lender||'') + ' ' + fmtKRW(calcKRW(l.amount,l.currency)) + ' D-' + d,
         desc: '만기 ' + l.maturity + ' — 갱신/상환 검토' });
     }
@@ -8283,7 +8272,7 @@ function renderWaterfallDashboard(opTotal, opKrw, opFx, invAvail, invLocked,
     if (e.market !== '비상장') {
       const diff = Math.floor((new Date(today3) - new Date(e.date)) / 86400000);
       if (diff >= 2) alerts.push({ level:'info',
-        issueKey: makeIssueKey('equity', e.name.replace(/\s/g,'')),
+        issueKey: makeIssueKey('equity', e.name.replace(/\s/g,'')),  // diff 제외 — 동일 이슈 키 유지
         title: e.name + ' 주가 미갱신', desc: '최종 ' + e.date + ' (' + diff + '일 경과)' });
     }
   });
@@ -8857,9 +8846,27 @@ function onEqTypeChange(val) {
     el.style.setProperty('display', 'none', 'important');
   }
 
-  document.querySelectorAll('.eq-field-stock').forEach(function(el) { val==='stock' ? show(el) : hide(el); });
-  document.querySelectorAll('.eq-field-bond').forEach(function(el) { (val==='bond'||val==='other') ? show(el) : hide(el); });
-  document.querySelectorAll('.eq-field-other').forEach(function(el) { val==='other' ? show(el) : hide(el); });
+  // 각 요소를 직접 순회 — 복합 클래스 충돌 방지
+  document.querySelectorAll('.form-group, .input-with-unit').forEach(function(el) {
+    var isBond  = el.classList.contains('eq-field-bond');
+    var isOther = el.classList.contains('eq-field-other');
+    var isStock = el.classList.contains('eq-field-stock');
+    var isBothBO = isBond && isOther; // eq-field-bond eq-field-other 복합
+
+    if (isStock && !isBond && !isOther) {
+      // 주식 전용
+      val === 'stock' ? show(el) : hide(el);
+    } else if (isBothBO) {
+      // 좌수/기준가/평가금액 — bond OR other 모두 표시
+      (val === 'bond' || val === 'other') ? show(el) : hide(el);
+    } else if (isBond && !isOther) {
+      // 국채 전용 (채권명, ISIN 등)
+      (val === 'bond' || val === 'other') ? show(el) : hide(el);
+    } else if (isOther && !isBond) {
+      // 비상장 전용
+      val === 'other' ? show(el) : hide(el);
+    }
+  });
 
   // 가용 select
   var ea = document.getElementById('e-available'); var ba = document.getElementById('b-available');
