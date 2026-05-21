@@ -4433,12 +4433,22 @@ function updateTickerItem(code, result, silent) {
   }
 
   const priceStr = result.price.toLocaleString() + '원';
-  let changeStr  = '—', changeClass = 'flat';
-  if (result.changeRate !== null && result.change !== null) {
-    const sign = result.change >= 0 ? '+' : '';
-    changeStr  = sign + result.change.toLocaleString() +
-                 ' (' + sign + result.changeRate.toFixed(2) + '%)';
-    changeClass = result.change > 0 ? 'up' : result.change < 0 ? 'down' : 'flat';
+  var changeStr = '—', changeClass = 'flat';
+  // change/changeRate: null, undefined, 0 모두 처리
+  var chg  = result.change     != null ? Number(result.change)     : null;
+  var chgR = result.changeRate != null ? Number(result.changeRate) : null;
+  if (chg !== null && !isNaN(chg)) {
+    var sign   = chg >= 0 ? '+' : '';
+    var rateStr = (chgR !== null && !isNaN(chgR)) ? ' (' + sign + chgR.toFixed(2) + '%)' : '';
+    changeStr   = sign + Math.round(chg).toLocaleString() + rateStr;
+    changeClass = chg > 0 ? 'up' : chg < 0 ? 'down' : 'flat';
+  } else if (result.prevClose != null && result.price != null) {
+    // change 필드 없으면 prevClose로 직접 계산
+    var calcChg  = result.price - result.prevClose;
+    var calcRate = result.prevClose !== 0 ? (calcChg / result.prevClose * 100) : 0;
+    var sign2    = calcChg >= 0 ? '+' : '';
+    changeStr    = sign2 + Math.round(calcChg).toLocaleString() + ' (' + sign2 + calcRate.toFixed(2) + '%)';
+    changeClass  = calcChg > 0 ? 'up' : calcChg < 0 ? 'down' : 'flat';
   }
 
   // ── 부드러운 업데이트: 값이 바뀐 경우에만 DOM 갱신 (깜빡임 방지) ──
@@ -7520,9 +7530,12 @@ async function fetchBondPriceForEquity() {
     const data = await resp.json();
 
     if (data.success) {
-      // 채권명 자동 입력
-      if (!document.getElementById('b-name').value) {
-        document.getElementById('b-name').value = data.name;
+      // 채권명 자동 입력 (항상 덮어씀 — ISIN에서 가져온 정확한 명칭 우선)
+      var bNameEl = document.getElementById('b-name');
+      if (bNameEl) {
+        bNameEl.value = data.name || '';
+        // 필드가 숨겨진 경우 강제 표시 (eq-field-bond가 숨겨진 경우 대비)
+        bNameEl.closest('.form-group') && (bNameEl.closest('.form-group').style.setProperty('display','block','important'));
       }
       document.getElementById('b-price').value = data.price.toLocaleString();
       if (data.rate != null) {
@@ -8820,20 +8833,32 @@ function closeEqForm() {
 }
 
 function onEqTypeChange(val) {
-  // stock 필드
-  document.querySelectorAll('.eq-field-stock').forEach(function(el) { el.style.display = val==='stock' ? '' : 'none'; });
-  // bond 필드
-  document.querySelectorAll('.eq-field-bond').forEach(function(el) { el.style.display = (val==='bond'||val==='other') ? '' : 'none'; });
-  // other 전용
-  document.querySelectorAll('.eq-field-other').forEach(function(el) { el.style.display = val==='other' ? '' : 'none'; });
-  // 가용 select 표시
+  // 인라인 style="display:none"을 강제로 덮기 위해 removeProperty + setProperty 사용
+  function show(el) {
+    el.style.removeProperty('display');
+    el.style.setProperty('display', 'block', 'important');
+    // form-group은 원래 block이 맞지만, input-with-unit이 flex인 경우 체크
+    if (el.classList.contains('input-with-unit')) {
+      el.style.setProperty('display', 'flex', 'important');
+    }
+  }
+  function hide(el) {
+    el.style.setProperty('display', 'none', 'important');
+  }
+
+  document.querySelectorAll('.eq-field-stock').forEach(function(el) { val==='stock' ? show(el) : hide(el); });
+  document.querySelectorAll('.eq-field-bond').forEach(function(el) { (val==='bond'||val==='other') ? show(el) : hide(el); });
+  document.querySelectorAll('.eq-field-other').forEach(function(el) { val==='other' ? show(el) : hide(el); });
+
+  // 가용 select
   var ea = document.getElementById('e-available'); var ba = document.getElementById('b-available');
-  if (ea) ea.style.display = val==='stock' ? '' : 'none';
-  if (ba) ba.style.display = (val==='bond'||val==='other') ? '' : 'none';
-  // 평가금액 ID 연동
+  if (ea) ea.parentElement && (val==='stock' ? show(ea) : hide(ea));
+  if (ba) ba.parentElement && ((val==='bond'||val==='other') ? show(ba) : hide(ba));
+
+  // 평가금액
   var ev = document.getElementById('e-value'); var bv = document.getElementById('b-value');
-  if (ev) ev.style.display = val==='stock' ? '' : 'none';
-  if (bv) bv.style.display = (val==='bond'||val==='other') ? '' : 'none';
+  if (ev) val==='stock' ? show(ev) : hide(ev);
+  if (bv) (val==='bond'||val==='other') ? show(bv) : hide(bv);
 }
 
 function clearEqFormSlide() {
