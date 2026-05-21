@@ -114,6 +114,12 @@ async function fetchNaver(code6: string): Promise<PriceResult | null> {
       const price = parseInt(String(priceRaw).replace(/,/g, ''), 10)
       if (!(price > 100)) continue
 
+      // 부호 확인 (1: 상한가, 2: 상승, 3: 보합, 4: 하한가, 5: 하락)
+      const signCode = (data as any)?.compareToPreviousPrice?.code ??
+                       (data as any)?.stockPrice?.compareToPreviousPrice?.code ??
+                       '';
+      const isNegative = signCode === '4' || signCode === '5';
+
       // 전일 대비 변동액 — compareToPreviousClosePrice 필드
       const changeRaw: unknown =
         (data as any)?.compareToPreviousClosePrice ??
@@ -121,11 +127,20 @@ async function fetchNaver(code6: string): Promise<PriceResult | null> {
         (data as any)?.fluctuations ??
         null
 
-      const changeNum  = changeRaw !== null ? parseInt(String(changeRaw).replace(/,/g, ''), 10) : null
+      let changeNum  = changeRaw !== null ? parseInt(String(changeRaw).replace(/,/g, ''), 10) : null
+      if (changeNum !== null && !isNaN(changeNum) && isNegative) {
+        changeNum = -Math.abs(changeNum);
+      }
+
       const prevClose  = (changeNum !== null && !isNaN(changeNum)) ? price - changeNum : null
-      const changeRate = prevClose !== null && prevClose > 0
-        ? Math.round((price - prevClose) / prevClose * 10000) / 100
-        : null
+      
+      let changeRate: number | null = null;
+      const changeRateRaw = (data as any)?.fluctuationsRatio ?? (data as any)?.stockPrice?.fluctuationsRatio;
+      if (changeRateRaw !== undefined && changeRateRaw !== null) {
+        changeRate = parseFloat(String(changeRateRaw));
+      } else if (prevClose !== null && prevClose > 0) {
+        changeRate = Math.round((price - prevClose) / prevClose * 10000) / 100;
+      }
 
       const today = new Date().toISOString().slice(0, 10)
       return { price, prevClose, change: changeNum, changeRate, date: today, source: 'naver' }
