@@ -1418,6 +1418,21 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
   .upd-change::before { content:"▸"; color:#f59e0b; }
   .upd-keep::before   { content:"✓"; color:#34d399; }
 
+
+  /* ── 이슈 이력 수정/삭제 버튼 ── */
+  .ih-comment-actions { display:flex; gap:4px; align-items:center; margin-left:auto; flex-shrink:0; opacity:0; transition:opacity .15s; }
+  .ih-comment:hover .ih-comment-actions { opacity:1; }
+  .ih-edit-btn { font-size:10px; padding:2px 7px; border:0.5px solid var(--border2); border-radius:4px; background:transparent; color:var(--text3); cursor:pointer; font-family:inherit; transition:background .12s, color .12s; }
+  .ih-edit-btn:hover { background:var(--bg3); color:var(--text); }
+  .ih-del-btn  { font-size:10px; padding:2px 7px; border:0.5px solid rgba(239,68,68,0.3); border-radius:4px; background:transparent; color:var(--red); cursor:pointer; font-family:inherit; transition:background .12s; }
+  .ih-del-btn:hover  { background:rgba(239,68,68,0.08); }
+  .ih-edit-form { padding:8px 12px; background:var(--bg3); border-top:1px solid var(--fp-kpi-border); display:flex; flex-direction:column; gap:6px; }
+  .ih-edit-form textarea { width:100%; font-size:12px; padding:7px 10px; border:1px solid var(--border2); border-radius:6px; background:var(--bg2); color:var(--text); font-family:inherit; resize:vertical; min-height:60px; line-height:1.5; }
+  .ih-edit-form select  { font-size:12px; padding:5px 8px; border:1px solid var(--border2); border-radius:6px; background:var(--bg2); color:var(--text); font-family:inherit; }
+  .ih-edit-actions { display:flex; gap:6px; justify-content:flex-end; }
+  .ih-save-btn   { font-size:12px; padding:5px 14px; border:none; border-radius:6px; background:var(--accent); color:#fff; cursor:pointer; font-family:inherit; font-weight:500; }
+  .ih-cancel-btn { font-size:12px; padding:5px 14px; border:0.5px solid var(--border2); border-radius:6px; background:transparent; color:var(--text3); cursor:pointer; font-family:inherit; }
+
   /* ══ 이슈 이력 페이지 ══ */
   .ih-filter-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
   .ih-filter-row select, .ih-filter-row input { font-size:12px; padding:5px 10px; border:1px solid var(--border2); border-radius:7px; background:var(--bg3); color:var(--text); font-family:inherit; }
@@ -9172,6 +9187,101 @@ async function updateIssueStatus(issueKey, newStatus) {
 // ═══════════════════════════════════════════════════════════════════════
 //  이슈 이력 페이지 렌더
 // ═══════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════
+//  이슈 이력 코멘트 수정 / 삭제
+// ═══════════════════════════════════════════════════════════════════════
+
+// ── 수정 폼 열기 ────────────────────────────────────────────────────
+function openIhEdit(cmId) {
+  // 이미 열린 수정 폼 닫기
+  var existing = document.getElementById('ih-edit-form-' + cmId);
+  if (existing) { existing.remove(); return; }
+
+  // 현재 본문 읽기
+  var bodyEl = document.getElementById('ih-body-' + cmId);
+  if (!bodyEl) return;
+  var currentBody = bodyEl.textContent || '';
+
+  // 현재 상태 배지에서 status 읽기
+  var cmEl   = document.getElementById('ih-cm-' + cmId);
+  var badge  = cmEl ? cmEl.querySelector('.issue-status-badge') : null;
+  var stMap  = { '미조치':'open', '검토중':'review', '완료':'done' };
+  var curSt  = badge ? (stMap[badge.textContent] || 'open') : 'open';
+
+  var formHtml = '<div class="ih-edit-form" id="ih-edit-form-' + cmId + '">' +
+    '<div style="display:flex;gap:8px;align-items:center;">' +
+      '<span style="font-size:11px;color:var(--text3);white-space:nowrap;">상태:</span>' +
+      '<select id="ih-edit-status-' + cmId + '" style="font-size:12px;padding:4px 8px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);color:var(--text);font-family:inherit;">' +
+        '<option value="open"' + (curSt==='open'?' selected':'') + '>미조치</option>' +
+        '<option value="review"' + (curSt==='review'?' selected':'') + '>검토중</option>' +
+        '<option value="done"' + (curSt==='done'?' selected':'') + '>완료</option>' +
+      '</select>' +
+    '</div>' +
+    '<textarea id="ih-edit-body-' + cmId + '">' + currentBody + '</textarea>' +
+    '<div class="ih-edit-actions">' +
+      '<button class="ih-cancel-btn" onclick="closeIhEdit(\'' + cmId + '\')">취소</button>' +
+      '<button class="ih-save-btn"   onclick="saveIhEdit(\'' + cmId + '\')">저장</button>' +
+    '</div>' +
+  '</div>';
+
+  if (bodyEl.parentElement) {
+    bodyEl.insertAdjacentHTML('afterend', formHtml);
+    // textarea 포커스
+    setTimeout(function() {
+      var ta = document.getElementById('ih-edit-body-' + cmId);
+      if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+    }, 50);
+  }
+}
+
+function closeIhEdit(cmId) {
+  var form = document.getElementById('ih-edit-form-' + cmId);
+  if (form) form.remove();
+}
+
+async function saveIhEdit(cmId) {
+  var ta  = document.getElementById('ih-edit-body-' + cmId);
+  var sel = document.getElementById('ih-edit-status-' + cmId);
+  if (!ta || !ta.value.trim()) { showToast('내용을 입력해주세요', 'error'); return; }
+
+  var newBody   = ta.value.trim();
+  var newStatus = sel ? sel.value : 'open';
+
+  try {
+    await sbFetch('/rest/v1/issue_comments?id=eq.' + cmId, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ body: newBody, status: newStatus })
+    });
+
+    showToast('코멘트 수정 완료', 'success');
+    closeIhEdit(cmId);
+    renderIssueHistory(); // 목록 새로고침
+    // 대시보드 이슈 카드도 갱신
+    try { renderDashboard(); } catch(e) {}
+  } catch(e) {
+    showToast('수정 실패: ' + e.message, 'error');
+  }
+}
+
+// ── 코멘트 삭제 ─────────────────────────────────────────────────────
+async function deleteIhComment(cmId) {
+  if (!confirm('이 코멘트를 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.')) return;
+
+  try {
+    await sbFetch('/rest/v1/issue_comments?id=eq.' + cmId, {
+      method: 'DELETE',
+      headers: { 'Prefer': 'return=minimal' }
+    });
+
+    showToast('코멘트 삭제 완료', 'success');
+    renderIssueHistory();
+    try { renderDashboard(); } catch(e) {}
+  } catch(e) {
+    showToast('삭제 실패: ' + e.message, 'error');
+  }
+}
+
 async function renderIssueHistory() {
   var listEl = document.getElementById('ih-list');
   if (!listEl) return;
@@ -9226,14 +9336,23 @@ async function renderIssueHistory() {
     var commentsHTML = g.items.map(function(cm, idx) {
       var dt = cm.created_at ? new Date(cm.created_at).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
       var cStBadge = cm.status ? '<span class="issue-status-badge ' + (stCls[cm.status]||'') + '">' + (stLbl[cm.status]||cm.status) + '</span>' : '';
-      return '<div class="ih-comment">' +
+      // 수정/삭제 버튼: master 또는 본인 작성 코멘트
+      var isMine = currentUser && (currentUser.role === 'master' || cm.user_label === (currentUser.label || currentUser.role));
+      var actBtns = isMine
+        ? '<div class="ih-comment-actions">' +
+            '<button class="ih-edit-btn" onclick="openIhEdit(\"' + cm.id + '\")" title="수정">✏ 수정</button>' +
+            '<button class="ih-del-btn"  onclick="deleteIhComment(\"' + cm.id + '\")" title="삭제">✕ 삭제</button>' +
+          '</div>'
+        : '';
+      return '<div class="ih-comment" id="ih-cm-' + cm.id + '">' +
         '<div class="ih-comment-head">' +
           '<div class="ih-comment-user">' +
             '<span style="font-size:12px;margin-right:3px;">👤</span>' + (cm.user_label||'') + cStBadge +
           '</div>' +
           '<span class="ih-comment-time">🕐 ' + dt + '</span>' +
+          actBtns +
         '</div>' +
-        '<div class="ih-comment-body">' + cm.body + '</div>' +
+        '<div class="ih-comment-body" id="ih-body-' + cm.id + '">' + cm.body + '</div>' +
         '</div>';
     }).join('');
 
