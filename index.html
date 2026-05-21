@@ -4438,8 +4438,12 @@ function updateTickerItem(code, result, silent) {
   var chg  = result.change     != null ? Number(result.change)     : null;
   var chgR = result.changeRate != null ? Number(result.changeRate) : null;
   if (chg !== null && !isNaN(chg)) {
-    var sign   = chg >= 0 ? '+' : '';
-    var rateStr = (chgR !== null && !isNaN(chgR)) ? ' (' + sign + chgR.toFixed(2) + '%)' : '';
+    var sign   = chg > 0 ? '+' : '';
+    var rateStr = '';
+    if (chgR !== null && !isNaN(chgR)) {
+      var rSign = chgR > 0 ? '+' : '';
+      rateStr = ' (' + rSign + chgR.toFixed(2) + '%)';
+    }
     changeStr   = sign + Math.round(chg).toLocaleString() + rateStr;
     changeClass = chg > 0 ? 'up' : chg < 0 ? 'down' : 'flat';
   } else if (result.prevClose != null && result.price != null) {
