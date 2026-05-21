@@ -2359,7 +2359,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
 
                 <!-- 국채 전용 -->
                 <div class="form-group eq-field-bond" style="display:none;position:relative;">
-                  <label>채권명 검색</label>
+                  <label>채권명</label>
                   <input type="text" id="b-name" placeholder="국고채, 통안채 등 입력" oninput="searchBond(this.value)" autocomplete="off">
                   <div id="v-bond-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;max-height:180px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.4);"></div>
                 </div>
@@ -2838,6 +2838,15 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
 <div id="toast"></div>
 
 <script>
+// [BugFix] AbortSignal.timeout 폴리필 (구형 브라우저/사내망 환경 호환성)
+if (typeof AbortSignal !== 'undefined' && !AbortSignal.timeout) {
+  AbortSignal.timeout = function(ms) {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), ms);
+    return controller.signal;
+  };
+}
+
 // ══════════════════════════════════════════════════════
 // 공통 포맷터 및 DB 유틸
 // ══════════════════════════════════════════════════════
@@ -4438,12 +4447,8 @@ function updateTickerItem(code, result, silent) {
   var chg  = result.change     != null ? Number(result.change)     : null;
   var chgR = result.changeRate != null ? Number(result.changeRate) : null;
   if (chg !== null && !isNaN(chg)) {
-    var sign   = chg > 0 ? '+' : '';
-    var rateStr = '';
-    if (chgR !== null && !isNaN(chgR)) {
-      var rSign = chgR > 0 ? '+' : '';
-      rateStr = ' (' + rSign + chgR.toFixed(2) + '%)';
-    }
+    var sign   = chg >= 0 ? '+' : '';
+    var rateStr = (chgR !== null && !isNaN(chgR)) ? ' (' + sign + chgR.toFixed(2) + '%)' : '';
     changeStr   = sign + Math.round(chg).toLocaleString() + rateStr;
     changeClass = chg > 0 ? 'up' : chg < 0 ? 'down' : 'flat';
   } else if (result.prevClose != null && result.price != null) {
@@ -7574,6 +7579,8 @@ function calcBondEquityValue() {
   const val   = qty * price;
   const valEl = document.getElementById('b-value');
   if (valEl) valEl.value = val ? val.toLocaleString() : '0';
+  const evalEl = document.getElementById('e-value');
+  if (evalEl) evalEl.value = val ? val.toLocaleString() : '0';
   // 상태 표시 업데이트 (기준가가 있고 좌수도 있을 때)
   const stEl = document.getElementById('b-price-status');
   if (stEl && price > 0 && qty > 0) {
@@ -8265,7 +8272,7 @@ function renderWaterfallDashboard(opTotal, opKrw, opFx, invAvail, invLocked,
     const d = Math.ceil((new Date(l.maturity) - new Date()) / 86400000);
     if (d <= 90) {
       alerts.push({ level: d<=30?'danger':'warn',
-        issueKey: makeIssueKey('loan', l.id, 'D'+d),
+        issueKey: makeIssueKey('loan', l.id),
         title: (l.lender||'') + ' ' + fmtKRW(calcKRW(l.amount,l.currency)) + ' D-' + d,
         desc: '만기 ' + l.maturity + ' — 갱신/상환 검토' });
     }
@@ -8276,7 +8283,7 @@ function renderWaterfallDashboard(opTotal, opKrw, opFx, invAvail, invLocked,
     if (e.market !== '비상장') {
       const diff = Math.floor((new Date(today3) - new Date(e.date)) / 86400000);
       if (diff >= 2) alerts.push({ level:'info',
-        issueKey: makeIssueKey('equity', e.name.replace(/\s/g,''), diff),
+        issueKey: makeIssueKey('equity', e.name.replace(/\s/g,'')),
         title: e.name + ' 주가 미갱신', desc: '최종 ' + e.date + ' (' + diff + '일 경과)' });
     }
   });
