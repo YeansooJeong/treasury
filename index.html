@@ -6248,7 +6248,7 @@ async function refreshBondPrice(id, bondName) {
 
     if (data.success) {
       item.bondPrice = data.price;
-      item.amount    = (item.bondQty || 0) * data.price;
+      item.amount    = Math.round((item.bondQty || 0) * (data.price / 10)); // 기준가÷10×좌수
       item.priceDate = data.date;
       item.rate      = data.rate ?? item.rate;
       await DB.updateOne('investments', item);
@@ -6346,7 +6346,7 @@ async function saveInvestment() {
     item.bondTicker = document.getElementById('v-bond-ticker').value;
     item.bondQty    = qty;
     item.bondPrice  = price;
-    item.amount     = qty * price;  // 평가금액 = 좌수 × 기준가
+    item.amount     = Math.round(qty * (price / 10)); // 기준가÷10×좌수  // 평가금액 = 좌수 × 기준가
     item.priceDate  = new Date().toISOString().slice(0,10);
   } else {
     const amount = parseNum(document.getElementById('v-amount').value);
@@ -7563,17 +7563,22 @@ async function fetchBondPriceForEquity() {
   }
 }
 
-/** 좌수 × 기준가 자동계산 */
+/** 좌수 × (기준가 ÷ 10) 자동계산
+ *  국채 기준가는 액면 10,000원 기준 호가이므로
+ *  실제 1좌당 가격 = 기준가 ÷ 10
+ *  예) 기준가 7,015원 → 1좌 = 701.5원
+ */
 function calcBondEquityValue() {
-  const qty   = parseNum(document.getElementById('b-qty').value);
-  const price = parseNum(document.getElementById('b-price').value);
-  const val   = qty * price;
-  const valEl = document.getElementById('b-value');
-  if (valEl) valEl.value = val ? val.toLocaleString() : '0';
-  // 상태 표시 업데이트 (기준가가 있고 좌수도 있을 때)
+  const qty        = parseNum(document.getElementById('b-qty').value);
+  const priceRaw   = parseNum(document.getElementById('b-price').value);
+  const pricePerLot = priceRaw / 10;   // 기준가 ÷ 10 = 1좌당 실제 가격
+  const val        = qty * pricePerLot;
+  const valEl      = document.getElementById('b-value');
+  if (valEl) valEl.value = val ? Math.round(val).toLocaleString() : '0';
+
   const stEl = document.getElementById('b-price-status');
-  if (stEl && price > 0 && qty > 0) {
-    stEl.textContent = `📊 ${qty.toLocaleString()}좌 × ${price.toLocaleString()}원 = 평가금액 ${fmtKRW(val)}`;
+  if (stEl && priceRaw > 0 && qty > 0) {
+    stEl.textContent = `📊 ${qty.toLocaleString()}좌 × ${pricePerLot.toLocaleString()}원(=${priceRaw.toLocaleString()}÷10) = 평가금액 ${fmtKRW(Math.round(val))}`;
     stEl.style.color = 'var(--green)';
   }
 }
@@ -7694,7 +7699,7 @@ async function refreshBondEquityPrice(id, bondName) {
     const data = await resp.json();
     if (data.success) {
       item.bondPrice = data.price;
-      item.amount    = (item.bondQty || 0) * data.price;
+      item.amount    = Math.round((item.bondQty || 0) * (data.price / 10)); // 기준가÷10×좌수
       item.priceDate = data.date;
       if (data.rate != null) item.rate = data.rate;
       await DB.updateOne('investments', item);
@@ -7733,7 +7738,7 @@ async function runBulkBondRefresh() {
       const data = await resp.json();
       if (data.success) {
         b.bondPrice = data.price;
-        b.amount    = (b.bondQty || 0) * data.price;
+        b.amount    = Math.round((b.bondQty || 0) * (data.price / 10)); // 기준가÷10×좌수
         b.priceDate = data.date;
         if (data.rate != null) b.rate = data.rate;
         await DB.updateOne('investments', b);
