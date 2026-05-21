@@ -197,10 +197,16 @@ function fetchViaNaver(code6) {
       // basic 엔드포인트: closePrice, compareToPreviousClosePrice, fluctuationsRatio
       if (data.closePrice !== undefined && data.closePrice > 0) {
         const price      = Math.round(data.closePrice);
-        const change     = data.compareToPreviousClosePrice != null
+        let change       = data.compareToPreviousClosePrice != null
                            ? Math.round(data.compareToPreviousClosePrice) : null;
         const changeRate = data.fluctuationsRatio != null
                            ? parseFloat(data.fluctuationsRatio) : null;
+        
+        const signCode = data.compareToPreviousPrice && data.compareToPreviousPrice.code;
+        if (change !== null && (signCode === '4' || signCode === '5')) {
+          change = -Math.abs(change);
+        }
+
         const prevClose  = (price !== null && change !== null) ? price - change : null;
 
         Logger.log('Naver 성공(basic): ' + code6 + ' ' + price + '원 등락: ' + change);
@@ -212,10 +218,16 @@ function fetchViaNaver(code6) {
         const qi    = data.data.quoteInfo;
         const price = Math.round(qi.closePrice || qi.now || 0);
         if (price > 0) {
-          const change     = qi.compareToPreviousClosePrice != null
+          let change       = qi.compareToPreviousClosePrice != null
                              ? Math.round(qi.compareToPreviousClosePrice) : null;
           const changeRate = qi.fluctuationsRatio != null
                              ? parseFloat(qi.fluctuationsRatio) : null;
+          
+          const signCode = qi.compareToPreviousPrice && qi.compareToPreviousPrice.code;
+          if (change !== null && (signCode === '4' || signCode === '5')) {
+            change = -Math.abs(change);
+          }
+
           const prevClose  = (price && change !== null) ? price - change : null;
 
           Logger.log('Naver 성공(integration): ' + code6 + ' ' + price + '원');
