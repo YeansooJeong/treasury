@@ -7595,9 +7595,11 @@ function clearBondEquityForm() {
 
 /** 국채 저장 */
 async function saveBondEquity() {
-  const companyEl = document.getElementById('b-company');
+  // 법인·날짜는 주식 폼과 공유하는 e-company, e-date 사용
+  const companyEl = document.getElementById('e-company');
   const company   = companyEl ? companyEl.value : currentCompany;
-  const date      = document.getElementById('b-date').value;
+  const dateEl    = document.getElementById('e-date');
+  const date      = dateEl ? dateEl.value : new Date().toISOString().slice(0,10);
   const name      = document.getElementById('b-name').value.trim();
   const isinCd    = document.getElementById('b-isin').value.trim().toUpperCase();
   const qty       = parseNum(document.getElementById('b-qty').value);
@@ -7611,7 +7613,7 @@ async function saveBondEquity() {
     return;
   }
 
-  const total_value = qty * price;
+  const total_value = Math.round(qty * (price / 10)); // 기준가÷10×좌수
 
   const item = {
     id:          crypto.randomUUID(),
