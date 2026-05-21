@@ -7797,8 +7797,14 @@ function toggleDashEditPanel() {
 async function migrateBondFromInvestments() {
   const allInv = DB.get('investments');
   // 운용자금에 남아있는 구형 국채 — bondName이 없거나 migratedFrom이 없는 것
+  // product 값이 다양할 수 있음: '국채', '국공채', '보유 국고채' 등
+  const BOND_PRODUCTS = ['국채', '국공채', '보유 국고채', '국고채', '통안채', '지방채'];
+  const isBondProduct = function(p) {
+    if (!p) return false;
+    return BOND_PRODUCTS.some(function(bp) { return p.indexOf(bp) !== -1; });
+  };
   const toBond = allInv.filter(function(x) {
-    return x.active && x.product === '국채' && !x.migratedFrom;
+    return x.active && isBondProduct(x.product) && !x.migratedFrom;
   });
 
   if (!toBond.length) {
@@ -8769,8 +8775,11 @@ function switchEqTab(tab, btn) {
   });
   // 신규 등록 폼 슬라이드 탭에 맞게 조정
   var sel = document.getElementById('eq-type-select');
-  if (sel && _eqFormOpen) sel.value = tab === 'other' ? 'other' : tab;
-  if (_eqFormOpen) onEqTypeChange(tab === 'other' ? 'other' : tab);
+  var tabVal = tab === 'bond' ? 'bond' : tab === 'other' ? 'other' : 'stock';
+  if (sel && _eqFormOpen) {
+    sel.value = tabVal;
+    onEqTypeChange(tabVal); // 필드 표시 강제 갱신
+  }
   // 국채 탭이면 bond-equity-tbody 렌더
   if (tab === 'bond') renderBondEquity();
   if (tab === 'other') renderEqOther();
@@ -8783,9 +8792,13 @@ function openEqForm(editId) {
   if (slide) slide.style.maxHeight = '1000px';
   var titleEl = document.getElementById('eq-form-slide-title');
   if (titleEl) titleEl.textContent = editId ? '수정 모드' : '신규 등록';
-  // 탭에 맞춰 타입 선택
+  // 탭에 맞춰 타입 선택 — bond/other/stock 명확히 세팅
   var sel = document.getElementById('eq-type-select');
-  if (sel && !editId) { sel.value = _currentEqTab === 'other' ? 'other' : _currentEqTab; onEqTypeChange(sel.value); }
+  if (sel && !editId) {
+    var tabVal = _currentEqTab === 'bond' ? 'bond' : _currentEqTab === 'other' ? 'other' : 'stock';
+    sel.value = tabVal;
+    onEqTypeChange(tabVal); // 반드시 호출해서 필드 표시 상태 갱신
+  }
   // 날짜 초기화
   var dEl = document.getElementById('e-date');
   if (dEl && !dEl.value) dEl.value = new Date().toISOString().slice(0,10);
@@ -8793,6 +8806,11 @@ function openEqForm(editId) {
   if (bEl && !bEl.value) bEl.value = new Date().toISOString().slice(0,10);
   // 스크롤
   slide.scrollIntoView({behavior:'smooth',block:'start'});
+  // DOM 렌더 후 필드 표시 재갱신 (슬라이드 오픈 트랜지션 완료 대기)
+  setTimeout(function() {
+    var s2 = document.getElementById('eq-type-select');
+    if (s2) onEqTypeChange(s2.value);
+  }, 380);
 }
 
 function closeEqForm() {
