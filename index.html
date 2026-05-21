@@ -2495,51 +2495,44 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
           </div>
 
           <!-- 탭 콘텐츠: 국채 / 채권 -->
+          <!-- 탭 콘텐츠: 국채 / 채권 -->
           <div id="eqpanel-bond" class="eq-panel" style="display:none;padding:0 20px 16px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;margin-bottom:8px;">
-              <div style="display:flex;gap:8px;">
-                <button class="btn btn-ghost" id="btn-bulk-bond-refresh"
-                  style="font-size:11px;padding:4px 10px;color:var(--green);border-color:rgba(16,185,129,0.4);"
-                  onclick="runBulkBondRefresh()">↻ 전체 국채 시세 갱신</button>
-                <button class="btn btn-ghost"
-                  style="font-size:11px;padding:4px 10px;color:var(--amber);border-color:rgba(245,158,11,0.4);"
-                  onclick="migrateBondFromInvestments()"
-                  title="운용자금에 입력된 구형 국채 데이터를 이 탭으로 이전합니다">
-                  ⇄ 기존 국채 이전
-                </button>
-              </div>
-            </div>
-            <div class="table-wrap">
+
+            <!-- 종목 목록 (최신 날짜 기준 1행씩 — 지분 탭과 동일 구조) -->
+            <div class="table-wrap" style="margin-top:12px;">
               <table>
                 <thead><tr>
-                  <th>기준일</th><th>법인</th><th>채권명</th><th>ISIN</th>
-                  <th class="td-num">좌수</th><th class="td-num">기준가</th>
-                  <th class="td-num">수익률</th><th>만기일</th>
-                  <th class="td-num">평가금액</th><th>가용</th><th></th>
+                  <th>최신 기준일</th><th>법인</th><th>채권명</th><th>ISIN</th>
+                  <th class="td-num">좌수</th><th class="td-num">평가금액</th><th>가용</th><th>관리</th>
                 </tr></thead>
                 <tbody id="bond-equity-tbody"></tbody>
               </table>
             </div>
 
-            <!-- 국채 시세 히스토리 패널 (종목 클릭 시 표시) -->
-            <div id="bond-history-panel" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <!-- 히스토리 패널 (종목 클릭 시 펼쳐짐) -->
+            <div id="bond-history-panel" style="display:none;margin-top:14px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                 <div>
-                  <span id="bond-history-title" style="font-size:13px;font-weight:600;color:var(--accent2);"></span>
-                  <span style="font-size:11px;color:var(--text3);margin-left:8px;">날짜별 시세 이력</span>
+                  <span id="bond-history-title" style="font-size:12px;font-weight:600;color:var(--accent2);"></span>
+                  <span style="font-size:11px;color:var(--text3);margin-left:6px;">날짜별 시세 이력</span>
                 </div>
-                <button class="btn btn-ghost" style="font-size:11px;" onclick="closeBondHistory()">✕ 닫기</button>
+                <div style="display:flex;gap:6px;align-items:center;">
+                  <button class="btn btn-ghost" id="btn-bulk-bond-refresh"
+                    style="font-size:11px;padding:3px 9px;color:var(--green);border-color:rgba(16,185,129,0.4);"
+                    onclick="runBulkBondRefresh()">↻ 전체 시세 갱신</button>
+                  <button class="btn btn-ghost" style="font-size:11px;padding:3px 9px;" onclick="closeBondHistory()">✕ 닫기</button>
+                </div>
               </div>
 
               <!-- 날짜 지정 시세 조회 + 저장 -->
-              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:10px 14px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);">
-                <span style="font-size:12px;color:var(--text3);white-space:nowrap;">날짜 지정 조회:</span>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;padding:8px 12px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);">
+                <span style="font-size:11px;color:var(--text3);white-space:nowrap;">날짜 지정:</span>
                 <input type="date" id="bond-hist-date"
-                  style="font-size:12px;padding:5px 9px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);color:var(--text);font-family:inherit;">
-                <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;color:var(--green);border-color:rgba(16,185,129,0.4);"
+                  style="font-size:12px;padding:4px 8px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);color:var(--text);font-family:inherit;">
+                <button class="btn btn-ghost" style="font-size:11px;padding:3px 9px;color:var(--green);border-color:rgba(16,185,129,0.4);"
                   onclick="fetchBondHistoryPrice()">시세 조회</button>
-                <span id="bond-hist-status" style="font-size:11px;color:var(--text3);">날짜 선택 후 조회하세요</span>
-                <button id="bond-hist-save-btn" class="btn btn-success" style="font-size:11px;padding:4px 12px;display:none;"
+                <span id="bond-hist-status" style="font-size:11px;color:var(--text3);flex:1;min-width:0;">날짜 선택 후 조회 또는 직접 저장</span>
+                <button id="bond-hist-save-btn" class="btn btn-success" style="font-size:11px;padding:3px 10px;display:none;"
                   onclick="saveBondHistoryRecord()">저장</button>
               </div>
 
@@ -2552,7 +2545,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
                     <th class="td-num">좌수</th>
                     <th class="td-num">평가금액</th>
                     <th class="td-num">수익률</th>
-                    <th></th>
+                    <th>수정</th><th>삭제</th>
                   </tr></thead>
                   <tbody id="bond-history-tbody"></tbody>
                 </table>
@@ -7353,22 +7346,52 @@ function setEquityStock(name, btn) {
   updateEquityChart(allEq);
 }
 
-// 드롭다운 종목 목록 동적 업데이트
+// 드롭다운 종목 목록 동적 업데이트 (지분 + 국채 포함)
 function renderEquityStockBtns(allEq) {
   const sel = document.getElementById('dash-equity-filter');
   if (!sel) return;
-  const names = [...new Set(allEq.map(e => e.name))];
-  // 현재 선택값 보존
+
+  // 지분 종목
+  const equityNames = [...new Set(allEq.map(e => e.name))];
+
+  // 국채 종목 (최신 기준)
+  const latestBondNames = [...new Set(
+    getLatestBonds(getFiltered('investments')).map(b => b.bondName || b.bank || '').filter(Boolean)
+  )];
+
   const curVal = equityChartStock || '';
   sel.innerHTML = '<option value="">전체 종목</option>' +
-    names.map(n => '<option value="' + n + '"' + (n === curVal ? ' selected' : '') + '>' + n + '</option>').join('');
+    (equityNames.length ? '<optgroup label="지분(주식)">' +
+      equityNames.map(n => '<option value="eq_' + n + '"' + ('eq_' + n === curVal ? ' selected' : '') + '>' + n + '</option>').join('') +
+    '</optgroup>' : '') +
+    (latestBondNames.length ? '<optgroup label="국채/채권">' +
+      latestBondNames.map(n => '<option value="bond_' + n + '"' + ('bond_' + n === curVal ? ' selected' : '') + '>' + n + '</option>').join('') +
+    '</optgroup>' : '');
 }
 
 function onEquityFilterChange() {
   const sel = document.getElementById('dash-equity-filter');
-  equityChartStock = sel ? (sel.value || null) : null;
-  const allEq = getFiltered('equities').sort((a,b)=>a.date.localeCompare(b.date));
-  updateEquityChart(allEq);
+  const val = sel ? (sel.value || '') : '';
+  equityChartStock = val || null;
+
+  if (val.startsWith('bond_')) {
+    // 국채 선택 → investments 히스토리로 차트
+    const bondName = val.replace(/^bond_/, '');
+    const bondRecords = getLatestBonds(getFiltered('investments'))
+      .filter(b => (b.bondName || b.bank || '') === bondName);
+    const allBondHist = getFiltered('investments')
+      .filter(x => x.active && x.product === '국채' && (x.bondName || x.bank || '') === bondName)
+      .map(x => ({ date: x.priceDate || x.start || '', total_value: x.amount || 0, name: bondName }))
+      .sort((a,b) => a.date.localeCompare(b.date));
+    updateEquityChart(allBondHist);
+  } else {
+    // 지분 선택 or 전체
+    const filterName = val.startsWith('eq_') ? val.replace(/^eq_/, '') : '';
+    const allEq = getFiltered('equities')
+      .filter(e => !filterName || e.name === filterName)
+      .sort((a,b) => a.date.localeCompare(b.date));
+    updateEquityChart(allEq);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -7720,12 +7743,67 @@ function getLatestInvestments(investments) {
   return nonBond.concat(latestBonds);
 }
 
-/** 국채 목록 렌더링 */
+/** 국채 목록 렌더링 — 지분(주식) 탭과 동일한 UX
+ *  - 종목별 최신 날짜 1행만 표시
+ *  - 행 클릭 → 해당 종목 히스토리 패널 펼침
+ */
 function renderBondEquity() {
   const tbody = document.getElementById('bond-equity-tbody');
   if (!tbody) return;
 
-  const bonds = getFiltered('investments').filter(x => x.active && x.product === '국채');
+  // 전체 국채 레코드
+  const allBonds = getFiltered('investments').filter(x => x.active && x.product === '국채');
+
+  if (!allBonds.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3);">등록된 국채가 없습니다<br><span style="font-size:11px;">신규 등록 버튼을 눌러 추가하세요</span></td></tr>';
+    const panel = document.getElementById('bond-history-panel');
+    if (panel) panel.style.display = 'none';
+    return;
+  }
+
+  // 종목별 최신 날짜 1행만 (지분과 동일 방식)
+  const latestMap = {};
+  allBonds.forEach(function(b) {
+    const key = (b.company || '') + '_' + (b.bondName || b.bank || b.id);
+    const dateA = b.priceDate || b.start || '';
+    if (!latestMap[key] || dateA > (latestMap[key].priceDate || latestMap[key].start || '')) {
+      latestMap[key] = b;
+    }
+  });
+  const latestBonds = Object.values(latestMap);
+
+  tbody.innerHTML = latestBonds.map(function(b) {
+    const availBg = b.available === '불가용' ? 'rgba(245,158,11,.12)' : 'rgba(16,185,129,.12)';
+    const availCl = b.available === '불가용' ? 'var(--amber)' : 'var(--green)';
+    const key = (b.company || '') + '_' + (b.bondName || b.bank || b.id);
+    const isSelected = _selectedBondKey === key;
+    return '<tr style="cursor:pointer;background:' + (isSelected ? 'rgba(59,130,246,0.08)' : '') + ';"' +
+      ' onclick="selectBondForHistory(\'' + b.id + '\',\'' + (b.bondName||b.bank||'').replace(/'/g,"\\'") + '\',\'' + (b.bondTicker||'') + '\',' + (b.bondQty||0) + ')"' +
+      ' title="클릭하면 날짜별 시세 이력을 확인할 수 있습니다">' +
+      '<td style="font-size:11px;">' + (b.priceDate || b.start || '—') + '</td>' +
+      '<td style="font-size:11px;color:var(--text3);">' + (b.company || '') + '</td>' +
+      '<td style="font-weight:500;">' + (b.bondName || b.bank || '—') + '</td>' +
+      '<td style="font-size:11px;">' + (b.bondTicker || '<span style="color:var(--text3);font-size:10px;">—</span>') + '</td>' +
+      '<td class="td-num">' + (b.bondQty ? b.bondQty.toLocaleString() + '좌' : '—') + '</td>' +
+      '<td class="td-num" style="color:var(--green);font-weight:600;">' + fmtKRW(b.amount || 0) + '</td>' +
+      '<td><span style="font-size:10px;padding:2px 7px;border-radius:4px;background:' + availBg + ';color:' + availCl + ';">' + (b.available || '가용') + '</span></td>' +
+      '<td onclick="event.stopPropagation()" style="white-space:nowrap;">' +
+        '<button class="btn btn-ghost" style="padding:2px 7px;font-size:10px;color:var(--red);"' +
+          ' onclick="deleteBondEquity(\'' + b.id + '\')">삭제</button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+
+  // 선택된 종목 히스토리 유지
+  if (_selectedBondKey) {
+    const sel = latestBonds.find(function(b) {
+      return ((b.company||'') + '_' + (b.bondName||b.bank||b.id)) === _selectedBondKey;
+    });
+    if (sel) {
+      renderBondHistoryTable();
+    }
+  }
+}
 
   if (!bonds.length) {
     tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--text3);">등록된 국채가 없습니다</td></tr>';
@@ -7778,11 +7856,17 @@ var _bondHistPrice     = null;  // 조회된 시세 (임시 저장)
 var _bondHistRate      = null;
 
 // ── 국채 행 클릭 → 히스토리 패널 열기 ───────────────────────────────
+var _selectedBondKey = null;  // company_bondName 형태 키
+
 function selectBondForHistory(id, name, isin, qty) {
+  var bond = DB.get('investments').find(function(x) { return x.id === id; });
+  if (!bond) return;
+
   _selectedBondId   = id;
   _selectedBondName = name;
   _selectedBondISIN = isin;
   _selectedBondQty  = parseFloat(qty) || 0;
+  _selectedBondKey  = (bond.company || '') + '_' + (bond.bondName || bond.bank || id);
   _bondHistPrice    = null;
   _bondHistRate     = null;
 
@@ -7799,22 +7883,27 @@ function selectBondForHistory(id, name, isin, qty) {
   // 상태 초기화
   var stEl   = document.getElementById('bond-hist-status');
   var saveEl = document.getElementById('bond-hist-save-btn');
-  if (stEl)   stEl.textContent   = isin ? '날짜 선택 후 조회하세요' : 'ISIN 없음 — 직접 기준가를 입력해야 합니다';
-  if (saveEl) saveEl.style.display = 'none';
+  if (stEl)   { stEl.textContent = isin ? '날짜 선택 후 조회하세요' : 'ISIN 없음 — 기준가를 직접 입력 후 저장'; stEl.style.color = 'var(--text3)'; }
+  if (saveEl) saveEl.style.display = isin ? 'none' : '';  // ISIN 없으면 바로 저장 버튼 표시
 
   // 히스토리 목록 렌더
   renderBondHistoryTable();
 
+  // 선택 하이라이트 갱신
+  renderBondEquity();
+
   // 스크롤
-  panel.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  setTimeout(function() { panel.scrollIntoView({ behavior:'smooth', block:'nearest' }); }, 100);
 }
 
 // ── 히스토리 패널 닫기 ───────────────────────────────────────────────
 function closeBondHistory() {
-  _selectedBondId = null;
+  _selectedBondId  = null;
+  _selectedBondKey = null;
+  _bondHistEditId  = null;
   var panel = document.getElementById('bond-history-panel');
   if (panel) panel.style.display = 'none';
-  renderBondEquity(); // 선택 하이라이트 해제
+  renderBondEquity();
 }
 
 // ── 히스토리 테이블 렌더 ─────────────────────────────────────────────
@@ -7822,42 +7911,62 @@ function renderBondHistoryTable() {
   var tbody = document.getElementById('bond-history-tbody');
   if (!tbody || !_selectedBondId) return;
 
-  // 같은 bondName을 가진 모든 레코드를 날짜순 정렬
   var bond = DB.get('investments').find(function(x) { return x.id === _selectedBondId; });
   if (!bond) return;
   var bondNameKey = bond.bondName || bond.bank || '';
+  var company     = bond.company  || '';
 
   var records = DB.get('investments')
     .filter(function(x) {
-      return x.active &&
-             x.product === '국채' &&
+      return x.active && x.product === '국채' &&
+             (x.company || '') === company &&
              (x.bondName || x.bank || '') === bondNameKey &&
-             x.priceDate; // 날짜가 있는 레코드만
+             (x.priceDate || x.start);
     })
-    .sort(function(a, b) { return b.priceDate.localeCompare(a.priceDate); });
+    .sort(function(a, b) {
+      return (b.priceDate||b.start||'').localeCompare(a.priceDate||a.start||'');
+    });
 
   if (!records.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text3);">시세 이력 없음 — 날짜를 지정하고 조회 후 저장하세요</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:16px;color:var(--text3);">이력 없음 — 날짜 지정 후 시세 조회하여 저장하세요</td></tr>';
     return;
   }
 
   tbody.innerHTML = records.map(function(r) {
     var evalAmt = r.amount || Math.round((r.bondQty || 0) * ((r.bondPrice || 0) / 10));
-    return '<tr>' +
-      '<td style="font-size:12px;">' + r.priceDate + '</td>' +
+    return '<tr style="cursor:pointer;" onclick="loadBondHistoryToForm(\"' + r.id + '\")" title="클릭하면 수정 가능">' +
+      '<td style="color:var(--accent2);">' + (r.priceDate || r.start || '—') + '</td>' +
       '<td class="td-num">' + (r.bondPrice ? r.bondPrice.toLocaleString() + '원' : '—') + '</td>' +
       '<td class="td-num">' + (r.bondQty  ? r.bondQty.toLocaleString()  + '좌' : '—') + '</td>' +
       '<td class="td-num" style="color:var(--green);font-weight:600;">' + fmtKRW(evalAmt) + '</td>' +
       '<td class="td-num" style="color:var(--green);">' + (r.rate != null ? r.rate + '%' : '—') + '</td>' +
-      '<td style="white-space:nowrap;">' +
-        '<button class="btn btn-ghost" style="padding:2px 7px;font-size:10px;margin-right:4px;"' +
-          ' onclick="editBondHistoryRecord(\'' + r.id + '\')">수정</button>' +
-        '<button class="btn btn-ghost" style="padding:2px 7px;font-size:10px;color:var(--red);"' +
-          ' onclick="deleteBondHistoryRecord(\'' + r.id + '\')">삭제</button>' +
-      '</td>' +
+      '<td onclick="event.stopPropagation()"><button class="btn btn-ghost" style="padding:2px 7px;font-size:10px;color:var(--amber);"' +
+        ' onclick="loadBondHistoryToForm(\"' + r.id + '\")">수정</button></td>' +
+      '<td onclick="event.stopPropagation()"><button class="btn btn-ghost" style="padding:2px 7px;font-size:10px;color:var(--red);"' +
+        ' onclick="deleteBondHistoryRecord(\"' + r.id + '\")">삭제</button></td>' +
     '</tr>';
   }).join('');
 }
+
+var _bondHistEditId = null; // 수정 모드일 때 대상 ID
+
+function loadBondHistoryToForm(id) {
+  var rec = DB.get('investments').find(function(x) { return x.id === id; });
+  if (!rec) return;
+  var dateEl = document.getElementById('bond-hist-date');
+  var stEl   = document.getElementById('bond-hist-status');
+  var saveEl = document.getElementById('bond-hist-save-btn');
+  if (dateEl) dateEl.value = rec.priceDate || rec.start || '';
+  _bondHistPrice  = rec.bondPrice || null;
+  _bondHistRate   = rec.rate || null;
+  _bondHistEditId = id;
+  var evalAmt = rec.amount || Math.round((rec.bondQty||0)*((rec.bondPrice||0)/10));
+  if (stEl) { stEl.textContent = '수정 모드: ' + (rec.priceDate||rec.start) + ' · 기준가 ' + (rec.bondPrice||0).toLocaleString() + '원 → ' + fmtKRW(evalAmt); stEl.style.color = 'var(--amber)'; }
+  if (saveEl) { saveEl.style.display = ''; saveEl.textContent = '수정 저장'; }
+  showToast((rec.priceDate||rec.start) + ' 이력을 수정합니다', '');
+}
+
+
 
 // ── 날짜 지정 시세 조회 ──────────────────────────────────────────────
 async function fetchBondHistoryPrice() {
@@ -7915,8 +8024,95 @@ async function fetchBondHistoryPrice() {
   }
 }
 
-// ── 조회된 시세 저장 ─────────────────────────────────────────────────
+// ── 조회된 시세 저장 (신규 or 수정) ─────────────────────────────────
 async function saveBondHistoryRecord() {
+  if (!_selectedBondId) return;
+  var dateEl = document.getElementById('bond-hist-date');
+  if (!dateEl || !dateEl.value) { showToast('날짜를 선택해주세요', 'error'); return; }
+
+  var bond = DB.get('investments').find(function(x) { return x.id === _selectedBondId; });
+  if (!bond) return;
+
+  var date  = dateEl.value;
+  var price = _bondHistPrice;
+  var rate  = _bondHistRate;
+
+  // 가격이 없으면 수동 입력
+  if (!price || price === 0) {
+    var manualPrice = prompt('기준가를 직접 입력하세요 (원):');
+    if (!manualPrice) return;
+    price = parseNum(manualPrice);
+    if (!price) { showToast('올바른 숫자를 입력해주세요', 'error'); return; }
+  }
+
+  var amount = Math.round((bond.bondQty || 0) * (price / 10));
+
+  // 수정 모드: 기존 레코드 업데이트
+  if (_bondHistEditId) {
+    var existing = DB.get('investments').find(function(x) { return x.id === _bondHistEditId; });
+    if (existing) {
+      existing.bondPrice = price;
+      existing.amount    = amount;
+      existing.priceDate = date;
+      existing.rate      = rate || existing.rate;
+      await DB.updateOne('investments', existing);
+      showToast(date + ' 수정 완료 — ' + fmtKRW(amount), 'success');
+      _bondHistEditId = null;
+      var saveEl = document.getElementById('bond-hist-save-btn');
+      if (saveEl) { saveEl.textContent = '저장'; saveEl.style.display = 'none'; }
+      var stEl = document.getElementById('bond-hist-status');
+      if (stEl) { stEl.textContent = '수정 완료'; stEl.style.color = 'var(--green)'; }
+      renderBondHistoryTable();
+      renderBondEquity();
+      renderDashboard();
+      return;
+    }
+  }
+
+  // 신규: 같은 날짜 + 같은 채권명 중복 체크
+  var bondNameKey = bond.bondName || bond.bank || '';
+  var company     = bond.company  || '';
+  var duplicate   = DB.get('investments').find(function(x) {
+    return x.active && x.product === '국채' &&
+           (x.company || '') === company &&
+           (x.bondName || x.bank || '') === bondNameKey &&
+           (x.priceDate || x.start) === date &&
+           x.id !== _selectedBondId;
+  });
+
+  if (duplicate) {
+    // 같은 날짜 레코드 덮어쓰기 (지분과 동일 방식)
+    duplicate.bondPrice = price;
+    duplicate.amount    = amount;
+    duplicate.rate      = rate || duplicate.rate;
+    await DB.updateOne('investments', duplicate);
+    showToast(date + ' 업데이트(덮어쓰기) 완료 — ' + fmtKRW(amount), 'success');
+  } else {
+    // 신규 날짜 → 새 레코드 추가
+    var newRec = Object.assign({}, bond, {
+      id:         crypto.randomUUID(),
+      bondPrice:  price,
+      amount:     amount,
+      priceDate:  date,
+      start:      date,
+      rate:       rate || bond.rate,
+    });
+    await DB.append('investments', newRec);
+    showToast(date + ' 시세 저장 완료 — ' + fmtKRW(amount), 'success');
+  }
+
+  // 상태 초기화
+  _bondHistPrice  = null;
+  _bondHistEditId = null;
+  var saveEl = document.getElementById('bond-hist-save-btn');
+  var stEl   = document.getElementById('bond-hist-status');
+  if (saveEl) { saveEl.style.display = 'none'; saveEl.textContent = '저장'; }
+  if (stEl)   { stEl.textContent = '저장 완료 — 다음 날짜를 조회하세요'; stEl.style.color = 'var(--green)'; }
+
+  renderBondHistoryTable();
+  renderBondEquity();
+  renderDashboard();
+}
   if (!_selectedBondId) return;
   var dateEl = document.getElementById('bond-hist-date');
   if (!dateEl || !dateEl.value) { showToast('날짜를 선택해주세요', 'error'); return; }
