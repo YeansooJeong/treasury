@@ -1217,9 +1217,9 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
   .wf-krw-fx-labels { display:flex; justify-content:space-between; }
 
   /* ── 법인 드롭다운 ── */
-  .wf-company-btn { display:flex; align-items:center; gap:0; padding:6px 12px; background:var(--fp-card); border:1px solid var(--fp-kpi-border); border-radius:8px; cursor:pointer; font-family:inherit; transition:all .15s; min-width:200px; width:200px; white-space:nowrap; flex-wrap:nowrap; overflow:hidden; }
+  .wf-company-btn { display:inline-flex; align-items:center; gap:0; padding:6px 10px; background:var(--fp-card); border:1px solid var(--fp-kpi-border); border-radius:8px; cursor:pointer; font-family:inherit; transition:all .15s; white-space:nowrap; flex-wrap:nowrap; overflow:visible; width:auto; max-width:280px; }
   .wf-company-btn:hover { background:var(--bg3); border-color:var(--border2); }
-  .wf-dropdown { position:absolute; top:calc(100% + 6px); left:0; width:200px; min-width:200px; background:var(--fp-card); border:1px solid var(--fp-kpi-border); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.15); z-index:300; overflow:hidden; }
+  .wf-dropdown { position:absolute; top:calc(100% + 6px); left:0; width:auto; min-width:220px; background:var(--fp-card); border:1px solid var(--fp-kpi-border); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.15); z-index:300; overflow:hidden; }
   .wf-dropdown-item { display:flex; align-items:center; padding:9px 14px; cursor:pointer; font-size:13px; color:var(--text); transition:background .1s; }
   .wf-dropdown-item:hover { background:var(--bg3); }
   .wf-dropdown-divider { height:1px; background:var(--fp-kpi-border); margin:4px 0; }
@@ -1390,7 +1390,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
 
     /* ⑬ wf-header-row: 드롭다운 + 기준일 세로 배치 */
     .wf-header-row { flex-wrap: wrap; gap: 6px; }
-    .wf-company-btn { min-width: 160px !important; width: auto !important; }
+    .wf-company-btn { min-width: unset !important; width: auto !important; max-width: 220px !important; }
   }
 
   /* 소형폰 (480px 이하) 추가 최적화 */
@@ -1752,9 +1752,9 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
           <div class="wf-company-selector" id="wf-company-selector">
             <!-- master/ceo용 드롭다운 (JS가 표시/숨김) -->
             <div id="wf-company-dropdown-wrap" style="display:none;position:relative;">
-              <button class="wf-company-btn" id="wf-company-btn" onclick="toggleCompanyDropdown(event)" style="white-space:nowrap;display:inline-flex;align-items:center;flex-wrap:nowrap;max-width:240px;">
-                <span id="wf-company-logo-wrap" style="height:24px;display:flex;align-items:center;flex-shrink:0;"></span>
-                <span id="wf-company-name-text" style="font-size:13px;font-weight:600;color:var(--text);margin:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">셀바스에이아이</span>
+              <button class="wf-company-btn" id="wf-company-btn" onclick="toggleCompanyDropdown(event)">
+                <span id="wf-company-logo-wrap" style="height:18px;display:flex;align-items:center;flex-shrink:0;"></span>
+                <span id="wf-company-name-text" style="font-size:13px;font-weight:600;color:var(--text);margin:0 5px;white-space:nowrap;">셀바스에이아이</span>
                 <i class="ti ti-chevron-down" style="font-size:13px;color:var(--text3);flex-shrink:0;" aria-hidden="true"></i>
                 <!-- 이슈 배지 -->
                 <span id="wf-issue-badge" style="display:none;margin-left:4px;min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:10px;font-weight:700;flex-shrink:0;align-items:center;justify-content:center;padding:0 5px;"></span>
@@ -8608,7 +8608,7 @@ function updateCompanyDropdownBtn(company) {
     const logoMap = { '셀바스에이아이':'selvasai.png', '셀바스헬스케어':'selvashealthcare.png', '메디아나':'mediana.png' };
     const src = logoMap[company];
     if (src) {
-      logoEl.innerHTML = '<img src="' + src + '" alt="" style="height:22px;border-radius:3px;" onerror="this.style.display=\'none\'">';
+      logoEl.innerHTML = '<img src="' + src + '" alt="" style="height:16px;border-radius:2px;opacity:.85;" onerror="this.style.display=\'none\'">';
     } else {
       logoEl.innerHTML = '<i class="ti ti-building-community" style="font-size:18px;color:var(--text3);" aria-hidden="true"></i>';
     }
