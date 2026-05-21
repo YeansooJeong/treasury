@@ -5070,7 +5070,7 @@ function renderDetailPanel(key) {
     var opKrw   = rec ? rec.krw_demand + rec.krw_govt + rec.krw_mmda : 0;
     var opFx    = rec ? (rec.fx_krw||0) : 0;
     var opTot   = opKrw + opFx;
-    var invs2   = getFiltered('investments').filter(function(i){ return i.active; });
+    var invs2   = getLatestInvestments(getFiltered('investments')); // 국채 최신 1개만
     var invTot  = invs2.reduce(function(s,i){ return s + calcKRW(i.amount, i.currency); }, 0);
     var loans2  = getFiltered('loans').filter(function(l){ return l.active; });
     var loanTot = loans2.reduce(function(s,l){ return s + calcKRW(l.amount, l.currency); }, 0);
@@ -5585,7 +5585,7 @@ function renderDashboard() {
     : null;
   const opDelta = prevOpTotal !== null ? opTotal - prevOpTotal : null;
 
-  const invs    = getFiltered('investments').filter(i => i.active);
+  const invs    = getLatestInvestments(getFiltered('investments')); // 국채는 최신 날짜 1개만
   const invKrw  = invs.filter(i => i.currency === 'KRW').reduce((s, i) => s + i.amount, 0);
   const invFx   = invs.filter(i => i.currency !== 'KRW').reduce((s, i) => s + calcKRW(i.amount, i.currency), 0);
   const invTotal = invKrw + invFx;
@@ -6476,7 +6476,8 @@ async function fixInvestmentCompany() {
 }
 
 function renderInvestments() {
-  const items = getFiltered('investments').filter(x => x.active);
+  // 국채는 지분/장기투자 메뉴에서 관리 — 운용자금에서 제외
+  const items = getFiltered('investments').filter(x => x.active && x.product !== '국채');
   const tbody = document.getElementById('invest-tbody');
   if (!items.length) {
     tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text3);">등록된 운용자금이 없습니다</td></tr>';
@@ -7694,6 +7695,31 @@ async function saveBondEquity() {
   renderDashboard();
 }
 
+
+// ── investments 국채 중복 제거: 같은 bondName 최신 날짜 1개만 반환 ──
+function getLatestBonds(investments) {
+  var latestMap = {};
+  investments
+    .filter(function(x) { return x.active && x.product === '국채'; })
+    .forEach(function(x) {
+      var key = (x.company || '') + '_' + (x.bondName || x.bank || x.id);
+      var dateA = x.priceDate || x.start || '';
+      if (!latestMap[key] || dateA > (latestMap[key].priceDate || latestMap[key].start || '')) {
+        latestMap[key] = x;
+      }
+    });
+  return Object.values(latestMap);
+}
+
+// ── investments 전체에서 국채 최신 + 비국채 반환 ─────────────────────
+function getLatestInvestments(investments) {
+  var nonBond = investments.filter(function(x) {
+    return x.active && x.product !== '국채';
+  });
+  var latestBonds = getLatestBonds(investments);
+  return nonBond.concat(latestBonds);
+}
+
 /** 국채 목록 렌더링 */
 function renderBondEquity() {
   const tbody = document.getElementById('bond-equity-tbody');
@@ -8480,10 +8506,16 @@ function renderWaterfallDashboard(opTotal, opKrw, opFx, invAvail, invLocked,
   }
   setTxt('wf-eq-total', eqTotal > 0 ? fmtKRW(eqTotal) : '—');
 
-  // ── ⑥ 운용자금 상세 (가용만 표시 — 불가용은 lock 드릴다운에서 별도 표시) ──
+  // ── ⑥ 운용자금 상세 (가용만 표시 — 국채/불가용 제외) ──
   const invList = document.getElementById('wf-inv-list');
   if (invList) {
-    const availInvs = invs.filter(function(i) { return i.active && i.available !== '불가용'; });
+    // 국채는 지분/장기투자 메뉴에서 관리 → 운용자금 카드에서 제외
+    const latestInvsList = getLatestInvestments(invs);
+    const availInvs = latestInvsList.filter(function(i) { return i.available !== '불가용' && i.product !== '국채'; });
+    // 국채 최신 합계 별도 계산
+    const bondTotal = getLatestBonds(invs)
+      .filter(function(b) { return b.available !== '불가용'; })
+      .reduce(function(s, b) { return s + (b.amount || 0); }, 0);
     invList.innerHTML = !availInvs.length
       ? '<div style="font-size:12px;color:var(--text3);padding:8px 0;">없음</div>'
       : availInvs.map(function(i) {
@@ -8500,7 +8532,15 @@ function renderWaterfallDashboard(opTotal, opKrw, opFx, invAvail, invLocked,
             '<div class="wf-inv-tag">' + (i.rate||'—') + '% · ' + (i.maturity||'만기미상') + '</div></div>' +
             '<div><div class="wf-inv-val">' + fmtKRW(calcKRW(i.amount, i.currency)) + '</div>' +
             '<div class="wf-inv-dday">' + ddayStr + '</div></div></div>';
-        }).join('');
+        }).join('') +
+        // 국채 합계 행 (있을 때만)
+        (bondTotal > 0
+          ? '<div class="wf-inv-item" style="border-top:1px dashed var(--border);margin-top:4px;padding-top:6px;">' +
+              '<div><div class="wf-inv-nm">국채/채권 <span style="font-size:9px;padding:1px 5px;border-radius:3px;background:#E6F1FB;color:#185FA5;margin-left:4px;">가용</span></div>' +
+              '<div class="wf-inv-tag" style="color:var(--text3)">지분/장기투자 국채탭</div></div>' +
+              '<div class="wf-inv-val" style="color:var(--accent2);">' + fmtKRW(bondTotal) + '</div>' +
+            '</div>'
+          : '');
   }
 
   // ── ⑥-a 운전자금 상세 카드 ─────────────────────────────────────
@@ -9507,8 +9547,8 @@ function openIhEdit(cmId) {
     '</div>' +
     '<textarea id="ih-edit-body-' + cmId + '">' + currentBody + '</textarea>' +
     '<div class="ih-edit-actions">' +
-      '<button class="ih-cancel-btn" onclick="closeIhEdit(\'' + cmId + '\')">취소</button>' +
-      '<button class="ih-save-btn"   onclick="saveIhEdit(\'' + cmId + '\')">저장</button>' +
+      '<button class="ih-cancel-btn" onclick="closeIhEdit(&quot;' + cmId + '&quot;)">취소</button>' +
+      '<button class="ih-save-btn"   onclick="saveIhEdit(&quot;' + cmId + '&quot;)">저장</button>' +
     '</div>' +
   '</div>';
 
@@ -9971,8 +10011,10 @@ function filterHistory() {
     const fxKrw = r.fx_krw || (r.fx_usd||0)*FX.USD + (r.fx_eur||0)*FX.EUR + (r.fx_jpy||0)*FX.JPY + (r.fx_gbp||0)*FX.GBP + (r.fx_cny||0)*FX.CNY;
     const opTotal = opKrw + fxKrw;
 
-    const invOnDate = allInv.filter(i => i.active && i.company === r.company &&
+    // 국채는 해당 날짜 기준 가장 가까운 과거 시세 사용
+    const allInvOnDate = allInv.filter(i => i.active && i.company === r.company &&
       (!i.start || i.start <= r.date) && (!i.maturity || i.maturity >= r.date));
+    const invOnDate = getLatestInvestments(allInvOnDate);
     const invTotal = invOnDate.reduce((s, i) => s + calcKRW(i.amount, i.currency), 0);
 
     const loanOnDate = allLoans.filter(l => l.active && l.company === r.company &&
