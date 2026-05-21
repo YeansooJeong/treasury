@@ -1217,7 +1217,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
   .wf-krw-fx-labels { display:flex; justify-content:space-between; }
 
   /* ── 법인 드롭다운 ── */
-  .wf-company-btn { display:flex; align-items:center; gap:0; padding:6px 12px; background:var(--fp-card); border:1px solid var(--fp-kpi-border); border-radius:8px; cursor:pointer; font-family:inherit; transition:all .15s; min-width:200px; width:200px; }
+  .wf-company-btn { display:flex; align-items:center; gap:0; padding:6px 12px; background:var(--fp-card); border:1px solid var(--fp-kpi-border); border-radius:8px; cursor:pointer; font-family:inherit; transition:all .15s; min-width:200px; width:200px; white-space:nowrap; flex-wrap:nowrap; overflow:hidden; }
   .wf-company-btn:hover { background:var(--bg3); border-color:var(--border2); }
   .wf-dropdown { position:absolute; top:calc(100% + 6px); left:0; width:200px; min-width:200px; background:var(--fp-card); border:1px solid var(--fp-kpi-border); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.15); z-index:300; overflow:hidden; }
   .wf-dropdown-item { display:flex; align-items:center; padding:9px 14px; cursor:pointer; font-size:13px; color:var(--text); transition:background .1s; }
@@ -1752,12 +1752,12 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
           <div class="wf-company-selector" id="wf-company-selector">
             <!-- master/ceo용 드롭다운 (JS가 표시/숨김) -->
             <div id="wf-company-dropdown-wrap" style="display:none;position:relative;">
-              <button class="wf-company-btn" id="wf-company-btn" onclick="toggleCompanyDropdown(event)">
-                <span id="wf-company-logo-wrap" style="height:24px;display:flex;align-items:center;"></span>
-                <span id="wf-company-name-text" style="font-size:13px;font-weight:600;color:var(--text);margin:0 6px;">셀바스에이아이</span>
-                <i class="ti ti-chevron-down" style="font-size:13px;color:var(--text3);" aria-hidden="true"></i>
+              <button class="wf-company-btn" id="wf-company-btn" onclick="toggleCompanyDropdown(event)" style="white-space:nowrap;display:inline-flex;align-items:center;flex-wrap:nowrap;max-width:240px;">
+                <span id="wf-company-logo-wrap" style="height:24px;display:flex;align-items:center;flex-shrink:0;"></span>
+                <span id="wf-company-name-text" style="font-size:13px;font-weight:600;color:var(--text);margin:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">셀바스에이아이</span>
+                <i class="ti ti-chevron-down" style="font-size:13px;color:var(--text3);flex-shrink:0;" aria-hidden="true"></i>
                 <!-- 이슈 배지 -->
-                <span id="wf-issue-badge" style="display:none;margin-left:4px;min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;"></span>
+                <span id="wf-issue-badge" style="display:none;margin-left:4px;min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:10px;font-weight:700;flex-shrink:0;align-items:center;justify-content:center;padding:0 5px;"></span>
               </button>
               <div id="wf-company-dropdown" class="wf-dropdown" style="display:none;">
                 <div class="wf-dropdown-item" onclick="wfSelectCompany('셀바스에이아이')">
