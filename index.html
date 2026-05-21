@@ -8287,7 +8287,10 @@ function renderWaterfallDashboard(opTotal, opKrw, opFx, invAvail, invLocked,
   // 알림 패널 렌더
   if (alertCount) {
     const hasDanger = alerts.some(a=>a.level==='danger');
+    // 초기 카운트 (완료 상태 확인 전 임시값)
     alertCount.textContent = alerts.length + '건';
+    alertCount.style.background = hasDanger ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)';
+    alertCount.style.color = hasDanger ? 'var(--red)' : 'var(--amber)';
     alertCount.style.background = hasDanger ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.12)';
     alertCount.style.color      = hasDanger ? 'var(--red)' : 'var(--amber)';
   }
@@ -8320,25 +8323,56 @@ function renderWaterfallDashboard(opTotal, opKrw, opFx, invAvail, invLocked,
       }).join('');
 
       // 비동기: 각 이슈 최신 상태 배지 업데이트
+      var doneCount = 0;
+      var pending = alerts.length;
       alerts.forEach(function(a) {
         var key = a.issueKey;
-        if (!key) return;
+        if (!key) { pending--; return; }
         loadIssueComments(key).then(function(comments) {
           var badge = document.getElementById('st-badge-' + key);
-          if (!badge || !comments.length) return;
-          var last = comments[comments.length-1];
-          var stCls = { open:'issue-s-open', review:'issue-s-review', done:'issue-s-done' };
-          var stLbl = { open:'미조치', review:'검토중', done:'완료' };
-          badge.className = 'issue-status-badge ' + (stCls[last.status]||'issue-s-open');
-          badge.textContent = stLbl[last.status]||'미조치';
-          // 완료 이슈는 카드를 흐리게
-          if (last.status === 'done') {
-            var item = document.getElementById('alert-item-' + key);
-            if (item) item.style.opacity = '0.5';
+          var btn   = document.getElementById('toggle-btn-' + key);
+          var item  = document.getElementById('alert-item-' + key);
+
+          if (comments.length > 0) {
+            var last  = comments[comments.length-1];
+            var stCls = { open:'issue-s-open', review:'issue-s-review', done:'issue-s-done' };
+            var stLbl = { open:'미조치', review:'검토중', done:'완료' };
+
+            // 배지 상태 갱신
+            if (badge) {
+              badge.className   = 'issue-status-badge ' + (stCls[last.status]||'issue-s-open');
+              badge.textContent = stLbl[last.status] || '미조치';
+            }
+            // 완료 이슈 흐리게 + 카운트 제외
+            if (last.status === 'done') {
+              if (item) item.style.opacity = '0.45';
+              doneCount++;
+            }
+            // 코멘트 버튼 텍스트 갱신
+            if (btn) btn.textContent = '💬 코멘트 ' + comments.length + '개';
           }
-          // 코멘트 개수 버튼에 표시
-          var btn = document.getElementById('toggle-btn-' + key);
-          if (btn && comments.length > 0) btn.textContent = '▼ 코멘트 ' + comments.length + '개';
+
+          // 모든 이슈 비동기 완료 후 배지 카운트 재계산
+          pending--;
+          if (pending <= 0) {
+            var activeCount = alerts.length - doneCount;
+            var countEl = document.getElementById('wf-alert-count');
+            if (countEl) {
+              if (activeCount === 0) {
+                countEl.textContent = '없음';
+                countEl.style.background = 'rgba(100,100,100,0.1)';
+                countEl.style.color = 'var(--text3)';
+              } else {
+                countEl.textContent = activeCount + '건';
+                var hasDanger2 = alerts.filter(function(a2) {
+                  var b = document.getElementById('st-badge-' + (a2.issueKey||''));
+                  return b && b.textContent !== '완료' && a2.level === 'danger';
+                }).length > 0;
+                countEl.style.background = hasDanger2 ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)';
+                countEl.style.color = hasDanger2 ? 'var(--red)' : 'var(--amber)';
+              }
+            }
+          }
         });
       });
     }
