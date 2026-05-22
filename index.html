@@ -8539,16 +8539,29 @@ function renderWaterfallDashboard(opTotal, opKrw, opFx, invAvail, invLocked,
   // ── ⑤ 지분투자 목록 ───────────────────────────────────────────────
   const eqRows = document.getElementById('wf-eq-rows');
   if (eqRows) {
-    eqRows.innerHTML = !latestEqArr.length
+    // 국채 최신 목록 포함
+    const latestBondsWf = getLatestBonds(getFiltered('investments'));
+    const bondRows = latestBondsWf.map(function(b) {
+      return '<div class="wf-eq-item">' +
+        '<div><div class="wf-eq-nm">' + (b.bondName || b.bank || '국채') +
+          '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:#E6F1FB;color:#185FA5;margin-left:4px;">국채</span></div>' +
+        '<div class="wf-eq-sub">' + b.company + ' · ' + (b.priceDate || b.start || '—') + '</div></div>' +
+        '<div class="wf-eq-val" style="color:var(--accent2);">' + fmtKRW(b.amount || 0) + '</div></div>';
+    }).join('');
+
+    eqRows.innerHTML = (!latestEqArr.length && !latestBondsWf.length)
       ? '<div style="font-size:11px;color:var(--text3);padding:6px 0;">없음</div>'
       : latestEqArr.map(function(e) {
           return '<div class="wf-eq-item">' +
             '<div><div class="wf-eq-nm">' + e.name + '</div>' +
             '<div class="wf-eq-sub">' + e.company + ' · ' + e.date + '</div></div>' +
             '<div class="wf-eq-val">' + fmtKRW(e.total_value) + '</div></div>';
-        }).join('');
+        }).join('') + bondRows;
   }
-  setTxt('wf-eq-total', eqTotal > 0 ? fmtKRW(eqTotal) : '—');
+  // wf-eq-total: 지분 + 국채 합산
+  const bondTotalWf = getLatestBonds(getFiltered('investments'))
+    .reduce(function(s, b) { return s + (b.amount || 0); }, 0);
+  setTxt('wf-eq-total', (eqTotal + bondTotalWf) > 0 ? fmtKRW(eqTotal + bondTotalWf) : '—');
 
   // ── ⑥ 운용자금 상세 (가용만 표시 — 국채/불가용 제외) ──
   const invList = document.getElementById('wf-inv-list');
@@ -9334,29 +9347,34 @@ async function saveEqSlide() {
 // 탭 카운트 + KPI 업데이트
 function renderEqKpis() {
   var allEq  = getFiltered('equities');
-  var allInv = getFiltered('investments').filter(function(i){return i.active&&i.product==='국채';});
+  // 국채: 종목별 최신 날짜 1건만 (getLatestBonds 활용)
+  var latestBonds = getLatestBonds(getFiltered('investments'));
+
   // 지분 최신 목록
   var latMap = {};
   allEq.forEach(function(e){ var k=e.company+'_'+e.name; if(!latMap[k]||e.date>latMap[k].date) latMap[k]=e; });
   var stocks = Object.values(latMap).filter(function(e){ return e.market !== '비상장'; });
   var others = Object.values(latMap).filter(function(e){ return e.market === '비상장'; });
+
   var stockTotal = stocks.reduce(function(s,e){return s+e.total_value;},0);
-  var bondTotal  = allInv.reduce(function(s,i){return s+calcKRW(i.amount,i.currency);},0);
+  var bondTotal  = latestBonds.reduce(function(s,i){return s+calcKRW(i.amount,i.currency);},0);
   var otherTotal = others.reduce(function(s,e){return s+e.total_value;},0);
   var grandTotal = stockTotal + bondTotal + otherTotal;
-  var avail  = stocks.filter(function(e){return e.available!=='불가용';}).reduce(function(s,e){return s+e.total_value;},0)
-             + allInv.filter(function(i){return i.available!=='불가용';}).reduce(function(s,i){return s+i.amount;},0)
-             + others.filter(function(e){return e.available!=='불가용';}).reduce(function(s,e){return s+e.total_value;},0);
+
+  var avail = stocks.filter(function(e){return e.available!=='불가용';}).reduce(function(s,e){return s+e.total_value;},0)
+            + latestBonds.filter(function(i){return i.available!=='불가용';}).reduce(function(s,i){return s+i.amount;},0)
+            + others.filter(function(e){return e.available!=='불가용';}).reduce(function(s,e){return s+e.total_value;},0);
   var locked = grandTotal - avail;
 
   var st = function(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; };
-  st('eq-kpi-total', fmtKRW(grandTotal));
-  st('eq-kpi-avail', fmtKRW(avail));
-  st('eq-kpi-locked', locked>0 ? fmtKRW(locked) : '없음');
-  st('eq-kpi-count', (stocks.length+allInv.length+others.length)+'종');
-  st('eqtc-stock', stocks.length+'');
-  st('eqtc-bond', allInv.length+'');
-  st('eqtc-other', others.length+'');
+  st('eq-kpi-total',  fmtKRW(grandTotal));
+  st('eq-kpi-avail',  fmtKRW(avail));
+  st('eq-kpi-locked', locked > 0 ? fmtKRW(locked) : '없음');
+  // 종목 수: 국채는 최신 기준 종목 수
+  st('eq-kpi-count',  (stocks.length + latestBonds.length + others.length) + '종');
+  st('eqtc-stock',    stocks.length + '');
+  st('eqtc-bond',     latestBonds.length + '');
+  st('eqtc-other',    others.length + '');
 }
 
 // 비상장/기타 탭 렌더
