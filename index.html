@@ -3604,6 +3604,14 @@ function applyAccessControl(user) {
   setCompany(initCompany, firstTab);
   // 모바일 바 동기화 (래핑 없이 직접 호출)
   updateMobileCompanyBar(user);
+  // 워터폴 대시보드 법인 선택 UI 초기화
+  setTimeout(function() { try { initCompanySelector(user); } catch(e) {} }, 100);
+  // v2.0 업데이트 안내 팝업 (3일간, 다시보지않기 미선택 시)
+  setTimeout(function() { try { if(window._showUpdatePopupIfNeeded) _showUpdatePopupIfNeeded(); } catch(e) {} }, 600);
+  // 자동 시세 스케줄러 시작
+  var apEl = document.getElementById('auto-price-indicator');
+  if (apEl) apEl.style.display = '';
+  setTimeout(function() { try { startAutoPriceScheduler(); } catch(e) {} }, 800);
 }
 function doLogout() {
   if (!confirm('로그아웃 하시겠습니까?')) return;
@@ -6905,6 +6913,14 @@ async function doLogin() {
     sessionStorage.setItem('treasury_user', JSON.stringify(currentUser));
     if (errEl) errEl.style.display = 'none';
     applyAccessControl(currentUser);
+    // 테마 및 배치 복원 + 편집 버튼 표시
+    setTimeout(function() {
+      try { initThemeMode(); } catch(e) {}
+      const editBtn = document.getElementById('fp-edit-toggle-btn');
+      if (editBtn && currentUser && (currentUser.role === 'master' || currentUser.role === 'ceo')) {
+        editBtn.style.display = '';
+      }
+    }, 400);
   } catch(e) {
     console.error('Login error:', e);
     // 네트워크 오류 시 로컬 폴백
@@ -9606,78 +9622,56 @@ async function updateIssueStatus(issueKey, newStatus) {
 // ═══════════════════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════════════
 //  이슈 이력 코멘트 수정 / 삭제
-//  (전역 Map으로 UUID 관리 → onclick 따옴표 충돌 완전 회피)
 // ═══════════════════════════════════════════════════════════════════════
-
-// UUID → cmId 매핑 (renderIssueHistory 호출마다 갱신)
-var _ihCmIdMap = {};
-function _ihEdit(key)   { openIhEdit(_ihCmIdMap[key]); }
-function _ihDel(key)    { deleteIhComment(_ihCmIdMap[key]); }
 
 // ── 수정 폼 열기 ────────────────────────────────────────────────────
 function openIhEdit(cmId) {
-  // 이미 열려있으면 닫기
+  // 이미 열린 수정 폼 닫기
   var existing = document.getElementById('ih-edit-form-' + cmId);
   if (existing) { existing.remove(); return; }
 
-  // DOM 확인
+  // 현재 본문 읽기
   var bodyEl = document.getElementById('ih-body-' + cmId);
-  if (!bodyEl) { showToast('새로고침 후 다시 시도해주세요', 'error'); return; }
+  if (!bodyEl) {
+    showToast('코멘트 DOM을 찾을 수 없습니다. 목록을 새로고침해주세요.', 'error');
+    return;
+  }
   var currentBody = bodyEl.textContent || '';
 
-  // 현재 상태
-  var cmEl  = document.getElementById('ih-cm-' + cmId);
-  var badge = cmEl ? cmEl.querySelector('.issue-status-badge') : null;
-  var stMap = { '미조치':'open', '검토중':'review', '완료':'done' };
-  var curSt = badge ? (stMap[badge.textContent.trim()] || 'open') : 'open';
+  // 현재 상태 배지에서 status 읽기
+  var cmEl   = document.getElementById('ih-cm-' + cmId);
+  var badge  = cmEl ? cmEl.querySelector('.issue-status-badge') : null;
+  var stMap  = { '미조치':'open', '검토중':'review', '완료':'done' };
+  var curSt  = badge ? (stMap[badge.textContent.trim()] || 'open') : 'open';
 
-  // 폼 엘리먼트 직접 생성 (innerHTML 파싱 문제 회피)
-  var formEl = document.createElement('div');
-  formEl.className = 'ih-edit-form';
-  formEl.id = 'ih-edit-form-' + cmId;
+  var formHtml = '<div class="ih-edit-form" id="ih-edit-form-' + cmId + '">' +
+    '<div style="display:flex;gap:8px;align-items:center;">' +
+      '<span style="font-size:11px;color:var(--text3);white-space:nowrap;">상태:</span>' +
+      '<select id="ih-edit-status-' + cmId + '" style="font-size:12px;padding:4px 8px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);color:var(--text);font-family:inherit;">' +
+        '<option value="open"'    + (curSt==='open'   ?' selected':'') + '>미조치</option>' +
+        '<option value="review"'  + (curSt==='review' ?' selected':'') + '>검토중</option>' +
+        '<option value="done"'    + (curSt==='done'   ?' selected':'') + '>완료</option>' +
+      '</select>' +
+    '</div>' +
+    '<textarea id="ih-edit-body-' + cmId + '">' + currentBody.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</textarea>' +
+    '<div class="ih-edit-actions">' +
+      '<button class="ih-cancel-btn" onclick="closeIhEdit(\'' + cmId + '\')">취소</button>' +
+      '<button class="ih-save-btn"   onclick="saveIhEdit(\'' + cmId + '\')">저장</button>' +
+    '</div>' +
+  '</div>';
 
-  var stRow = document.createElement('div');
-  stRow.style.cssText = 'display:flex;gap:8px;align-items:center;';
-  stRow.innerHTML = '<span style="font-size:11px;color:var(--text3);white-space:nowrap;">상태:</span>';
+  // bodyEl 다음에 폼 삽입
+  bodyEl.insertAdjacentHTML('afterend', formHtml);
 
-  var sel = document.createElement('select');
-  sel.id = 'ih-edit-status-' + cmId;
-  sel.style.cssText = 'font-size:12px;padding:4px 8px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);color:var(--text);font-family:inherit;';
-  [['open','미조치'],['review','검토중'],['done','완료']].forEach(function(opt) {
-    var o = document.createElement('option');
-    o.value = opt[0]; o.textContent = opt[1];
-    if (opt[0] === curSt) o.selected = true;
-    sel.appendChild(o);
-  });
-  stRow.appendChild(sel);
-  formEl.appendChild(stRow);
-
-  var ta = document.createElement('textarea');
-  ta.id = 'ih-edit-body-' + cmId;
-  ta.className = 'ih-edit-textarea';
-  ta.value = currentBody;
-  ta.style.cssText = 'width:100%;font-size:12px;padding:7px 10px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);color:var(--text);font-family:inherit;resize:vertical;min-height:60px;line-height:1.5;margin-top:6px;';
-  formEl.appendChild(ta);
-
-  var actRow = document.createElement('div');
-  actRow.className = 'ih-edit-actions';
-
-  var cancelBtn = document.createElement('button');
-  cancelBtn.className = 'ih-cancel-btn';
-  cancelBtn.textContent = '취소';
-  cancelBtn.onclick = function() { formEl.remove(); };
-
-  var saveBtn = document.createElement('button');
-  saveBtn.className = 'ih-save-btn';
-  saveBtn.textContent = '저장';
-  saveBtn.onclick = function() { saveIhEdit(cmId, saveBtn); };
-
-  actRow.appendChild(cancelBtn);
-  actRow.appendChild(saveBtn);
-  formEl.appendChild(actRow);
-
-  bodyEl.insertAdjacentElement('afterend', formEl);
-  setTimeout(function() { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }, 50);
+  setTimeout(function() {
+    var ta = document.getElementById('ih-edit-body-' + cmId);
+    if (ta) {
+      // HTML 엔티티 디코딩
+      ta.value = currentBody;
+      ta.focus();
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    }
+  }, 50);
 }
 
 function closeIhEdit(cmId) {
@@ -9685,7 +9679,7 @@ function closeIhEdit(cmId) {
   if (form) form.remove();
 }
 
-async function saveIhEdit(cmId, saveBtnEl) {
+async function saveIhEdit(cmId) {
   var ta  = document.getElementById('ih-edit-body-' + cmId);
   var sel = document.getElementById('ih-edit-status-' + cmId);
   if (!ta || !ta.value.trim()) { showToast('내용을 입력해주세요', 'error'); return; }
@@ -9693,40 +9687,41 @@ async function saveIhEdit(cmId, saveBtnEl) {
   var newBody   = ta.value.trim();
   var newStatus = sel ? sel.value : 'open';
 
-  if (saveBtnEl) { saveBtnEl.disabled = true; saveBtnEl.textContent = '저장 중...'; }
+  // 버튼 비활성화 (중복 저장 방지)
+  var saveBtn = document.querySelector('#ih-edit-form-' + cmId + ' .ih-save-btn');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
 
-  var result = await sbFetch(
-    '/rest/v1/issue_comments?id=eq.' + encodeURIComponent(cmId), {
-    method:  'PATCH',
-    headers: { 'Content-Type':'application/json', 'Prefer':'return=minimal' },
-    body:    JSON.stringify({ body: newBody, status: newStatus })
+  var result = await sbFetch('/rest/v1/issue_comments?id=eq.' + cmId, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ body: newBody, status: newStatus })
   });
 
   if (result !== null) {
-    showToast('수정 완료', 'success');
+    showToast('코멘트 수정 완료', 'success');
     closeIhEdit(cmId);
-    await renderIssueHistory();
+    renderIssueHistory();
     try { renderDashboard(); } catch(e) {}
   } else {
-    if (saveBtnEl) { saveBtnEl.disabled = false; saveBtnEl.textContent = '저장'; }
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '저장'; }
+    // sbFetch가 이미 에러 토스트 표시함
   }
 }
 
+// ── 코멘트 삭제 ─────────────────────────────────────────────────────
 async function deleteIhComment(cmId) {
   if (!confirm('이 코멘트를 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.')) return;
 
-  var result = await sbFetch(
-    '/rest/v1/issue_comments?id=eq.' + encodeURIComponent(cmId), {
-    method:  'DELETE',
-    headers: { 'Prefer':'return=minimal' }
+  var result = await sbFetch('/rest/v1/issue_comments?id=eq.' + cmId, {
+    method: 'DELETE',
+    headers: { 'Prefer': 'return=minimal' }
   });
 
-  // DELETE 성공 시 빈 배열 반환
-  showToast('삭제 완료', 'success');
-  await renderIssueHistory();
+  // DELETE는 성공 시 빈 응답(result=[]) 반환
+  showToast('코멘트 삭제 완료', 'success');
+  renderIssueHistory();
   try { renderDashboard(); } catch(e) {}
 }
-
 
 async function renderIssueHistory() {
   var listEl = document.getElementById('ih-list');
@@ -9779,17 +9774,15 @@ async function renderIssueHistory() {
       ? new Date(g.items[g.items.length-1].created_at).toLocaleDateString('ko-KR')
       : '';
 
-    _ihCmIdMap = {}; // 매 렌더마다 초기화
     var commentsHTML = g.items.map(function(cm, idx) {
-      _ihCmIdMap[idx] = cm.id; // 인덱스 → UUID 등록
       var dt = cm.created_at ? new Date(cm.created_at).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
       var cStBadge = cm.status ? '<span class="issue-status-badge ' + (stCls[cm.status]||'') + '">' + (stLbl[cm.status]||cm.status) + '</span>' : '';
       // 수정/삭제 버튼: master 또는 본인 작성 코멘트
       var isMine = currentUser && (currentUser.role === 'master' || cm.user_label === (currentUser.label || currentUser.role));
       var actBtns = isMine
         ? '<div class="ih-comment-actions">' +
-            '<button class="ih-edit-btn" onclick="_ihEdit(' + idx + ')" title="수정">✏ 수정</button>' +
-            '<button class="ih-del-btn"  onclick="_ihDel('  + idx + ')" title="삭제">✕ 삭제</button>' +
+            '<button class="ih-edit-btn" onclick="openIhEdit(\"' + cm.id + '\")" title="수정">✏ 수정</button>' +
+            '<button class="ih-del-btn"  onclick="deleteIhComment(\"' + cm.id + '\")" title="삭제">✕ 삭제</button>' +
           '</div>'
         : '';
       return '<div class="ih-comment" id="ih-cm-' + cm.id + '">' +
