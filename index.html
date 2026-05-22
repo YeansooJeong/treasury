@@ -8802,14 +8802,30 @@ function renderWaterfallDashboard(opTotal, opKrw, opFx, invAvail, invLocked,
                 countEl.style.color = hasDanger2 ? 'var(--red)' : 'var(--amber)';
               }
             }
+            // 회사명 옆 배지도 비동기 완료 후 업데이트 (완료 이슈 제외)
+            var dropBadge = document.getElementById('wf-issue-badge');
+            if (dropBadge) {
+              if (activeCount === 0) {
+                dropBadge.style.display = 'none';
+              } else {
+                dropBadge.style.display = 'inline-flex';
+                dropBadge.textContent   = activeCount;
+                dropBadge.style.background = doneCount < alerts.length && alerts.some(function(a3){ return a3.level==='danger'; })
+                  ? 'var(--red)' : 'var(--amber)';
+              }
+            }
           }
         });
       });
     }
   }
 
-  // 이슈 배지 업데이트 (드롭다운 버튼 옆)
-  updateIssueBadges(alerts);
+  // 이슈 배지: 비동기 완료 후 pending<=0 블록에서 정확히 업데이트됨
+  // 초기 표시는 wf-alert-count만 사용 (updateIssueBadges는 비동기 후 호출)
+  if (!alerts.length) {
+    var dropBadge0 = document.getElementById('wf-issue-badge');
+    if (dropBadge0) dropBadge0.style.display = 'none';
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════
