@@ -1549,7 +1549,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
         style="width:100%;background:#1e2535;border:1px solid rgba(255,255,255,0.14);color:#f1f5f9;padding:10px 14px;border-radius:8px;font-size:14px;outline:none;font-family:inherit;"
         onkeydown="if(event.key==='Enter')doLogin()">
     </div>
-    <button id="login-submit-btn" onclick="doLogin()" style="width:100%;background:#3b82f6;color:#fff;border:none;padding:11px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;">
+    <button onclick="doLogin()" style="width:100%;background:#3b82f6;color:#fff;border:none;padding:11px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;">
       로그인
     </button>
     <div id="login-error" style="color:#ef4444;font-size:12px;margin-top:10px;text-align:center;display:none;">
@@ -3494,9 +3494,8 @@ function resetUserCode(userKey) {
 // doLogin은 access_codes 섹션으로 이동됨
 
 function applyAccessControl(user) {
-  // ── 로그인 시 모든 버튼 상태 완전 초기화 (로그인 버튼 제외) ──
+  // ── 로그인 시 모든 버튼 상태 완전 초기화 (이전 세션 잔재 제거) ──
   document.querySelectorAll('button').forEach(function(btn) {
-    if (btn.closest('#login-overlay')) return; // 로그인 버튼 제외
     btn.disabled = false;
     btn.style.opacity = '';
     btn.style.cursor = '';
@@ -3605,14 +3604,6 @@ function applyAccessControl(user) {
   setCompany(initCompany, firstTab);
   // 모바일 바 동기화 (래핑 없이 직접 호출)
   updateMobileCompanyBar(user);
-  // 워터폴 대시보드 법인 선택 UI 초기화
-  setTimeout(function() { try { initCompanySelector(user); } catch(e) {} }, 100);
-  // v2.0 업데이트 안내 팝업 (3일간, 다시보지않기 미선택 시)
-  setTimeout(function() { try { if(window._showUpdatePopupIfNeeded) _showUpdatePopupIfNeeded(); } catch(e) {} }, 600);
-  // 자동 시세 스케줄러 시작
-  var apEl = document.getElementById('auto-price-indicator');
-  if (apEl) apEl.style.display = '';
-  setTimeout(function() { try { startAutoPriceScheduler(); } catch(e) {} }, 800);
 }
 function doLogout() {
   if (!confirm('로그아웃 하시겠습니까?')) return;
@@ -6876,75 +6867,60 @@ async function fetchAccessCodes() {
 
 // 로그인: 입력 코드 → Supabase 조회 검증
 async function doLogin() {
-  var loginCodeEl = document.getElementById('login-code');
-  var errEl       = document.getElementById('login-error');
-  var loginBtn    = document.getElementById('login-submit-btn');
-  var inputCode   = loginCodeEl ? loginCodeEl.value.trim() : '';
-
+  const inputCode = document.getElementById('login-code').value.trim();
+  const errEl = document.getElementById('login-error');
+  const btn = document.querySelector('#login-overlay button');
   if (!inputCode) return;
 
-  // 버튼 로딩 상태
-  if (loginBtn) { loginBtn.textContent = '확인 중...'; loginBtn.disabled = true; }
-  if (errEl) errEl.style.display = 'none';
+  if (btn) { btn.textContent = '확인 중...'; btn.disabled = true; }
 
-  var showErr = function(msg) {
-    if (errEl) { errEl.style.display = 'block'; errEl.textContent = msg; }
-    if (loginBtn) { loginBtn.textContent = '로그인'; loginBtn.disabled = false; }
-    if (loginCodeEl) loginCodeEl.value = '';
-  };
-
-  // 1. Supabase 조회
-  var data = null;
   try {
-    data = await sbFetch(
+    const data = await sbFetch(
       '/rest/v1/access_codes?access_code=eq.' + encodeURIComponent(inputCode) + '&is_active=eq.true&limit=1'
     );
-  } catch(e) {
-    console.error('sbFetch 오류:', e);
-    data = null;
-  }
 
-  // 2. 코드 매칭
-  if (data && data.length > 0) {
-    var row = data[0];
-    currentUser = {
-      role:    row.role,
-      company: row.company   || null,
-      label:   row.label     || row.user_name || row.role,
-      code:    row.access_code,
-      sb_id:   row.id,
-    };
-  } else {
-    // 로컬 폴백
-    var localCodes = loadCurrentCodes();
-    var matched = null;
-    Object.values(localCodes).forEach(function(u) {
-      if (u.code === inputCode) matched = u;
-    });
-    if (!matched) {
-      showErr('접속 코드가 올바르지 않습니다');
-      return;
+    if (!data || data.length === 0) {
+      // Supabase 실패 시 로컬 폴백
+      const localCodes = loadCurrentCodes();
+      let matched = null;
+      Object.values(localCodes).forEach(u => { if (u.code === inputCode) matched = u; });
+      if (!matched) {
+        if (errEl) { errEl.style.display = 'block'; errEl.textContent = '접속 코드가 올바르지 않습니다'; }
+        if (btn) { btn.textContent = '로그인'; btn.disabled = false; }
+        document.getElementById('login-code').value = '';
+        return;
+      }
+      currentUser = matched;
+    } else {
+      const row = data[0];
+      currentUser = {
+        role:    row.role,
+        company: row.company || null,
+        label:   row.label || row.user_name,
+        code:    row.access_code,
+        sb_id:   row.id,
+      };
     }
-    currentUser = matched;
-  }
 
-  // 3. 로그인 성공
-  try {
     sessionStorage.setItem('treasury_user', JSON.stringify(currentUser));
-  } catch(e) {}
-
-  if (loginBtn) { loginBtn.textContent = '로그인'; loginBtn.disabled = false; }
-  if (errEl) errEl.style.display = 'none';
-
-  applyAccessControl(currentUser);
-
-  setTimeout(function() {
-    try { initThemeMode(); } catch(e) {}
-    var editBtn = document.getElementById('fp-edit-toggle-btn');
-    if (editBtn && currentUser && (currentUser.role === 'master' || currentUser.role === 'ceo')) {
-      editBtn.style.display = '';
+    if (errEl) errEl.style.display = 'none';
+    applyAccessControl(currentUser);
+  } catch(e) {
+    console.error('Login error:', e);
+    // 네트워크 오류 시 로컬 폴백
+    const localCodes = loadCurrentCodes();
+    let matched = null;
+    Object.values(localCodes).forEach(u => { if (u.code === inputCode) matched = u; });
+    if (matched) {
+      currentUser = matched;
+      sessionStorage.setItem('treasury_user', JSON.stringify(currentUser));
+      applyAccessControl(currentUser);
+    } else {
+      alert('서버 통신에 실패했습니다. 잠시 후 다시 시도해주세요.');
     }
-  }, 400);
+  } finally {
+    if (btn) { btn.textContent = '로그인'; btn.disabled = false; }
+  }
 }
 
 // ── 관리 페이지 1: 마스터 내 코드 변경 ─────────────────────
