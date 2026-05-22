@@ -3494,8 +3494,9 @@ function resetUserCode(userKey) {
 // doLogin은 access_codes 섹션으로 이동됨
 
 function applyAccessControl(user) {
-  // ── 로그인 시 모든 버튼 상태 완전 초기화 (이전 세션 잔재 제거) ──
+  // ── 로그인 시 모든 버튼 상태 완전 초기화 (로그인 버튼 제외) ──
   document.querySelectorAll('button').forEach(function(btn) {
+    if (btn.closest('#login-overlay')) return; // 로그인 버튼 제외
     btn.disabled = false;
     btn.style.opacity = '';
     btn.style.cursor = '';
@@ -6881,6 +6882,7 @@ async function doLogin() {
   if (!inputCode) return;
 
   if (btn) { btn.textContent = '확인 중...'; btn.disabled = true; }
+  if (errEl) { errEl.style.display = 'none'; }
 
   try {
     const data = await sbFetch(
@@ -6888,7 +6890,7 @@ async function doLogin() {
     );
 
     if (!data || data.length === 0) {
-      // Supabase 실패 시 로컬 폴백
+      // Supabase 응답은 왔으나 코드 불일치 — 로컬 폴백
       const localCodes = loadCurrentCodes();
       let matched = null;
       Object.values(localCodes).forEach(u => { if (u.code === inputCode) matched = u; });
@@ -6904,7 +6906,7 @@ async function doLogin() {
       currentUser = {
         role:    row.role,
         company: row.company || null,
-        label:   row.label || row.user_name,
+        label:   row.label || row.user_name || row.role,
         code:    row.access_code,
         sb_id:   row.id,
       };
@@ -6913,7 +6915,6 @@ async function doLogin() {
     sessionStorage.setItem('treasury_user', JSON.stringify(currentUser));
     if (errEl) errEl.style.display = 'none';
     applyAccessControl(currentUser);
-    // 테마 및 배치 복원 + 편집 버튼 표시
     setTimeout(function() {
       try { initThemeMode(); } catch(e) {}
       const editBtn = document.getElementById('fp-edit-toggle-btn');
@@ -6923,7 +6924,7 @@ async function doLogin() {
     }, 400);
   } catch(e) {
     console.error('Login error:', e);
-    // 네트워크 오류 시 로컬 폴백
+    // 네트워크 오류 — 로컬 폴백
     const localCodes = loadCurrentCodes();
     let matched = null;
     Object.values(localCodes).forEach(u => { if (u.code === inputCode) matched = u; });
@@ -6932,7 +6933,10 @@ async function doLogin() {
       sessionStorage.setItem('treasury_user', JSON.stringify(currentUser));
       applyAccessControl(currentUser);
     } else {
-      alert('서버 통신에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      if (errEl) {
+        errEl.style.display = 'block';
+        errEl.textContent = '서버 연결 오류: ' + (e.message || String(e)).slice(0, 60);
+      }
     }
   } finally {
     if (btn) { btn.textContent = '로그인'; btn.disabled = false; }
