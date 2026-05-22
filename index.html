@@ -9625,6 +9625,11 @@ async function updateIssueStatus(issueKey, newStatus) {
 // ═══════════════════════════════════════════════════════════════════════
 
 // ── 수정 폼 열기 ────────────────────────────────────────────────────
+// UUID를 인덱스로 관리 — onclick에 숫자만 전달해 따옴표 충돌 방지
+var _ihIds = [];
+function _ihEdit(i) { if (_ihIds[i]) openIhEdit(_ihIds[i]); }
+function _ihDel(i)  { if (_ihIds[i]) deleteIhComment(_ihIds[i]); }
+
 function openIhEdit(cmId) {
   // 이미 열린 수정 폼 닫기
   var existing = document.getElementById('ih-edit-form-' + cmId);
@@ -9724,6 +9729,7 @@ async function deleteIhComment(cmId) {
 }
 
 async function renderIssueHistory() {
+  _ihIds = []; // 렌더마다 초기화
   var listEl = document.getElementById('ih-list');
   if (!listEl) return;
   listEl.innerHTML = '<div class="ih-empty">조회 중...</div>';
@@ -9779,10 +9785,11 @@ async function renderIssueHistory() {
       var cStBadge = cm.status ? '<span class="issue-status-badge ' + (stCls[cm.status]||'') + '">' + (stLbl[cm.status]||cm.status) + '</span>' : '';
       // 수정/삭제 버튼: master 또는 본인 작성 코멘트
       var isMine = currentUser && (currentUser.role === 'master' || cm.user_label === (currentUser.label || currentUser.role));
+      var _ihIdx = _ihIds.length; _ihIds.push(cm.id); // 인덱스 등록
       var actBtns = isMine
         ? '<div class="ih-comment-actions">' +
-            '<button class="ih-edit-btn" onclick="openIhEdit(\"' + cm.id + '\")" title="수정">✏ 수정</button>' +
-            '<button class="ih-del-btn"  onclick="deleteIhComment(\"' + cm.id + '\")" title="삭제">✕ 삭제</button>' +
+            '<button class="ih-edit-btn" onclick="_ihEdit(' + _ihIdx + ')" title="수정">✏ 수정</button>' +
+            '<button class="ih-del-btn"  onclick="_ihDel('  + _ihIdx + ')" title="삭제">✕ 삭제</button>' +
           '</div>'
         : '';
       return '<div class="ih-comment" id="ih-cm-' + cm.id + '">' +
