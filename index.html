@@ -9621,14 +9621,132 @@ async function updateIssueStatus(issueKey, newStatus) {
 //  이슈 이력 페이지 렌더
 // ═══════════════════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════════════
-//  이슈 이력 코멘트 수정 / 삭제
+//  이슈 이력 코멘트 수정 / 삭제 — 이벤트 위임 방식
 // ═══════════════════════════════════════════════════════════════════════
+
+// ih-list 클릭 이벤트 위임 (동적 렌더된 버튼도 캡처)
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  var action = btn.getAttribute('data-action');
+  var cid    = btn.getAttribute('data-cid');
+  if (!cid) return;
+  if (action === 'edit') openIhEdit(cid);
+  if (action === 'del')  deleteIhComment(cid);
+});
 
 // ── 수정 폼 열기 ────────────────────────────────────────────────────
 function openIhEdit(cmId) {
-  // 이미 열린 수정 폼 닫기
+  // 이미 열려있으면 닫기
   var existing = document.getElementById('ih-edit-form-' + cmId);
   if (existing) { existing.remove(); return; }
+
+  // DOM 확인
+  var bodyEl = document.getElementById('ih-body-' + cmId);
+  if (!bodyEl) { showToast('새로고침 후 다시 시도해주세요', 'error'); return; }
+  var currentBody = bodyEl.textContent || '';
+
+  // 현재 상태
+  var cmEl  = document.getElementById('ih-cm-' + cmId);
+  var badge = cmEl ? cmEl.querySelector('.issue-status-badge') : null;
+  var stMap = { '미조치':'open', '검토중':'review', '완료':'done' };
+  var curSt = badge ? (stMap[badge.textContent.trim()] || 'open') : 'open';
+
+  // 폼 엘리먼트 직접 생성 (innerHTML 파싱 문제 회피)
+  var formEl = document.createElement('div');
+  formEl.className = 'ih-edit-form';
+  formEl.id = 'ih-edit-form-' + cmId;
+
+  var stRow = document.createElement('div');
+  stRow.style.cssText = 'display:flex;gap:8px;align-items:center;';
+  stRow.innerHTML = '<span style="font-size:11px;color:var(--text3);white-space:nowrap;">상태:</span>';
+
+  var sel = document.createElement('select');
+  sel.id = 'ih-edit-status-' + cmId;
+  sel.style.cssText = 'font-size:12px;padding:4px 8px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);color:var(--text);font-family:inherit;';
+  [['open','미조치'],['review','검토중'],['done','완료']].forEach(function(opt) {
+    var o = document.createElement('option');
+    o.value = opt[0]; o.textContent = opt[1];
+    if (opt[0] === curSt) o.selected = true;
+    sel.appendChild(o);
+  });
+  stRow.appendChild(sel);
+  formEl.appendChild(stRow);
+
+  var ta = document.createElement('textarea');
+  ta.id = 'ih-edit-body-' + cmId;
+  ta.className = 'ih-edit-textarea';
+  ta.value = currentBody;
+  ta.style.cssText = 'width:100%;font-size:12px;padding:7px 10px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);color:var(--text);font-family:inherit;resize:vertical;min-height:60px;line-height:1.5;margin-top:6px;';
+  formEl.appendChild(ta);
+
+  var actRow = document.createElement('div');
+  actRow.className = 'ih-edit-actions';
+
+  var cancelBtn = document.createElement('button');
+  cancelBtn.className = 'ih-cancel-btn';
+  cancelBtn.textContent = '취소';
+  cancelBtn.onclick = function() { formEl.remove(); };
+
+  var saveBtn = document.createElement('button');
+  saveBtn.className = 'ih-save-btn';
+  saveBtn.textContent = '저장';
+  saveBtn.onclick = function() { saveIhEdit(cmId, saveBtn); };
+
+  actRow.appendChild(cancelBtn);
+  actRow.appendChild(saveBtn);
+  formEl.appendChild(actRow);
+
+  bodyEl.insertAdjacentElement('afterend', formEl);
+  setTimeout(function() { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }, 50);
+}
+
+function closeIhEdit(cmId) {
+  var form = document.getElementById('ih-edit-form-' + cmId);
+  if (form) form.remove();
+}
+
+async function saveIhEdit(cmId, saveBtnEl) {
+  var ta  = document.getElementById('ih-edit-body-' + cmId);
+  var sel = document.getElementById('ih-edit-status-' + cmId);
+  if (!ta || !ta.value.trim()) { showToast('내용을 입력해주세요', 'error'); return; }
+
+  var newBody   = ta.value.trim();
+  var newStatus = sel ? sel.value : 'open';
+
+  if (saveBtnEl) { saveBtnEl.disabled = true; saveBtnEl.textContent = '저장 중...'; }
+
+  var result = await sbFetch(
+    '/rest/v1/issue_comments?id=eq.' + encodeURIComponent(cmId), {
+    method:  'PATCH',
+    headers: { 'Content-Type':'application/json', 'Prefer':'return=minimal' },
+    body:    JSON.stringify({ body: newBody, status: newStatus })
+  });
+
+  if (result !== null) {
+    showToast('수정 완료', 'success');
+    closeIhEdit(cmId);
+    await renderIssueHistory();
+    try { renderDashboard(); } catch(e) {}
+  } else {
+    if (saveBtnEl) { saveBtnEl.disabled = false; saveBtnEl.textContent = '저장'; }
+  }
+}
+
+async function deleteIhComment(cmId) {
+  if (!confirm('이 코멘트를 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.')) return;
+
+  var result = await sbFetch(
+    '/rest/v1/issue_comments?id=eq.' + encodeURIComponent(cmId), {
+    method:  'DELETE',
+    headers: { 'Prefer':'return=minimal' }
+  });
+
+  // DELETE 성공 시 빈 배열 반환
+  showToast('삭제 완료', 'success');
+  await renderIssueHistory();
+  try { renderDashboard(); } catch(e) {}
+}
 
   // 현재 본문 읽기
   var bodyEl = document.getElementById('ih-body-' + cmId);
@@ -9644,84 +9762,6 @@ function openIhEdit(cmId) {
   var stMap  = { '미조치':'open', '검토중':'review', '완료':'done' };
   var curSt  = badge ? (stMap[badge.textContent.trim()] || 'open') : 'open';
 
-  var formHtml = '<div class="ih-edit-form" id="ih-edit-form-' + cmId + '">' +
-    '<div style="display:flex;gap:8px;align-items:center;">' +
-      '<span style="font-size:11px;color:var(--text3);white-space:nowrap;">상태:</span>' +
-      '<select id="ih-edit-status-' + cmId + '" style="font-size:12px;padding:4px 8px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);color:var(--text);font-family:inherit;">' +
-        '<option value="open"'    + (curSt==='open'   ?' selected':'') + '>미조치</option>' +
-        '<option value="review"'  + (curSt==='review' ?' selected':'') + '>검토중</option>' +
-        '<option value="done"'    + (curSt==='done'   ?' selected':'') + '>완료</option>' +
-      '</select>' +
-    '</div>' +
-    '<textarea id="ih-edit-body-' + cmId + '">' + currentBody.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</textarea>' +
-    '<div class="ih-edit-actions">' +
-      '<button class="ih-cancel-btn" onclick="closeIhEdit(\'' + cmId + '\')">취소</button>' +
-      '<button class="ih-save-btn"   onclick="saveIhEdit(\'' + cmId + '\')">저장</button>' +
-    '</div>' +
-  '</div>';
-
-  // bodyEl 다음에 폼 삽입
-  bodyEl.insertAdjacentHTML('afterend', formHtml);
-
-  setTimeout(function() {
-    var ta = document.getElementById('ih-edit-body-' + cmId);
-    if (ta) {
-      // HTML 엔티티 디코딩
-      ta.value = currentBody;
-      ta.focus();
-      ta.setSelectionRange(ta.value.length, ta.value.length);
-    }
-  }, 50);
-}
-
-function closeIhEdit(cmId) {
-  var form = document.getElementById('ih-edit-form-' + cmId);
-  if (form) form.remove();
-}
-
-async function saveIhEdit(cmId) {
-  var ta  = document.getElementById('ih-edit-body-' + cmId);
-  var sel = document.getElementById('ih-edit-status-' + cmId);
-  if (!ta || !ta.value.trim()) { showToast('내용을 입력해주세요', 'error'); return; }
-
-  var newBody   = ta.value.trim();
-  var newStatus = sel ? sel.value : 'open';
-
-  // 버튼 비활성화 (중복 저장 방지)
-  var saveBtn = document.querySelector('#ih-edit-form-' + cmId + ' .ih-save-btn');
-  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
-
-  var result = await sbFetch('/rest/v1/issue_comments?id=eq.' + cmId, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-    body: JSON.stringify({ body: newBody, status: newStatus })
-  });
-
-  if (result !== null) {
-    showToast('코멘트 수정 완료', 'success');
-    closeIhEdit(cmId);
-    renderIssueHistory();
-    try { renderDashboard(); } catch(e) {}
-  } else {
-    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '저장'; }
-    // sbFetch가 이미 에러 토스트 표시함
-  }
-}
-
-// ── 코멘트 삭제 ─────────────────────────────────────────────────────
-async function deleteIhComment(cmId) {
-  if (!confirm('이 코멘트를 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.')) return;
-
-  var result = await sbFetch('/rest/v1/issue_comments?id=eq.' + cmId, {
-    method: 'DELETE',
-    headers: { 'Prefer': 'return=minimal' }
-  });
-
-  // DELETE는 성공 시 빈 응답(result=[]) 반환
-  showToast('코멘트 삭제 완료', 'success');
-  renderIssueHistory();
-  try { renderDashboard(); } catch(e) {}
-}
 
 async function renderIssueHistory() {
   var listEl = document.getElementById('ih-list');
@@ -9781,8 +9821,8 @@ async function renderIssueHistory() {
       var isMine = currentUser && (currentUser.role === 'master' || cm.user_label === (currentUser.label || currentUser.role));
       var actBtns = isMine
         ? '<div class="ih-comment-actions">' +
-            '<button class="ih-edit-btn" onclick="openIhEdit(\"' + cm.id + '\")" title="수정">✏ 수정</button>' +
-            '<button class="ih-del-btn"  onclick="deleteIhComment(\"' + cm.id + '\")" title="삭제">✕ 삭제</button>' +
+            '<button class="ih-edit-btn" data-cid="' + cm.id + '" data-action="edit" title="수정">✏ 수정</button>' +
+            '<button class="ih-del-btn"  data-cid="' + cm.id + '" data-action="del"  title="삭제">✕ 삭제</button>' +
           '</div>'
         : '';
       return '<div class="ih-comment" id="ih-cm-' + cm.id + '">' +
