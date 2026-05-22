@@ -8100,30 +8100,60 @@ async function deleteBondEquity(id) {
 
 /** 전체 국채 시세 일괄 갱신 */
 async function runBulkBondRefresh() {
-  const bonds = getFiltered('investments').filter(x => x.active && x.product === '국채' && x.bondTicker);
-  if (!bonds.length) { showToast('갱신할 국채가 없습니다', 'error'); return; }
-  showToast(`${bonds.length}건 일괄 갱신 중...`);
+  // 종목별 최신 레코드 기준으로 갱신 (지분과 동일 방식)
+  const latestBondsToRefresh = getLatestBonds(getFiltered('investments'))
+    .filter(x => x.bondTicker); // ISIN 있는 것만
+
+  if (!latestBondsToRefresh.length) { showToast('갱신할 국채가 없습니다 (ISIN 필요)', 'error'); return; }
+  showToast(latestBondsToRefresh.length + '건 일괄 갱신 중...');
+
   let ok = 0, fail = 0;
-  for (const b of bonds) {
+  for (const b of latestBondsToRefresh) {
     try {
       const url = new URL(GAS_API_URL);
-      url.searchParams.set('type', 'bond');
+      url.searchParams.set('type',   'bond');
       url.searchParams.set('isinCd', b.bondTicker);
+      // basDt 미지정 → API가 가장 최근 영업일 데이터 반환 (T+1 문제 회피)
       const resp = await fetch(url.toString(), { signal: AbortSignal.timeout(20000) });
       const data = await resp.json();
+
       if (data.success) {
-        b.bondPrice = data.price;
-        b.amount    = Math.round((b.bondQty || 0) * (data.price / 10)); // 기준가÷10×좌수
-        b.priceDate = data.date;
-        if (data.rate != null) b.rate = data.rate;
-        await DB.updateOne('investments', b);
+        const newPrice = data.price;
+        const newDate  = data.date; // API가 반환한 실제 기준일
+        const amount   = Math.round((b.bondQty || 0) * (newPrice / 10));
+
+        // 같은 날짜 레코드 있으면 업데이트, 없으면 새 레코드 추가 (지분과 동일)
+        const bondNameKey = b.bondName || b.bank || '';
+        const existing = DB.get('investments').find(function(x) {
+          return x.active && x.product === '국채' &&
+                 (x.bondName || x.bank || '') === bondNameKey &&
+                 (x.priceDate || x.start || '') === newDate;
+        });
+
+        if (existing) {
+          existing.bondPrice = newPrice;
+          existing.amount    = amount;
+          if (data.rate != null) existing.rate = data.rate;
+          await DB.updateOne('investments', existing);
+        } else {
+          const newRec = Object.assign({}, b, {
+            id:        crypto.randomUUID(),
+            bondPrice: newPrice,
+            amount:    amount,
+            priceDate: newDate,
+            start:     newDate,
+            rate:      data.rate != null ? data.rate : b.rate,
+          });
+          await DB.append('investments', newRec);
+        }
         ok++;
       } else { fail++; }
-    } catch(e) { fail++; }
+    } catch(e) { console.error('runBulkBondRefresh:', e); fail++; }
   }
+
   renderBondEquity();
   renderDashboard();
-  showToast(`갱신 완료: ${ok}건 성공${fail ? ` / ${fail}건 실패` : ''}`, fail ? 'error' : 'success');
+  showToast('갱신 완료: ' + ok + '건 성공' + (fail ? ' / ' + fail + '건 실패' : ''), fail ? 'error' : 'success');
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -8743,9 +8773,9 @@ function renderWaterfallDashboard(opTotal, opKrw, opFx, invAvail, invLocked,
               badge.className   = 'issue-status-badge ' + (stCls[last.status]||'issue-s-open');
               badge.textContent = stLbl[last.status] || '미조치';
             }
-            // 완료 이슈 흐리게 + 카운트 제외
+            // 완료 이슈: 카드에서 완전히 숨기고 카운트 제외
             if (last.status === 'done') {
-              if (item) item.style.opacity = '0.45';
+              if (item) item.style.display = 'none';
               doneCount++;
             }
             // 코멘트 버튼 텍스트 갱신
@@ -8916,10 +8946,11 @@ function _updateAlertBadge(issueKey, newStatus) {
 }
 
 function _recalcAlertCount() {
-  // wf-alert-list 내 이슈 중 완료가 아닌 것 개수
+  // display:none(완료) 제외하고 실제 표시 중인 이슈만 카운트
   var items = document.querySelectorAll('#wf-alert-list .wf-alert-item');
   var activeCount = 0;
   items.forEach(function(item) {
+    if (item.style.display === 'none') return; // 완료로 숨겨진 항목 제외
     var badge = item.querySelector('.issue-status-badge');
     if (!badge || badge.textContent !== '완료') activeCount++;
   });
@@ -8960,18 +8991,14 @@ document.addEventListener('keydown', function(e) {
 
 // ── 이슈 배지 업데이트 ─────────────────────────────────────────────────
 function updateIssueBadges(alerts) {
-  // 완료 상태 이슈는 배지에서 제외 — 비동기로 최신 상태 확인 후 반영
-  // 일단 전체 count로 초기 표시 후, 완료 이슈 확인 후 줄어듦
   var badge = document.getElementById('wf-issue-badge');
   if (!badge) return;
-  var nonDoneCount = alerts.filter(function(a) {
-    var stEl = document.getElementById('st-badge-' + (a.issueKey||''));
-    return !stEl || stEl.textContent !== '완료';
-  }).length;
-
-  if (nonDoneCount > 0) {
+  // 완료 이슈 즉시 제외 (비동기 로드 전에도)
+  // 비동기 완료 후 _recalcAlertCount()로 재계산
+  var activeCount = alerts.length; // 초기값 (비동기 완료 전)
+  if (activeCount > 0) {
     badge.style.display = 'inline-flex';
-    badge.textContent   = nonDoneCount;
+    badge.textContent   = activeCount;
     badge.style.background = alerts.some(function(a){return a.level==='danger';}) ? 'var(--red)' : 'var(--amber)';
   } else {
     badge.style.display = 'none';
