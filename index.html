@@ -6047,48 +6047,122 @@ function updateEquityChart(allEqRecords) {
   if (!ctx) return;
   if (equityChartObj) equityChartObj.destroy();
 
-  // 종목별 필터
-  const filtered = equityChartStock
-    ? allEqRecords.filter(e => e.name === equityChartStock)
-    : allEqRecords;
-
-  // 종목 버튼 렌더링
+  // 종목 버튼/드롭다운 렌더
   renderEquityStockBtns(allEqRecords);
 
-  if (!filtered.length) return;
-
-  // 기간 필터 (equityChartDays 기준)
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - equityChartDays);
-  const cutoffStr = cutoff.toISOString().slice(0,10);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
 
-  const dateMap = {};
-  const allDates = [...new Set(filtered.map(e=>e.date))].sort().filter(d => d >= cutoffStr);
-  let runningState = {};
-  // 기간 이전 최신 상태로 초기화
-  filtered.filter(e => e.date < cutoffStr)
+  const filterVal = equityChartStock || '';
+  const isBondSel = filterVal.startsWith('bond_');
+  const isEqSel   = filterVal.startsWith('eq_');
+  const bondName  = isBondSel ? filterVal.replace(/^bond_/, '') : '';
+  const eqName    = isEqSel   ? filterVal.replace(/^eq_/, '')   : '';
+
+  // ── 지분 데이터 ──────────────────────────────────────────────
+  const eqFiltered = isBondSel ? [] : allEqRecords.filter(e => !eqName || e.name === eqName);
+  const eqDates    = [...new Set(eqFiltered.map(e => e.date))].sort().filter(d => d >= cutoffStr);
+  let eqRunning    = {};
+  eqFiltered.filter(e => e.date < cutoffStr)
     .sort((a,b) => a.date.localeCompare(b.date))
-    .forEach(r => { runningState[r.company+'_'+r.name] = r.total_value; });
+    .forEach(r => { eqRunning[r.company+'_'+r.name] = r.total_value; });
 
-  allDates.forEach(date => {
-    filtered.filter(e=>e.date === date).forEach(r => { runningState[r.company+'_'+r.name] = r.total_value; });
-    dateMap[date] = Object.values(runningState).reduce((a,b)=>a+b, 0);
+  // ── 국채 데이터 ──────────────────────────────────────────────
+  const allBonds    = getFiltered('investments').filter(x =>
+    x.active && x.product === '국채' && (x.priceDate || x.start) &&
+    (!bondName || (x.bondName || x.bank || '') === bondName)
+  );
+  // 국채: 종목별 날짜별 최신 값으로 집계
+  const bondDateMap = {};
+  allBonds.forEach(x => {
+    const d = x.priceDate || x.start || '';
+    if (d < cutoffStr) return;
+    const key = (x.bondName || x.bank || x.id);
+    if (!bondDateMap[d]) bondDateMap[d] = {};
+    if (!bondDateMap[d][key] || x.amount > bondDateMap[d][key]) {
+      bondDateMap[d][key] = x.amount || 0;
+    }
   });
+  const bondDates = Object.keys(bondDateMap).sort().filter(d => d >= cutoffStr);
 
+  // ── 전체 날짜 축 통합 ─────────────────────────────────────────
+  const allDates = [...new Set([...eqDates, ...bondDates])].sort();
   if (!allDates.length) return;
 
-  const labels = allDates.map(d => equityChartDays <= 30 ? d.slice(5) : d.slice(2,7));
-  const data   = allDates.map(d => dateMap[d]);
-  const label  = equityChartStock ? equityChartStock + ' 평가금액' : '지분투자 합계';
+  const labels = allDates.map(d => equityChartDays <= 30 ? d.slice(5) : d.slice(2, 7));
+
+  // 지분 합계 (누적 방식 — 중간 빈 날짜는 이전 값 유지)
+  let lastEqRunning = Object.assign({}, eqRunning);
+  const eqData = allDates.map(d => {
+    if (!isEqSel && !isBondSel || isEqSel) {
+      const dayRecs = eqFiltered.filter(e => e.date === d);
+      dayRecs.forEach(r => { lastEqRunning[r.company+'_'+r.name] = r.total_value; });
+      return Object.values(lastEqRunning).reduce((a, b) => a + b, 0);
+    }
+    return null;
+  });
+
+  // 국채 합계 (해당 날짜 없으면 가장 최근 값 유지)
+  let lastBondTotal = 0;
+  const bondData = allDates.map(d => {
+    if (!isEqSel || isBondSel) {
+      if (bondDateMap[d]) {
+        lastBondTotal = Object.values(bondDateMap[d]).reduce((a, b) => a + b, 0);
+      }
+      return lastBondTotal;
+    }
+    return null;
+  });
+
+  const datasets = [];
+
+  // 지분 데이터셋 (핑크) — 국채 단독 선택 시 제외
+  const hasEqData = eqData.some(v => v !== null && v > 0);
+  if (!isBondSel && hasEqData) {
+    datasets.push({
+      label: eqName ? eqName + ' 평가금액' : '지분투자 합계',
+      data:  eqData,
+      borderColor: '#ec4899',
+      backgroundColor: 'rgba(236,72,153,0.08)',
+      tension: 0.4, fill: true,
+      pointRadius: allDates.length > 60 ? 0 : 3,
+    });
+  }
+
+  // 국채 데이터셋 (네이비) — 지분 단독 선택 시 제외
+  const hasBondData = bondData.some(v => v !== null && v > 0);
+  if (!isEqSel && hasBondData) {
+    datasets.push({
+      label: bondName ? bondName + ' 평가금액' : '국채/채권 합계',
+      data:  bondData,
+      borderColor: '#3b82f6',
+      backgroundColor: 'rgba(59,130,246,0.08)',
+      tension: 0.4, fill: true,
+      pointRadius: allDates.length > 60 ? 0 : 3,
+    });
+  }
+
+  if (!datasets.length) return;
 
   equityChartObj = new Chart(ctx.getContext('2d'), {
     type: 'line',
-    data: { labels, datasets: [{ label, data, borderColor: '#ec4899', backgroundColor: 'rgba(236,72,153,0.1)', tension: 0.4, fill: true, pointRadius: allDates.length > 60 ? 0 : 3 }] },
-    options: { responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: '#94a3b8', font:{size:11} } } },
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#94a3b8', font: { size: 11 } } }
+      },
       scales: {
-        y: { grid:{color:'rgba(255,255,255,0.05)'}, ticks:{color:'#64748b', callback: v=>(v/100000000).toFixed(1)+'억'} },
-        x: { grid:{display:false}, ticks:{color:'#64748b', maxTicksLimit: equityChartDays<=30?14:12, maxRotation:0} }
+        y: {
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: '#64748b', callback: v => (v / 100000000).toFixed(1) + '억' }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { color: '#64748b', maxTicksLimit: equityChartDays <= 30 ? 14 : 12, maxRotation: 0 }
+        }
       }
     }
   });
@@ -7434,24 +7508,9 @@ function onEquityFilterChange() {
   const val = sel ? (sel.value || '') : '';
   equityChartStock = val || null;
 
-  if (val.startsWith('bond_')) {
-    // 국채 선택 → investments 히스토리로 차트
-    const bondName = val.replace(/^bond_/, '');
-    const bondRecords = getLatestBonds(getFiltered('investments'))
-      .filter(b => (b.bondName || b.bank || '') === bondName);
-    const allBondHist = getFiltered('investments')
-      .filter(x => x.active && x.product === '국채' && (x.bondName || x.bank || '') === bondName)
-      .map(x => ({ date: x.priceDate || x.start || '', total_value: x.amount || 0, name: bondName }))
-      .sort((a,b) => a.date.localeCompare(b.date));
-    updateEquityChart(allBondHist);
-  } else {
-    // 지분 선택 or 전체
-    const filterName = val.startsWith('eq_') ? val.replace(/^eq_/, '') : '';
-    const allEq = getFiltered('equities')
-      .filter(e => !filterName || e.name === filterName)
-      .sort((a,b) => a.date.localeCompare(b.date));
-    updateEquityChart(allEq);
-  }
+  // allEq는 항상 equities 전체 (updateEquityChart 내부에서 investments 국채도 직접 읽음)
+  const allEq = getFiltered('equities').sort((a,b) => a.date.localeCompare(b.date));
+  updateEquityChart(allEq);
 }
 
 // ══════════════════════════════════════════════════════════════
