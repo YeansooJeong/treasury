@@ -2501,7 +2501,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
             <div style="display:flex;gap:8px;align-items:center;margin-top:12px;margin-bottom:10px;">
               <button class="btn btn-ghost" id="btn-bulk-bond-refresh"
                 style="font-size:11px;padding:3px 9px;color:var(--green);border-color:rgba(16,185,129,0.4);"
-                onclick="runBulkBondRefresh()">↻ 전체 시세 갱신</button>
+                onclick="runBulkBondRefresh()" title="전 영업일 시세 · 익영업일 13시 이후 업데이트">↻ 전체 시세 갱신</button>
             </div>
 
             <!-- 종목 목록 (최신 1행씩) -->
@@ -2541,7 +2541,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                   <button class="btn btn-ghost" style="font-size:11px;padding:5px 12px;color:var(--green);border-color:rgba(16,185,129,0.4);"
-                    onclick="fetchBondHistoryPrice()">📡 시세 조회</button>
+                    onclick="fetchBondHistoryPrice()" title="전 영업일 시세 · 익영업일 13시 이후 업데이트">📡 시세 조회</button>
                   <span id="bond-hist-status" style="font-size:11px;color:var(--text3);flex:1;min-width:120px;"></span>
                   <span id="bond-hist-eval" style="font-size:12px;font-weight:600;color:var(--green);"></span>
                   <button id="bond-hist-save-btn" class="btn btn-success" style="font-size:12px;padding:5px 14px;"
@@ -3046,6 +3046,15 @@ const _cache = {};
 let _supabaseReady = false;
 
 // ── Supabase REST API 헬퍼 ────────────────────────────────
+
+// ── 날짜 정규화: YYYYMMDD → YYYY-MM-DD (이미 하이픈 있으면 유지) ──
+function normDate(d) {
+  if (!d) return '';
+  d = String(d).trim();
+  if (/^\d{8}$/.test(d)) return d.slice(0,4) + '-' + d.slice(4,6) + '-' + d.slice(6,8);
+  return d;
+}
+
 async function sbFetch(path, options = {}) {
   const method = options.method || 'GET';
   const isWrite = method !== 'GET';
@@ -6308,7 +6317,7 @@ async function refreshBondPrice(id, bondName) {
     if (data.success) {
       item.bondPrice = data.price;
       item.amount    = Math.round((item.bondQty || 0) * (data.price / 10)); // 기준가÷10×좌수
-      item.priceDate = data.date;
+      item.priceDate = normDate(data.date);
       item.rate      = data.rate ?? item.rate;
       await DB.updateOne('investments', item);
       renderInvestments();
@@ -7793,7 +7802,7 @@ function renderBondEquity() {
     return '<tr style="cursor:pointer;background:' + (isSelected ? 'rgba(59,130,246,0.08)' : '') + ';"' +
       ' onclick="selectBondForHistory(\'' + b.id + '\',\'' + (b.bondName||b.bank||'').replace(/'/g,"\\'") + '\',\'' + (b.bondTicker||'') + '\',' + (b.bondQty||0) + ')"' +
       ' title="클릭하면 날짜별 시세 이력을 확인할 수 있습니다">' +
-      '<td style="font-size:11px;">' + (b.priceDate || b.start || '—') + '</td>' +
+      '<td style="font-size:11px;">' + normDate(b.priceDate || b.start || '—') + '</td>' +
       '<td style="font-size:11px;color:var(--text3);">' + (b.company || '') + '</td>' +
       '<td style="font-weight:500;">' + (b.bondName || b.bank || '—') + '</td>' +
       '<td style="font-size:11px;">' + (b.bondTicker || '<span style="color:var(--text3);font-size:10px;">—</span>') + '</td>' +
@@ -7911,7 +7920,7 @@ function renderBondHistoryTable() {
   tbody.innerHTML = allRecords.map(function(r) {
     var evalAmt = r.amount || Math.round((r.bondQty || 0) * ((r.bondPrice || 0) / 10));
     return '<tr>' +
-      '<td style="font-size:12px;">' + (r.priceDate || r.start || '—') + '</td>' +
+      '<td style="font-size:12px;">' + normDate(r.priceDate || r.start || '—') + '</td>' +
       '<td class="td-num">' + (r.bondPrice ? r.bondPrice.toLocaleString() + '원' : '—') + '</td>' +
       '<td class="td-num">' + (r.bondQty ? r.bondQty.toLocaleString() + '좌' : '—') + '</td>' +
       '<td class="td-num" style="color:var(--green);font-weight:600;">' + fmtKRW(evalAmt) + '</td>' +
@@ -7957,7 +7966,7 @@ async function fetchBondHistoryPrice() {
       calcBondHistValue();
 
       if (stEl) {
-        stEl.textContent = '✅ ' + data.name + ' — ' + data.price.toLocaleString() + '원 · ' + (data.rate || '—') + '% (' + data.date + ')';
+        stEl.textContent = '✅ ' + data.name + ' — ' + data.price.toLocaleString() + '원 · ' + (data.rate || '—') + '% (' + normDate(data.date) + ')';
         stEl.style.color = 'var(--green)';
       }
     } else {
@@ -7992,7 +8001,7 @@ async function saveBondHistoryRecord() {
   var existing = DB.get('investments').find(function(x) {
     return x.active && x.product === '국채' &&
            (x.bondName || x.bank || '') === bondNameKey &&
-           (x.priceDate || x.start || '') === date;
+           normDate(x.priceDate || x.start || '') === date;
   });
 
   if (existing) {
@@ -8075,7 +8084,7 @@ async function refreshBondEquityPrice(id, bondName) {
     if (data.success) {
       item.bondPrice = data.price;
       item.amount    = Math.round((item.bondQty || 0) * (data.price / 10)); // 기준가÷10×좌수
-      item.priceDate = data.date;
+      item.priceDate = normDate(data.date);
       if (data.rate != null) item.rate = data.rate;
       await DB.updateOne('investments', item);
       renderBondEquity();
@@ -8119,7 +8128,7 @@ async function runBulkBondRefresh() {
 
       if (data.success) {
         const newPrice = data.price;
-        const newDate  = data.date; // API가 반환한 실제 기준일
+        const newDate  = normDate(data.date); // YYYYMMDD → YYYY-MM-DD 정규화
         const amount   = Math.round((b.bondQty || 0) * (newPrice / 10));
 
         // 같은 날짜 레코드 있으면 업데이트, 없으면 새 레코드 추가 (지분과 동일)
@@ -9625,11 +9634,6 @@ async function updateIssueStatus(issueKey, newStatus) {
 // ═══════════════════════════════════════════════════════════════════════
 
 // ── 수정 폼 열기 ────────────────────────────────────────────────────
-// UUID를 인덱스로 관리 — onclick에 숫자만 전달해 따옴표 충돌 방지
-var _ihIds = [];
-function _ihEdit(i) { if (_ihIds[i]) openIhEdit(_ihIds[i]); }
-function _ihDel(i)  { if (_ihIds[i]) deleteIhComment(_ihIds[i]); }
-
 function openIhEdit(cmId) {
   // 이미 열린 수정 폼 닫기
   var existing = document.getElementById('ih-edit-form-' + cmId);
@@ -9729,7 +9733,6 @@ async function deleteIhComment(cmId) {
 }
 
 async function renderIssueHistory() {
-  _ihIds = []; // 렌더마다 초기화
   var listEl = document.getElementById('ih-list');
   if (!listEl) return;
   listEl.innerHTML = '<div class="ih-empty">조회 중...</div>';
@@ -9785,11 +9788,10 @@ async function renderIssueHistory() {
       var cStBadge = cm.status ? '<span class="issue-status-badge ' + (stCls[cm.status]||'') + '">' + (stLbl[cm.status]||cm.status) + '</span>' : '';
       // 수정/삭제 버튼: master 또는 본인 작성 코멘트
       var isMine = currentUser && (currentUser.role === 'master' || cm.user_label === (currentUser.label || currentUser.role));
-      var _ihIdx = _ihIds.length; _ihIds.push(cm.id); // 인덱스 등록
       var actBtns = isMine
         ? '<div class="ih-comment-actions">' +
-            '<button class="ih-edit-btn" onclick="_ihEdit(' + _ihIdx + ')" title="수정">✏ 수정</button>' +
-            '<button class="ih-del-btn"  onclick="_ihDel('  + _ihIdx + ')" title="삭제">✕ 삭제</button>' +
+            '<button class="ih-edit-btn" onclick="openIhEdit(\"' + cm.id + '\")" title="수정">✏ 수정</button>' +
+            '<button class="ih-del-btn"  onclick="deleteIhComment(\"' + cm.id + '\")" title="삭제">✕ 삭제</button>' +
           '</div>'
         : '';
       return '<div class="ih-comment" id="ih-cm-' + cm.id + '">' +
