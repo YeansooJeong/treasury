@@ -1468,6 +1468,29 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
   .issue-comment-time { font-size:10px; color:var(--text3); white-space:nowrap; }
   .issue-comment-body { font-size:13px; color:var(--text2); line-height:1.6; padding:10px 12px; }
 
+
+  /* ── 커스텀 버튼 툴팁 ── */
+  .btn-tip { position:relative; }
+  .btn-tip::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 10px;
+    background: rgba(0,0,0,0.85);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 400;
+    border-radius: 6px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 9999;
+  }
+  .btn-tip:hover::after { opacity: 1; }
+
 </style>
 </head>
 <body>
@@ -2501,7 +2524,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
             <div style="display:flex;gap:8px;align-items:center;margin-top:12px;margin-bottom:10px;">
               <button class="btn btn-ghost" id="btn-bulk-bond-refresh"
                 style="font-size:11px;padding:3px 9px;color:var(--green);border-color:rgba(16,185,129,0.4);"
-                onclick="runBulkBondRefresh()" title="전 영업일 시세 · 익영업일 13시 이후 업데이트">↻ 전체 시세 갱신</button>
+                onclick="runBulkBondRefresh()" class="btn btn-ghost btn-tip" data-tip="전 영업일 시세 · 익영업일 13시 이후 업데이트">↻ 전체 시세 갱신</button>
             </div>
 
             <!-- 종목 목록 (최신 1행씩) -->
@@ -2541,7 +2564,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                   <button class="btn btn-ghost" style="font-size:11px;padding:5px 12px;color:var(--green);border-color:rgba(16,185,129,0.4);"
-                    onclick="fetchBondHistoryPrice()" title="전 영업일 시세 · 익영업일 13시 이후 업데이트">📡 시세 조회</button>
+                    onclick="fetchBondHistoryPrice()" class="btn btn-ghost btn-tip" data-tip="전 영업일 시세 · 익영업일 13시 이후 업데이트">📡 시세 조회</button>
                   <span id="bond-hist-status" style="font-size:11px;color:var(--text3);flex:1;min-width:120px;"></span>
                   <span id="bond-hist-eval" style="font-size:12px;font-weight:600;color:var(--green);"></span>
                   <button id="bond-hist-save-btn" class="btn btn-success" style="font-size:12px;padding:5px 14px;"
